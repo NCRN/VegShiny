@@ -1,19 +1,25 @@
 
-# ui file
 
 library(shiny)
+library(NPSForVeg)
 
-shinyUI(fluidPage(
+shinyUI(
+
+  pageWithSidebar(
+
+    headerPanel(title="Veg Visualizer", windowTitle="Veg Vis"),
   
-  titlePanel(title="Veg Visualizer", windowTitle="Veg Vis"),
   
-  
-  fluidRow(
-    column(3,
-      wellPanel(uiOutput("parkControl"))
-      ),
-    column(9,
-           plotOutput("TestIV")
-           )
+  sidebarPanel(
+
+    uiOutput(outputId="ParkControl"),
+    
+     
+    sliderInput(inputId="YearIn", label="Display data from the 4 years ending:", min=2009, max=2013, value=2013, format="####")
+    ),
+
+    mainPanel(
+          plotOutput("Testdens")
     )
-  ))
+  
+))
