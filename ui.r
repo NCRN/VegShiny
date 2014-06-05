@@ -10,8 +10,10 @@ shinyUI(
     titlePanel(title="Veg Visualizer", windowTitle="Veg Vis"),
   
     fluidRow(
-      column(3,
+      column(3,wellPanel(
           uiOutput(outputId="ParkControl"),
+          hr(),
+          br(),
           sliderInput(inputId="YearIn", label="Display data from the 4 years ending:", min=2009, max=2013, value=2013, format="####"),
           sliderInput(inputId="TopIn", label="Number of species to display (in order of mean value):", min=1, max=10, value=5, format="##"),
          hr(),
@@ -24,12 +26,11 @@ shinyUI(
                  radioButtons(inputId="densgroup", label="Type of plant",
                        choices=c("trees","saplings","seedlings","herbs")))
           
-    ),
+    )),
 
     column(9,
 
           tags$div(title="Mean and 95% Confidence interval",plotOutput("Testdens"))
     )
     )
-  
 ))
