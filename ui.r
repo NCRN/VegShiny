@@ -31,5 +31,4 @@ shinyUI(
           tags$div(title="Mean and 95% Confidence interval",plotOutput("Testdens"))
     )
     )
-  
 ))
