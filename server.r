@@ -2,6 +2,7 @@ library(shiny)
 library(NPSForVeg)
 library(leaflet)
 library(lattice)
+library(RColorBrewer)
 
 
 NCRN<-importNCRN("T:/I&M/MONITORING/Forest_Vegetation/RCode/VegData")
@@ -9,9 +10,9 @@ names(NCRN)<-getNames(NCRN, name.class="code")
 ParkList<-getNames(NCRN,name.class="code")
 names(ParkList)<-getNames(NCRN)
 
-shinyServer(function(input, output,session){
+shinyServer(function(input,output,session){
 
-  ######## main Map   
+######## main Map   
   map<-createLeafletMap(session,"map")
   
 ############ Park Control for Density plot  
@@ -20,8 +21,19 @@ shinyServer(function(input, output,session){
                    options = list(placeholder='Choose a park',
                            onInitialize = I('function() { this.setValue(""); }') )) 
     })
-   
- 
+
+
+
+############ Plant select Input for Map#####
+#output$MpGrp<-renderText({class(input$MapGroup)})
+
+MapSp<-reactive({sort(unique(getPlants(object=NCRN,group="trees", years=c(2010:2013))$Latin_Name)) 
+                 })
+
+
+output$SpeciesControl<-renderUI({
+  selectInput(inputId="MapSpecies", label="Choose a species", selectize=F, choices=MapSp())
+})
 
   
   ############Density Plot Function
@@ -34,6 +46,8 @@ shinyServer(function(input, output,session){
       }
     )
   })
+
+PlantVals<-reactive({SiteXSpec(object=NCRN,group="trees",years=c(2010:2013), species=input$MapSpecies, Total=F)[[2]]})
 
 ############ Add points to map
 session$onFlushed(once=TRUE, function() {   ##onFlushed comes superzip - makes map draw befrore circles
@@ -50,29 +64,28 @@ session$onFlushed(once=TRUE, function() {   ##onFlushed comes superzip - makes m
     #colors <- colors[match(zipdata$zipcode, allzips$zipcode)]
     
     # Clear existing circles before drawing
-    map$clearShapes()
-    # Draw in batches of 1000; makes the app feel a bit more responsive
-    #chunksize <- 1000
-    #for (from in seq.int(1, nrow(zipdata), chunksize)) {
-    #  to <- min(nrow(zipdata), from + chunksize)
-    #  zipchunk <- zipdata[from:to,]
+  MapObs<-observe({ 
+  map$clearShapes()
+
       # Bug in Shiny causes this to error out when user closes browser
       # before we get here
   #    try(
-        map$addCircle(getPlots(NCRN)$Latitude,getPlots(NCRN)$Longitude, 15, options=list(color="red",fillOpacity=.5)
+       #map$addCircle(getPlots(NCRN)$Latitude,getPlots(NCRN)$Longitude, 10*PlantVals(), options=list(color="red",fillOpacity=.5))
+  map$addCircle(getPlots(NCRN)$Latitude,getPlots(NCRN)$Longitude, 15+PlantVals(), options=list(color= brewer.pal(7, "Spectral")[cut(PlantVals(), 7, labels = FALSE)],fillOpacity=.75))
         #  zipchunk$latitude, zipchunk$longitude,
         #  (zipchunk[[sizeBy]] / max(allzips[[sizeBy]])) * 30000,
         #  zipchunk$zipcode,
         #  list(stroke=FALSE, fill=TRUE, fillOpacity=0.4),
         #  list(color = colors[from:to])
-        )
+         })
    #   )
     #})
+  
   })
   
   # TIL this is necessary in order to prevent the observer from
   # attempting to write to the websocket after the session is gone.
- # session$onSessionEnded(paintObs$suspend)
+#session$onSessionEnded(MapObs$suspend)
 })
 
 # Show a popup at the given location
