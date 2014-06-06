@@ -22,10 +22,22 @@ shinyUI(
                               maxBounds = list(list(37.70,-79.5), list(40.36,-76.1)), # Show NCRN only
                               minZoom=8
                             )
+                 ),
+                 
+                 fixedPanel(id="controls",class="modal",draggable=TRUE,cursor="auto",top=50,bottom="auto",height="auto",right=20, 
+                            left="auto",width=200,
+                            h3("Forest Explorer"),
+                            
+                            radioButtons(inputId="MapGroup", label="Type of plant:",
+                                                  choices=c("trees","saplings","seedlings")),
+                          #  textOutput("MpGrp"),
+
+                            
+                            tags$div(title="Choose a species of plants to map",
+                                     uiOutput("SpeciesControl"))
+                            
+                            
                  )
-                 
-                 
-                 
                  
     )),
     tabPanel("Graphs",         
@@ -46,7 +58,7 @@ shinyUI(
                        choices=list("Abundance"="count","Size"="size","Occupancy"="presab") ),
          hr(),
          br(),
-         tags$div(title="Chose the type of plant you want to work with",
+         tags$div(title="Choose the type of plant you want to work with",
                  radioButtons(inputId="densgroup", label="Type of plant",
                        choices=c("trees","saplings","seedlings","herbs")))
           
