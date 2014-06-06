@@ -71,7 +71,9 @@ session$onFlushed(once=TRUE, function() {   ##onFlushed comes superzip - makes m
       # before we get here
   #    try(
        #map$addCircle(getPlots(NCRN)$Latitude,getPlots(NCRN)$Longitude, 10*PlantVals(), options=list(color="red",fillOpacity=.5))
+
   map$addCircle(getPlots(NCRN)$Latitude,getPlots(NCRN)$Longitude, 15+PlantVals(), options=list(color= brewer.pal(7, "Spectral")[cut(PlantVals(), 7, labels = FALSE)],fillOpacity=.75))
+
         #  zipchunk$latitude, zipchunk$longitude,
         #  (zipchunk[[sizeBy]] / max(allzips[[sizeBy]])) * 30000,
         #  zipchunk$zipcode,
