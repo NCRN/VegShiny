@@ -30,8 +30,6 @@ shinyUI(
                             
                             radioButtons(inputId="MapGroup", label="Type of plant:",
                                                   choices=c("trees","saplings","seedlings")),
-                          #  textOutput("MpGrp"),
-
                             
                             tags$div(title="Choose a species of plants to map",
                                      uiOutput("SpeciesControl"))

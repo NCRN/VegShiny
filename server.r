@@ -14,6 +14,7 @@ shinyServer(function(input,output,session){
 
 ######## main Map   
   map<-createLeafletMap(session,"map")
+
   
 ############ Park Control for Density plot  
   output$ParkControl<-renderUI({
@@ -25,15 +26,15 @@ shinyServer(function(input,output,session){
 
 
 ############ Plant select Input for Map#####
-#output$MpGrp<-renderText({class(input$MapGroup)})
-
-MapSp<-reactive({sort(unique(getPlants(object=NCRN,group="trees", years=c(2010:2013))$Latin_Name)) 
-                 })
 
 
 output$SpeciesControl<-renderUI({
-  selectInput(inputId="MapSpecies", label="Choose a species", selectize=F, choices=MapSp())
+ selectInput(inputId="MapSpecies", label="Choose a species", 
+             choices=sort(unique(getPlants(object=NCRN, group=input$MapGroup, years=c(2010:2013))$Latin_Name )) )
 })
+
+
+
 
   
   ############Density Plot Function
@@ -72,7 +73,7 @@ session$onFlushed(once=TRUE, function() {   ##onFlushed comes superzip - makes m
   #    try(
        #map$addCircle(getPlots(NCRN)$Latitude,getPlots(NCRN)$Longitude, 10*PlantVals(), options=list(color="red",fillOpacity=.5))
 
-  map$addCircle(getPlots(NCRN)$Latitude,getPlots(NCRN)$Longitude, 15+PlantVals(), options=list(color= brewer.pal(7, "Spectral")[cut(PlantVals(), 7, labels = FALSE)],fillOpacity=.75))
+  map$addCircle(getPlots(NCRN)$Latitude,getPlots(NCRN)$Longitude, 15, options=list(color= brewer.pal(6, "Spectral")[cut(PlantVals(),breaks=c(-1, 0.1, 1.1, 2.1,5.1,10.1,1000), labels = FALSE)],fillOpacity=.75))
 
         #  zipchunk$latitude, zipchunk$longitude,
         #  (zipchunk[[sizeBy]] / max(allzips[[sizeBy]])) * 30000,
