@@ -28,12 +28,15 @@ shinyUI(
                             left="auto",width=200,
                             h3("Forest Explorer"),
                             
-                            radioButtons(inputId="MapGroup", label="Type of plant:",
-                                                  choices=c("trees","saplings","seedlings")),
+                            selectInput(inputId="MapGroup", label="Type of plant:",
+                                                  choices=c("trees","saplings","seedlings","herbs")),
                             
                             tags$div(title="Choose a species of plants to map",
-                                     uiOutput("SpeciesControl"))
+                                     uiOutput("MapSpeciesControl")),
+
                             
+                            uiOutput("MapParkControl")
+            
                             
                  )
                  
@@ -58,7 +61,7 @@ shinyUI(
          br(),
          tags$div(title="Choose the type of plant you want to work with",
                  radioButtons(inputId="densgroup", label="Type of plant",
-                       choices=c("trees","saplings","seedlings","herbs")))
+                       choices=c("trees","saplings","seedlings")))
           
     )),
 

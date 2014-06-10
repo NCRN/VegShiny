@@ -13,83 +13,69 @@ names(ParkList)<-getNames(NCRN)
 shinyServer(function(input,output,session){
 
 ######## main Map   
-  map<-createLeafletMap(session,"map")
+map<-createLeafletMap(session,"map")
 
   
-############ Park Control for Density plot  
-  output$ParkControl<-renderUI({
-    selectizeInput(inputId="ParkIn",choices=ParkList, label="Park:",
-                   options = list(placeholder='Choose a park',
-                           onInitialize = I('function() { this.setValue(""); }') )) 
-    })
-
 
 
 ############ Plant select Input for Map#####
 
 
-output$SpeciesControl<-renderUI({
- selectInput(inputId="MapSpecies", label="Choose a species", 
-             choices=sort(unique(getPlants(object=NCRN, group=input$MapGroup, years=c(2010:2013))$Latin_Name )) )
+output$MapParkControl<-renderUI({
+  selectInput(inputId="MapPark", label="Filter species list by park",
+              choices=c(All="All",ParkList) )
 })
 
 
 
+output$MapSpeciesControl<-renderUI({
+  if(is.null(input$MapPark) || nchar(input$MapPark)==0) {
+    return()
+}
+  else{
+    if(input$MapPark=="All"){
+    selectInput(inputId="MapSpecies", label="Choose a species", 
+             choices=sort(unique(getPlants(object=NCRN, group=input$MapGroup, years=c(2010:2013))$Latin_Name )) )
+    }
+    else{
+      selectInput(inputId="MapSpecies", label="Choose a species", 
+                  choices=sort(unique(getPlants(object=NCRN[input$MapPark], group=input$MapGroup, years=c(2010:2013))$Latin_Name )) )
+    }
+ }
+})
 
-  
-  ############Density Plot Function
-  output$Testdens<-renderPlot({
-    print(
-      if (is.null(input$ParkIn) || nchar(input$ParkIn)==0) {return()}
-      else{
-        densplot(NCRN[input$ParkIn], densargs=list(group=input$densgroup, years=c((input$YearIn-3):input$YearIn),values=input$densvalues),
-                 top=input$TopIn, Total=F)
-      }
-    )
-  })
 
-PlantVals<-reactive({SiteXSpec(object=NCRN,group="trees",years=c(2010:2013), species=input$MapSpecies, Total=F)[[2]]})
+#### Park Select for spcies for map
+PlantVals<-reactive({
+  if(is.null(input$MapSpecies) || nchar(input$MapSpecies)==0){
+    return()
+  }
+  else{
+    SiteXSpec(object=NCRN,group=input$MapGroup, years=c(2010:2013), species=input$MapSpecies, Total=F)[[2]]
+  }
+})
 
 ############ Add points to map
 session$onFlushed(once=TRUE, function() {   ##onFlushed comes superzip - makes map draw befrore circles
- # paintObs <- observe({
-    #colorBy <- input$color
-    #sizeBy <- input$size
-    
-    #colorData <- if (colorBy == "superzip") {
-    #  as.numeric(allzips$centile > (100 - input$threshold))
-    #} else {
-    #  allzips[[colorBy]]
-    #}
-    #colors <- brewer.pal(7, "Spectral")[cut(colorData, 7, labels = FALSE)]
-    #colors <- colors[match(zipdata$zipcode, allzips$zipcode)]
-    
-    # Clear existing circles before drawing
+
   MapObs<-observe({ 
+ 
   map$clearShapes()
 
-      # Bug in Shiny causes this to error out when user closes browser
-      # before we get here
-  #    try(
-       #map$addCircle(getPlots(NCRN)$Latitude,getPlots(NCRN)$Longitude, 10*PlantVals(), options=list(color="red",fillOpacity=.5))
+  if(is.null(PlantVals() )) {
+    return()
+  }
+  else {
+    map$addCircle(as.character(getPlots(NCRN)$Latitude), as.character(getPlots(NCRN)$Longitude), 15, options=list(color=brewer.pal(6, "Spectral")[cut(PlantVals(),breaks=c(-1, 0.1, 1.1, 2.1,5.1,10.1,1000), labels = FALSE)],fillOpacity=1, weight=5) )
+  }
 
-  map$addCircle(as.character(getPlots(NCRN)$Latitude), as.character(getPlots(NCRN)$Longitude), 15, options=list(color= brewer.pal(6, "Spectral")[cut(PlantVals(),breaks=c(-1, 0.1, 1.1, 2.1,5.1,10.1,1000), labels = FALSE)],fillOpacity=.75) )
-
-        #  zipchunk$latitude, zipchunk$longitude,
-        #  (zipchunk[[sizeBy]] / max(allzips[[sizeBy]])) * 30000,
-        #  zipchunk$zipcode,
-        #  list(stroke=FALSE, fill=TRUE, fillOpacity=0.4),
-        #  list(color = colors[from:to])
          })
-   #   )
-    #})
-  
+
   })
   
   # TIL this is necessary in order to prevent the observer from
   # attempting to write to the websocket after the session is gone.
 #session$onSessionEnded(MapObs$suspend)
-})
 
 # Show a popup at the given location
 #showZipcodePopup <- function(zipcode, lat, lng) {
@@ -107,3 +93,31 @@ session$onFlushed(once=TRUE, function() {   ##onFlushed comes superzip - makes m
 #}
 #
 #})
+
+
+############ Park Control for Density plot  
+output$ParkControl<-renderUI({
+  selectizeInput(inputId="ParkIn",choices=ParkList, label="Park:",
+                 options = list(placeholder='Choose a park',
+                                onInitialize = I('function() { this.setValue(""); }') )) 
+})
+
+
+
+############Density Plot Function
+output$Testdens<-renderPlot({
+  print(
+    if (is.null(input$ParkIn) || nchar(input$ParkIn)==0) {return()}
+    else{
+      densplot(NCRN[input$ParkIn], densargs=list(group=input$densgroup, years=c((input$YearIn-3):input$YearIn),values=input$densvalues),
+               top=input$TopIn, Total=F)
+    }
+  )
+})
+
+
+
+
+})
+
+
