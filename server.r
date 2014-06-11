@@ -10,6 +10,8 @@ names(NCRN)<-getNames(NCRN, name.class="code")
 ParkList<-getNames(NCRN,name.class="code")
 names(ParkList)<-getNames(NCRN)
 
+ParkBounds<-read.csv("boundboxes.csv", as.is=TRUE)
+
 shinyServer(function(input,output,session){
 
 ######## main Map   
@@ -18,8 +20,8 @@ map<-createLeafletMap(session,"map")
   
 
 
-############ Plant select Input for Map#####
 
+#######  Park Filter for species list control for map
 
 output$MapParkControl<-renderUI({
   selectInput(inputId="MapPark", label="Filter species list by park",
@@ -27,7 +29,7 @@ output$MapParkControl<-renderUI({
 })
 
 
-
+########### Species list control for map 
 output$MapSpeciesControl<-renderUI({
   if(is.null(input$MapPark) || nchar(input$MapPark)==0) {
     return()
@@ -45,7 +47,15 @@ output$MapSpeciesControl<-renderUI({
 })
 
 
-#### Park Select for spcies for map
+######## Zoom control for map
+
+output$ParkZoomControl<-renderUI({
+  selectInput(inputId="ParkZoom",label=NULL,
+              choices=c(All="All",ParkList) )
+})
+
+###   Calculate the values for the circles on the map.
+
 PlantVals<-reactive({
   if(is.null(input$MapSpecies) || nchar(input$MapSpecies)==0){
     return()
@@ -56,26 +66,36 @@ PlantVals<-reactive({
 })
 
 ############ Add points to map
+#MapObs<-return()
 session$onFlushed(once=TRUE, function() {   ##onFlushed comes superzip - makes map draw befrore circles
-
   MapObs<-observe({ 
- 
-  map$clearShapes()
+    map$clearShapes()
+    try(                               #try deals wiht issue where the group has changed but spcies has not yet caught up.
+      if(is.null(PlantVals() )) {
+        return()
+    }
+    else {
+      map$addCircle(as.character(getPlots(NCRN)$Latitude), as.character(getPlots(NCRN)$Longitude), 15, options=list(color=brewer.pal(6, "Spectral")[cut(PlantVals(),breaks=c(-1, 0.1, 1.1, 2.1,5.1,10.1,1000), labels = FALSE)],fillOpacity=1, weight=5) )
+    }
 
-  if(is.null(PlantVals() )) {
-    return()
-  }
-  else {
-    map$addCircle(as.character(getPlots(NCRN)$Latitude), as.character(getPlots(NCRN)$Longitude), 15, options=list(color=brewer.pal(6, "Spectral")[cut(PlantVals(),breaks=c(-1, 0.1, 1.1, 2.1,5.1,10.1,1000), labels = FALSE)],fillOpacity=1, weight=5) )
-  }
-
-         })
-
-  })
+    )
+})
+  
   
   # TIL this is necessary in order to prevent the observer from
   # attempting to write to the websocket after the session is gone.
-#session$onSessionEnded(MapObs$suspend)
+session$onSessionEnded(MapObs$suspend)
+})
+
+
+############Zoom the map
+observe({
+  input$MapZoom
+  isolate({
+    BoundsUse<-reactive({ as.numeric(ParkBounds[ParkBounds$ParkCode==input$ParkZoom,2:5]) })
+    map$fitBounds(BoundsUse()[1],BoundsUse()[2],BoundsUse()[3],BoundsUse()[4])
+  }) 
+})
 
 # Show a popup at the given location
 #showZipcodePopup <- function(zipcode, lat, lng) {

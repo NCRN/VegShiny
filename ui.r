@@ -14,8 +14,9 @@ shinyUI(
                    ),
                  
                  leafletMap("map", width="100%", height="100%",
-                            initialTileLayer="//{s}.tiles.mapbox.com/v3/nps.2yxv8n84,nps.jhd2e81b/{z}/{x}/{y}.png",
-                            initialTileLayerAttribution = HTML('Maps by <a href="http://www.mapbox.com/">Mapbox</a>'),
+                            initialTileLayer="//{s}.tiles.mapbox.com/v3/nps.2yxv8n84/{z}/{x}/{y}.png",
+                            initialTileLayerAttribution = HTML( "&copy; <a href='http://mapbox.com/about/maps' target='_blank'>Mapbox</a> &copy; <a href='http://openstreetmap.org/copyright' target='_blank'>OpenStreetMap</a> contributors | <a class='improve-park-tiles' href='http://www.nps.gov/npmap/park-tiles/improve/' target='_blank'>Improve Park Tiles</a>"),
+                                                                #'Maps by <a href="http://www.mapbox.com/">Mapbox</a>'),
                             options=list(
                               center = c(39.03, -77.80),
                               zoom = 9,
@@ -29,16 +30,20 @@ shinyUI(
                             h3("Forest Explorer"),
                             
                             selectInput(inputId="MapGroup", label="Type of plant:",
-                                                  choices=c("trees","saplings","seedlings","herbs")),
-                            
+                                                  choices=c(Trees="trees",Saplings="saplings","Tree seedlings"="seedlings",Shrubs="shrubs",
+                                                            "Shrub seedlings"="shseedligns", "Understory plants"="herbs",Vines="vines")),
                             tags$div(title="Choose a species of plants to map",
-                                     uiOutput("MapSpeciesControl")),
-
-                            
+                                     uiOutput("MapSpeciesControl")),  
                             uiOutput("MapParkControl")
-            
-                            
+                  ),
+                 
+                 fixedPanel(id="controls",class="modal",draggable=TRUE,cursor="auto",top=50,bottom="auto",height="auto", 
+                            left=350,width=175,
+                            h4("Zoom Control"),
+                            uiOutput("ParkZoomControl"),
+                            actionButton(inputId="MapZoom", label="Zoom",icon=icon("search-plus"))
                  )
+                 
                  
     )),
     tabPanel("Graphs",         
