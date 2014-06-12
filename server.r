@@ -2,7 +2,7 @@ library(shiny)
 library(NPSForVeg)
 library(leaflet)
 library(lattice)
-library(RColorBrewer)
+#library(RColorBrewer)
 
 
 NCRN<-importNCRN("T:/I&M/MONITORING/Forest_Vegetation/RCode/VegData")
@@ -11,6 +11,8 @@ ParkList<-getNames(NCRN,name.class="code")
 names(ParkList)<-getNames(NCRN)
 
 ParkBounds<-read.csv("boundboxes.csv", as.is=TRUE)
+
+
 
 shinyServer(function(input,output,session){
 
@@ -33,7 +35,7 @@ output$MapParkControl<-renderUI({
 output$MapSpeciesControl<-renderUI({
   if(is.null(input$MapPark) || nchar(input$MapPark)==0) {
     return()
-}
+  }
   else{
     if(input$MapPark=="All"){
     selectInput(inputId="MapSpecies", label="Choose a species", 
@@ -43,9 +45,23 @@ output$MapSpeciesControl<-renderUI({
       selectInput(inputId="MapSpecies", label="Choose a species", 
                   choices=sort(unique(getPlants(object=NCRN[input$MapPark], group=input$MapGroup, years=c(2010:2013))$Latin_Name )) )
     }
- }
+  }
 })
 
+#### Data to display control for Map
+ValuesUse<-reactive({
+  switch(input$MapGroup,
+         trees=,saplings=c(Abundance="count", "Basal Area"="size"),
+         seedlings=,shseedlings=,shrubs=,vines=c(Abundance="count"),
+         herbs=c("Percent Cover"="size")
+         
+    )
+})
+
+output$PlantValueControl<-renderUI({
+  selectInput(inputId="MapValues", label="Data to Map:", choices=ValuesUse())
+  
+})
 
 ######## Zoom control for map
 
@@ -61,7 +77,13 @@ PlantVals<-reactive({
     return()
   }
   else{
-    SiteXSpec(object=NCRN,group=input$MapGroup, years=c(2010:2013), species=input$MapSpecies, Total=F)[[2]]
+    if(input$MapGroup!="herbs"){
+      (10000/getArea(NCRN[1],group=input$MapGroup,type="all")) * (
+      SiteXSpec(object=NCRN,group=input$MapGroup, years=c(2010:2013), species=input$MapSpecies, values=input$MapValues,Total=F)[[2]])
+    }
+    else{
+      SiteXSpec(object=NCRN,group=input$MapGroup, years=c(2010:2013), species=input$MapSpecies, values=input$MapValues,Total=F)[[2]]/12
+    }
   }
 })
 
@@ -75,10 +97,11 @@ session$onFlushed(once=TRUE, function() {   ##onFlushed comes superzip - makes m
         return()
     }
     else {
-      map$addCircle(as.character(getPlots(NCRN)$Latitude), as.character(getPlots(NCRN)$Longitude), 15, options=list(color=brewer.pal(6, "Spectral")[cut(PlantVals(),breaks=c(-1, 0.1, 1.1, 2.1,5.1,10.1,1000), labels = FALSE)],fillOpacity=1, weight=5) )
+      map$addCircle(as.character(getPlots(NCRN)$Latitude), as.character(getPlots(NCRN)$Longitude), 15, 
+         options=list(color=BluePur(5)[cut(PlantVals(),breaks=c(MapLegend[[input$MapValues]][[input$MapGroup]]$Cuts), 
+                                           labels = FALSE)],fillOpacity=.7, weight=5) )
     }
-
-    )
+  )
 })
   
   
@@ -96,7 +119,19 @@ observe({
     map$fitBounds(BoundsUse()[1],BoundsUse()[2],BoundsUse()[3],BoundsUse()[4])
   }) 
 })
-
+######################  UIoutput for Legend
+output$MapLegend<-renderUI({
+  tags$table(
+  mapply(
+    function(BoxLabel,color){
+      tags$tr(tags$td(tags$div(
+        style=sprintf("width: 16px; height: 16px; background-color: %s;", color)
+      )),
+      tags$td(": ",BoxLabel)
+      )}, 
+    c(MapLegend[[input$MapValues]][[input$MapGroup]]$Labels),BluePur(5),SIMPLIFY=FALSE ))
+})
+output$MapLegendTitle<-renderUI({h4(MapLegend[[input$MapValues]][[input$MapGroup]]$Title)})
 # Show a popup at the given location
 #showZipcodePopup <- function(zipcode, lat, lng) {
 #  selectedZip <- allzips[allzips$zipcode == zipcode,]

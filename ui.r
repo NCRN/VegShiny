@@ -4,6 +4,8 @@ library(shiny)
 library(NPSForVeg)
 
 shinyUI(
+ 
+
 
   navbarPage(title="Forest Vegetation Visualizer", windowTitle="Forest Veg",
              
@@ -31,7 +33,10 @@ shinyUI(
                             
                             selectInput(inputId="MapGroup", label="Type of plant:",
                                                   choices=c(Trees="trees",Saplings="saplings","Tree seedlings"="seedlings",Shrubs="shrubs",
-                                                            "Shrub seedlings"="shseedligns", "Understory plants"="herbs",Vines="vines")),
+                                                            "Shrub seedlings"="shseedlings", "Understory plants"="herbs",Vines="vines")),
+                            
+                            uiOutput("PlantValueControl"),
+                            
                             tags$div(title="Choose a species of plants to map",
                                      uiOutput("MapSpeciesControl")),  
                             uiOutput("MapParkControl")
@@ -39,12 +44,16 @@ shinyUI(
                  
                  fixedPanel(id="controls",class="modal",draggable=TRUE,cursor="auto",top=50,bottom="auto",height="auto", 
                             left=350,width=175,
-                            h4("Zoom Control"),
+                            h4("Zoom to:"),
                             uiOutput("ParkZoomControl"),
-                            actionButton(inputId="MapZoom", label="Zoom",icon=icon("search-plus"))
-                 )
+                            actionButton(inputId="MapZoom", label="Go",icon=icon("search-plus"))
+                 ),
                  
-                 
+                 fixedPanel( id="controls", class="floater",style="", draggable=TRUE, cursor="auto", top=500, bottom="auto", height=135,
+                             right=100, left="auto", width=100,
+                             uiOutput("MapLegendTitle"),
+                             uiOutput("MapLegend")
+                ) 
     )),
     tabPanel("Graphs",         
              
