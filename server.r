@@ -2,7 +2,10 @@ library(shiny)
 library(NPSForVeg)
 library(leaflet)
 library(lattice)
+library(maptools)
 
+
+##################### Housekeeping prior to start of the server funciton
 
 NCRN<-importNCRN("T:/I&M/MONITORING/Forest_Vegetation/RCode/VegData")
 names(NCRN)<-getNames(NCRN, name.class="code")
@@ -10,8 +13,12 @@ ParkList<-getNames(NCRN,name.class="code")
 names(ParkList)<-getNames(NCRN)
 
 ParkBounds<-read.csv("boundboxes.csv", as.is=TRUE)
+#PRWIMap<-readShapePoly("./Maps/VEG_Veg_Systems_py")
 
 
+
+
+#################### Begin Server Function
 
 shinyServer(function(input,output,session){
 
@@ -20,113 +27,15 @@ shinyServer(function(input,output,session){
 ### Create Map  
 map<-createLeafletMap(session,"map")
 
-#######  Park Filter for species list control for map
+MapYears<-c(2010:2013)  #may be replaced by a slider
 
-output$MapParkControl<-renderUI({
-  selectInput(inputId="MapPark", label="Filter species list by park",
-              choices=c(All="All",ParkList) )
-})
-
-########### Species list control for map 
-output$MapSpeciesControl<-renderUI({
-  if(is.null(input$MapPark) || nchar(input$MapPark)==0) {
-    return()
-  }
-  else{
-    if(input$MapPark=="All"){
-    selectizeInput(inputId="MapSpecies", label="Choose a species", 
-             choices=c("All Species"="All",sort(unique(getPlants(object=NCRN, group=input$MapGroup, years=c(2010:2013))$Latin_Name))) )
-    }
-    else{
-      selectInput(inputId="MapSpecies", label="Choose a species", 
-                  choices=c("All Species"="All",sort(unique(getPlants(object=NCRN[input$MapPark], group=input$MapGroup, 
-                                          years=c(2010:2013))$Latin_Name ))) )
-    }
-  }
-})
-
-#### Data to display control for Map
-ValuesUse<-reactive({
-  switch(input$MapGroup,
-         trees=,saplings=c(Abundance="count", "Basal Area"="size"),
-         seedlings=,shseedlings=,shrubs=,vines=c(Abundance="count"),
-         herbs=c("Percent Cover"="size")
-         
-    )
-})
-
-output$PlantValueControl<-renderUI({
-  selectInput(inputId="MapValues", label="Data to Map:", choices=ValuesUse())
-  
-})
+#########################################################################################################
 
 ######## Zoom control for map
 
 output$ParkZoomControl<-renderUI({
   selectInput(inputId="ParkZoom",label=NULL,
               choices=c(All="All",ParkList) )
-})
-
-###   Calculate the values for the circles on the map.
-MapSpeciesType<-reactive({ifelse(input$MapSpecies=="All", "Total","Individual") })
-MapSpeciesUse<-reactive({ifelse(input$MapSpecies=="All", NA, input$MapSpecies) })
-
-#PlantVals<-reactive({
-#  if(is.null(input$MapSpecies) || nchar(input$MapSpecies)==0){
-#    return()
-#  }
-#  else{
-#    if(input$MapGroup != "herbs"){
-#      (10000/getArea(NCRN[1],group=input$MapGroup,type="all")) * (
-#      SiteXSpec(object=NCRN,group=input$MapGroup, years=c(2010:2013), species=MapSpeciesUse(), values=input$MapValues)$Total)
-#    }
-#    else{
-#      SiteXSpec(object=NCRN,group=input$MapGroup, years=c(2010:2013), species=MapSpeciesUse(), values=input$MapValues)$Total/12
-#    }
-#  }
-#})
-
-MapData<-reactive({
-  if(is.null(input$MapSpecies) || nchar(input$MapSpecies)==0){
-    return()
-  }
-  else{
-    data.frame(getPlots(NCRN, years=c(2010:2013), output="dataframe")[c("Plot_Name","Unit_Code","Latitude","Longitude")],
-      Values=  
-        if(input$MapGroup != "herbs"){
-          (10000/getArea(NCRN[1],group=input$MapGroup,type="all")) * (
-          SiteXSpec(object=NCRN,group=input$MapGroup, years=c(2010:2013), species=MapSpeciesUse(), values=input$MapValues)$Total)
-        }
-        else{
-        SiteXSpec(object=NCRN,group=input$MapGroup, years=c(2010:2013), species=MapSpeciesUse(), values=input$MapValues)$Total/12
-        } 
-    )
-  }
-})
-
-############ Add points to map
-#MapObs<-return()
-session$onFlushed(once=TRUE, function() {   ##onFlushed comes superzip - makes map draw befrore circles
-  MapObs<-observe({ 
-
-    map$clearShapes()
-    try(                               #try deals with issue where the group has changed but species has not yet caught up.
-      if(is.null(MapData()$Values )) {
-        return()
-    }
-    else {
-      map$addCircle(as.character(MapData()$Latitude), as.character(MapData()$Longitude), 15, 
-         options=list(color=BluePur(5)[cut(MapData()$Values,
-          breaks=c(MapLegend[[MapSpeciesType()]][[input$MapValues]][[input$MapGroup]]$Cuts), 
-          labels = FALSE)],fillOpacity=.7, weight=5) )
-    }
-  )
-})
-  
-  
-  # TIL this is necessary in order to prevent the observer from
-  # attempting to write to the websocket after the session is gone.
-session$onSessionEnded(MapObs$suspend)
 })
 
 
@@ -138,9 +47,115 @@ observe({
     map$fitBounds(BoundsUse()[1],BoundsUse()[2],BoundsUse()[3],BoundsUse()[4])
   }) 
 })
-######################  UIoutput for Legend
-output$MapLegend<-renderUI({
+
+###########################################################################################################
+
+#######  Park Filter for species list control for map
+
+output$MapParkControl<-renderUI({
+  selectInput(inputId="MapPark", label="Filter species list by park",
+              choices=c(All="All",ParkList) )
+})
+
+############################## Data to map control################################################
+
+#### Data to display control for Map
+ValuesUse<-reactive({
+  switch(input$MapGroup,
+         trees=,saplings=c(Abundance="count", "Basal Area"="size"),
+         seedlings=,shseedlings=,shrubs=,vines=c(Abundance="count"),
+         herbs=c("Percent Cover"="size")
+         
+  )
+})
+
+#render the control
+output$PlantValueControl<-renderUI({
+  selectInput(inputId="MapValues", label="Data to Map:", choices=ValuesUse())
+  
+})
+
+#################################################################################################
+
+########### Species list control for map 
+output$MapSpeciesControl<-renderUI({
+  if(is.null(input$MapPark) || nchar(input$MapPark)==0) {
+    return()
+  }
+  else{
+    if(input$MapPark=="All"){
+    selectizeInput(inputId="MapSpecies", label="Choose a species", 
+             choices=c("All Species"="All",sort(unique(getPlants(object=NCRN, group=input$MapGroup, years=MapYears)$Latin_Name))) )
+    }
+    else{
+      selectInput(inputId="MapSpecies", label="Choose a species", 
+                  choices=c("All Species"="All",sort(unique(getPlants(object=NCRN[input$MapPark], group=input$MapGroup, 
+                                          years=MapYears)$Latin_Name ))) )
+    }
+  }
+})
+
+####################   Calculate the values for the circles on the map. ######################
+
+### HouseKeeping
+
+MapSpeciesType<-reactive({ifelse(input$MapSpecies=="All", "Total","Individual") })
+MapSpeciesUse<-reactive({ifelse(input$MapSpecies=="All", NA, input$MapSpecies) })
+
+
+MapData<-reactive({
   if(is.null(input$MapSpecies) || nchar(input$MapSpecies)==0){
+    return()
+  }
+  else{
+    data.frame(getPlots(NCRN, years=MapYears, output="dataframe")[c("Plot_Name","Unit_Code","Latitude","Longitude")],
+      Values=  
+        if(input$MapGroup != "herbs"){
+          (10000/getArea(NCRN[1],group=input$MapGroup,type="all")) * (
+          SiteXSpec(object=NCRN,group=input$MapGroup, years=MapYears, species=MapSpeciesUse(), values=input$MapValues)$Total)
+        }
+        else{
+        SiteXSpec(object=NCRN,group=input$MapGroup, years=MapYears, species=MapSpeciesUse(), values=input$MapValues)$Total/12
+        } 
+    )
+  }
+})
+#########  Data for Legend, etc.
+MapMetaData<-reactive(MapLegend[[MapSpeciesType()]][[input$MapValues]][[input$MapGroup]])
+
+
+############ Add points to map
+
+session$onFlushed(once=TRUE, function() {   ##onFlushed comes superzip - makes map draw befrore circles
+  MapObs<-observe({ 
+
+    map$clearShapes()
+    try(silent=TRUE,                       #try deals with issue where the group has changed but species has not yet caught up.
+      if(is.null(MapData()$Values )) {
+        return()
+      }
+      else {
+        map$addCircle(as.character(MapData()$Latitude), as.character(MapData()$Longitude), 15*input$PlotSize,
+          layerId=MapData()$Plot_Name,   #This is apparently the id of the circle to match to other data
+          options=list(color=BluePur(5)[cut(MapData()$Values,
+          breaks=c(MapMetaData()$Cuts), 
+          labels = FALSE)],fillOpacity=.7, weight=5) )
+      }
+    ) 
+  })
+  
+  # TIL this is necessary in order to prevent the observer from
+  # attempting to write to the websocket after the session is gone.
+session$onSessionEnded(MapObs$suspend)
+})
+
+#map$addPolygon(PRWIMap)
+
+######################  UIoutput for Legend
+
+output$MapLegend<-renderUI({
+
+  if(is.null(input$MapSpecies) || nchar(input$MapSpecies)==0 || is.null(MapMetaData()) ){
     return()
   }
   else{
@@ -152,37 +167,36 @@ output$MapLegend<-renderUI({
         )),
         tags$td(": ",BoxLabel)
         )}, 
-      c(MapLegend[[MapSpeciesType()]][[input$MapValues]][[input$MapGroup]]$Labels),BluePur(5),SIMPLIFY=FALSE ))
-  }  
+      c(MapMetaData()$Labels),BluePur(5),SIMPLIFY=FALSE ))
+  }
+ 
 })
+
 
 output$MapLegendTitle<-renderUI({ 
   if(is.null(input$MapSpecies) || nchar(input$MapSpecies)==0){
     return()
   }
   else{
-    h4(MapLegend[[MapSpeciesType()]][[input$MapValues]][[input$MapGroup]]$Title) 
+    h4(MapMetaData()$Title) 
   }
-})
+
+  })
 
 
 
-#Show a popup at the given location
+### Function for adding information to, and displaying, popup.
 showPlotPopup <- function(Plot_Name, lat, lng) {
   selectedPlot <- MapData()[MapData()$Plot_Name == Plot_Name,]
   content <- as.character(tagList(
-   tags$h4("Park", selectedPlot$Unit_Code)
-#    tags$strong(HTML(sprintf("%s, %s %s",
-#                             selectedZip$city.x, selectedZip$state.x, selectedZip$zipcode
-#    ))), tags$br(),
-#    sprintf("Median household income: %s", dollar(selectedZip$income * 1000)), tags$br(),
-#    sprintf("Percent of adults with BA: %s%%", as.integer(selectedZip$college)), tags$br(),
-#    sprintf("Adult population: %s", selectedZip$adultpop)
+   tags$h5(getNames(NCRN[selectedPlot$Unit_Code],"long")),
+   br(),
+   tags$h4(input$MapSpecies,":",format(signif(selectedPlot$Values,2), big.mark=","), " ", MapMetaData()$Title)
   ))
-  map$showPopup(lat, lng, Plot_Name)
+  map$showPopup(lat, lng, content, Plot_Name)
 }
 
-# When map is clicked, show a popup with city info
+###  When a plot is clicked, show the popup with plot info
 clickObs <- observe({
   map$clearPopups()
   event <- input$map_shape_click
@@ -190,9 +204,15 @@ clickObs <- observe({
     return()
   
   isolate({
-    showPlotPopup(event$id, event$lat, event$lng)
+    showPlotPopup(event$id, as.character(event$lat), as.character(event$lng))
   })
 })
+session$onSessionEnded(clickObs$suspend)
+
+
+
+
+############################## Plots Tab ###############################################################################
 
 
 ############ Park Control for Density plot  

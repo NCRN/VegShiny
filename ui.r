@@ -1,11 +1,12 @@
-
-
 library(shiny)
 library(NPSForVeg)
+library(leaflet)
+
 
 shinyUI(
   navbarPage(title="Forest Vegetation Visualizer", windowTitle="Forest Veg",
   
+######################################### Map Panel ####################################################################
     tabPanel("Map",
       div(class="outer",
         tags$head(
@@ -23,43 +24,44 @@ shinyUI(
           minZoom=8
         )
       ),
-                 
-                 fixedPanel(id="controls",class="modal",draggable=TRUE,cursor="auto",top=50,bottom="auto",height="auto",right=20, 
-                            left="auto",width=200,
-                            h3("Forest Explorer"),
-                            selectInput(inputId="MapGroup", label="Type of plant:",
-                                                  choices=c(Trees="trees",Saplings="saplings","Tree seedlings"="seedlings",Shrubs="shrubs",
-                                                            "Shrub seedlings"="shseedlings", "Understory plants"="herbs",
-                                                            "Vines on Trees"="vines")),
+
+################### Main Map Controls 
+      fixedPanel(id="controls",class="modal",draggable=TRUE,cursor="auto",top=50,bottom="auto",height="auto",right=20,left="auto",width=200,
+        h3("Forest Explorer"),
+        
+        selectInput(inputId="MapGroup", label="Type of plant:",
+          choices=c(Trees="trees",Saplings="saplings","Tree seedlings"="seedlings",Shrubs="shrubs","Shrub seedlings"="shseedlings",
+            "Understory plants"="herbs","Vines on Trees"="vines")),
                             
-                            uiOutput("PlantValueControl"),
+        uiOutput("PlantValueControl"),
                             
-                            tags$div(title="Choose a species of plants to map",
-                                     uiOutput("MapSpeciesControl")),  
-                            uiOutput("MapParkControl")
-                  ),
+        tags$div(title="Choose a species of plants to map",
+          uiOutput("MapSpeciesControl")),  
+          uiOutput("MapParkControl"),
+          sliderInput(inputId="PlotSize", label="Size of plots, 1=actual size", min=1, max=4, value=1, width=100)
+      ),
                  
-                 fixedPanel(id="controls",class="modal",draggable=TRUE,cursor="auto",top=50,bottom="auto",height="auto", 
-                            left=350,width=175,
-                            h4("Zoom to:"),
-                            uiOutput("ParkZoomControl"),
-                            actionButton(inputId="MapZoom", label="Go",icon=icon("search-plus"))
-       
-                 ),
+########################## Zoom  Control
+      fixedPanel(id="controls",class="modal",draggable=TRUE,cursor="auto",top=50,bottom="auto",height="auto", left=350,width=175,
+        h4("Zoom to:"),
+        uiOutput("ParkZoomControl"),
+        actionButton(inputId="MapZoom", label="Go",icon=icon("search-plus"))
+      ),
                  
-                 fixedPanel( id="controls", class="floater",style="", draggable=TRUE, cursor="auto", top=50, bottom="auto", height=135,
-                             right=300, left="auto", width=150,
-                             uiOutput("MapLegendTitle"),
-                             uiOutput("MapLegend")
-                ) 
-    )),
-    tabPanel("Graphs",         
-             
-    
-    
-             
-    fluidRow(
-      column(3,wellPanel(
+##################### Map Legend
+      fixedPanel( id="controls", class="floater",style="", draggable=TRUE, cursor="auto", top=50, bottom="auto", height=135,
+            right=300, left="auto", width=150,
+        uiOutput("MapLegendTitle"),
+        uiOutput("MapLegend")
+      ) 
+    )
+  ),
+
+
+######################################## Graphs Panel ##########################################################
+    tabPanel("Graphs",    
+      fluidRow(
+        column(3,wellPanel(
           uiOutput(outputId="ParkControl"),
           hr(),
           br(),
@@ -73,13 +75,12 @@ shinyUI(
          br(),
          tags$div(title="Choose the type of plant you want to work with",
                  radioButtons(inputId="densgroup", label="Type of plant",
-                       choices=c("trees","saplings","seedlings")))
-          
-    )),
-
-    column(9,
-
+                       choices=c("trees","saplings","seedlings"))) 
+        )),
+        
+        column(9,
           tags$div(title="Mean and 95% Confidence interval",plotOutput("Testdens"))
+        )
+      )
     )
-    )
-)))
+))
