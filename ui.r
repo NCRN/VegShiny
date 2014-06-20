@@ -36,9 +36,14 @@ shinyUI(
         uiOutput("PlantValueControl"),
                             
         tags$div(title="Choose a species of plants to map",
-          uiOutput("MapSpeciesControl")),  
-          uiOutput("MapParkControl"),
-          sliderInput(inputId="PlotSize", label="Size of plots, 1=actual size", min=1, max=4, value=1, width=100)
+          uiOutput("MapSpeciesControl")
+        ),  
+        uiOutput("MapParkControl"),
+        hr(),
+        tags$div(title="Increases size of plots for easier viewing",
+          radioButtons(inputId="PlotSize", label="Magnify plots: 1X=to scale", choices=c("1X"="1", "4X"="2", "9X"="3", "16X"="4"), 
+                       selected="1", inline=TRUE)
+        )
       ),
                  
 ########################## Zoom  Control
@@ -62,22 +67,23 @@ shinyUI(
     tabPanel("Graphs",    
       fluidRow(
         column(3,wellPanel(
+          h4("Base Data:"),
           uiOutput(outputId="ParkControl"),
-          hr(),
-          br(),
           sliderInput(inputId="YearIn", label="Display data from the 4 years ending:", min=2009, max=2013, value=2013, format="####"),
           sliderInput(inputId="TopIn", label="Number of species to display (in order of mean value):", min=1, max=10, value=5, format="##"),
-         hr(),
-         br(),
+          hr(),
           radioButtons(inputId="densvalues", label="Type of data to display", 
-                       choices=list("Abundance"="count","Size"="size","Occupancy"="presab") ),
-         hr(),
-         br(),
-         tags$div(title="Choose the type of plant you want to work with",
-                 radioButtons(inputId="densgroup", label="Type of plant",
-                       choices=c("trees","saplings","seedlings"))) 
+                       choices=list("Abundance"="count","Size"="size","Occupancy"="presab"), inline=TRUE),
+          hr(),
+          tags$div(title="Choose the type of plant you want to work with",
+            radioButtons(inputId="densgroup", label="Type of plant",choices=c("trees","saplings","seedlings"), inline=TRUE)
+          ),
+          hr(),
+          h4("Comparison Data:"),
+          radioButtons(inputId="CompareType", label ="Compare to another:", choices=c("None","Park","Growth Stage","Time"),
+                       selected="None",inline=TRUE),
+          uiOutput(outputId="CompareSelect")
         )),
-        
         column(9,
           tags$div(title="Mean and 95% Confidence interval",plotOutput("Testdens"))
         )

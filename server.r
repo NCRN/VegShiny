@@ -135,7 +135,7 @@ session$onFlushed(once=TRUE, function() {   ##onFlushed comes superzip - makes m
         return()
       }
       else {
-        map$addCircle(as.character(MapData()$Latitude), as.character(MapData()$Longitude), 15*input$PlotSize,
+        map$addCircle(as.character(MapData()$Latitude), as.character(MapData()$Longitude), 15*as.numeric(input$PlotSize),
           layerId=MapData()$Plot_Name,   #This is apparently the id of the circle to match to other data
           options=list(color=BluePur(5)[cut(MapData()$Values,
           breaks=c(MapMetaData()$Cuts), 
@@ -224,13 +224,54 @@ output$ParkControl<-renderUI({
 
 
 
+####################### Control for comparison
+output$CompareSelect<-renderUI({
+  switch(input$CompareType, 
+    None=,return(),
+    Park= selectizeInput(inputId="ComparePark",choices=ParkList, label="Park:",
+           options = list(placeholder='Choose a park',onInitialize = I('function() { this.setValue(""); }') )),
+    
+    "Growth Stage"=selectizeInput(inputId="CompareGroup", label="Growth Stage:",choices=c(Trees="trees", 
+                                          Saplings="saplings", Seedlings="seedlings") ),
+    Time=return(sliderInput(inputId="CompareYear", label="Display data from the 4 years ending:", min=2009, max=2013, 
+                            value=2013, format="####"))
+  )
+})
+################### make compare and labels arguments for densplot()
+DensCompare<-reactive({switch(input$CompareType,
+    None=return(NA),
+    Park=  if (is.null(input$ComparePark) || nchar(input$ComparePark)==0) {return(NA)}
+      else{
+        return(list(object=NCRN[input$ComparePark], group=input$densgroup,  years=c((input$YearIn-3):input$YearIn),values=input$densvalues))
+      },
+    
+    "Growth Stage"=return(list(object=NCRN[input$ParkIn], group=input$CompareGroup,years=c((input$YearIn-3):input$YearIn),values=input$densvalues)),
+    Time=return(list(object=NCRN[input$ParkIn], group=input$densgroup, years=c((input$CompareYear-3):input$CompareYear),values=input$densvalues))
+    )
+})
+
+DensLabels<-reactive({switch(input$CompareType,
+    None=return(NA),
+    Park=  if (is.null(input$ComparePark) || nchar(input$ComparePark)==0) {return(NA)}
+    else{return(c(getNames(object=NCRN[input$ParkIn],"short"), getNames(object=NCRN[input$ComparePark], "short") ) )},
+    
+    "Growth Stage"=if (is.null(input$CompareGroup) || nchar(input$CompareGroup)==0) {return(NA)}
+    else{return(c(input$densgroup, input$CompareGroup))},
+    
+    
+    Time=if (is.null(input$CompareYear) || nchar(input$CompareYear)==0) {return(NA)}
+    else{return(c( paste0(as.character(input$YearIn-3),"-",as.character(input$YearIn)) ,
+                  paste0(as.character(input$CompareYear-3),"-",as.character(input$CompareYear)) ))}
+                              
+)
+})
 ############Density Plot Function
 output$Testdens<-renderPlot({
   print(
     if (is.null(input$ParkIn) || nchar(input$ParkIn)==0) {return()}
     else{
       densplot(NCRN[input$ParkIn], densargs=list(group=input$densgroup, years=c((input$YearIn-3):input$YearIn),values=input$densvalues),
-               top=input$TopIn, Total=F)
+               compare=list(DensCompare()),labels= DensLabels(), top=input$TopIn, Total=F, col=rainbow(10))
     }
   )
 })
