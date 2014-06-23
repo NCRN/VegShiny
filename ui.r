@@ -54,7 +54,7 @@ shinyUI(
       ),
                  
 ##################### Map Legend
-      fixedPanel( id="controls", class="floater",style="", draggable=TRUE, cursor="auto", top=50, bottom="auto", height=135,
+      fixedPanel( id="controls", class="floater",style="", draggable=TRUE, cursor="auto", top=50, bottom="auto", height=200,
             right=300, left="auto", width=150,
         uiOutput("MapLegendTitle"),
         uiOutput("MapLegend")
@@ -85,7 +85,8 @@ shinyUI(
           uiOutput(outputId="CompareSelect")
         )),
         column(9,
-          tags$div(title="Mean and 95% Confidence interval",plotOutput("Testdens"))
+          tags$div(title="Mean and 95% Confidence interval",plotOutput("Testdens")),
+          textOutput("Test")
         )
       )
     )

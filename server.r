@@ -109,10 +109,16 @@ MapData<-reactive({
   }
   else{
     data.frame(getPlots(NCRN, years=MapYears, output="dataframe")[c("Plot_Name","Unit_Code","Latitude","Longitude")],
-      Values=  
+      Values= 
         if(input$MapGroup != "herbs"){
-          (10000/getArea(NCRN[1],group=input$MapGroup,type="all")) * (
-          SiteXSpec(object=NCRN,group=input$MapGroup, years=MapYears, species=MapSpeciesUse(), values=input$MapValues)$Total)
+          if(input$MapValues!="size"){
+            (10000/getArea(NCRN[1],group=input$MapGroup,type="all")) * (
+            SiteXSpec(object=NCRN,group=input$MapGroup, years=MapYears, species=MapSpeciesUse(), values=input$MapValues)$Total)
+          }
+          else{
+            (10000/getArea(NCRN[1],group=input$MapGroup,type="all")) * (    #need to convert to m^2/ha from cm^2/ha
+              SiteXSpec(object=NCRN,group=input$MapGroup, years=MapYears, species=MapSpeciesUse(), values=input$MapValues)$Total)/10000
+          }
         }
         else{
         SiteXSpec(object=NCRN,group=input$MapGroup, years=MapYears, species=MapSpeciesUse(), values=input$MapValues)$Total/12
@@ -137,9 +143,10 @@ session$onFlushed(once=TRUE, function() {   ##onFlushed comes superzip - makes m
       else {
         map$addCircle(as.character(MapData()$Latitude), as.character(MapData()$Longitude), 15*as.numeric(input$PlotSize),
           layerId=MapData()$Plot_Name,   #This is apparently the id of the circle to match to other data
-          options=list(color=BluePur(5)[cut(MapData()$Values,
-          breaks=c(MapMetaData()$Cuts), 
-          labels = FALSE)],fillOpacity=.7, weight=5) )
+          options=list(color=BluePur(8)[cut(MapData()$Values,breaks=c(MapMetaData()$Cuts), labels = FALSE)],
+            fillOpacity=.7, 
+            weight=5)
+        )
       }
     ) 
   })
@@ -167,7 +174,7 @@ output$MapLegend<-renderUI({
         )),
         tags$td(": ",BoxLabel)
         )}, 
-      c(MapMetaData()$Labels),BluePur(5),SIMPLIFY=FALSE ))
+      c(MapMetaData()$Labels),BluePur(8),SIMPLIFY=FALSE ))
   }
  
 })
@@ -237,7 +244,15 @@ output$CompareSelect<-renderUI({
                             value=2013, format="####"))
   )
 })
+############## Need Compare species to keep the number of species to display to accepted number
+CompareSpecies<-reactive({as.character(
+  dens(object=NCRN[input$ParkIn], group=input$densgroup, years=c((input$YearIn-3):input$YearIn),values=input$densvalues)[
+    order(-dens(object=NCRN[input$ParkIn], group=input$densgroup, years=c((input$YearIn-3):input$YearIn),
+               values=input$densvalues)["Mean"]),][2:(1+input$TopIn),1] 
+  )})
+output$Test<-renderText({CompareSpecies()})
 ################### make compare and labels arguments for densplot()
+
 DensCompare<-reactive({switch(input$CompareType,
     None=return(NA),
     Park=  if (is.null(input$ComparePark) || nchar(input$ComparePark)==0) {return(NA)}
