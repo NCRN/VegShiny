@@ -2,7 +2,22 @@ library(shiny)
 library(NPSForVeg)
 library(leaflet)
 library(lattice)
-library(maptools)
+library(rgdal)
+
+#################### Temp storage for function to create polygons
+GetPolys<-function(Map){
+  lat<-lng<-Class<-NULL
+  for(i in seq_along (Map@polygons)){
+    for(j in seq_along(Map@polygons[[i]]@Polygons)){
+        lng<-c(lng,Map@polygons[[i]]@Polygons[[j]]@coords[,1],NA)
+        lat<-c(lat,Map@polygons[[i]]@Polygons[[j]]@coords[,2],NA)
+        Class<-c(Class,if(!is.na(Map@data[i,1])){as.character(Map@data[i,1])} else("None")  )
+    }
+  }
+ ClassNum<-as.numeric(factor(Class))
+ layerId<-as.character(seq_along(Class))
+  MapData<-list(lat=lat,lng=lng,Class=Class, ClassNum=ClassNum,layerId=layerId)
+}
 
 
 ##################### Housekeeping prior to start of the server funciton
@@ -13,9 +28,9 @@ ParkList<-getNames(NCRN,name.class="code")
 names(ParkList)<-getNames(NCRN)
 
 ParkBounds<-read.csv("boundboxes.csv", as.is=TRUE)
-#PRWIMap<-readShapePoly("./Maps/VEG_Veg_Systems_py")
 
-
+NCRNSoilMap<-readOGR("./Maps",layer="SOIL_TaxonomySSURGO_NCRN_py_WGS84_Dissolved_SinglePart")
+PolyData<-GetPolys(NCRNSoilMap)
 
 
 #################### Begin Server Function
@@ -129,14 +144,27 @@ MapData<-reactive({
 #########  Data for Legend, etc.
 MapMetaData<-reactive(MapLegend[[MapSpeciesType()]][[input$MapValues]][[input$MapGroup]])
 
+##############Data for polygons
+
 
 ############ Add points to map
 
 session$onFlushed(once=TRUE, function() {   ##onFlushed comes superzip - makes map draw befrore circles
   MapObs<-observe({ 
-
     map$clearShapes()
-    try(silent=TRUE,                       #try deals with issue where the group has changed but species has not yet caught up.
+ 
+    PolyOpts<-lapply(X=PolyData$ClassNum, FUN=function(X) {
+        list(color=BluePur(8)[X])
+      })
+    
+      map$addPolygon(lng=PolyData$lng,
+                lat=PolyData$lat, 
+                layerId=PolyData$layerId,
+                options=PolyOpts#BluePur(8)[PolyData$ClassNum]) NEED LLIst OF Lists for Options
+ )
+ 
+ 
+ try(silent=TRUE,                       #try deals with issue where the group has changed but species has not yet caught up.
       if(is.null(MapData()$Values )) {
         return()
       }
@@ -156,7 +184,6 @@ session$onFlushed(once=TRUE, function() {   ##onFlushed comes superzip - makes m
 session$onSessionEnded(MapObs$suspend)
 })
 
-#map$addPolygon(PRWIMap)
 
 ######################  UIoutput for Legend
 
@@ -187,8 +214,7 @@ output$MapLegendTitle<-renderUI({
   else{
     h4(MapMetaData()$Title) 
   }
-
-  })
+})
 
 
 
@@ -229,7 +255,20 @@ output$ParkControl<-renderUI({
                                 onInitialize = I('function() { this.setValue(""); }') )) 
 })
 
-
+#### Data to display control for density plot
+DensValuesUse<-reactive({
+  switch(input$densgroup,
+         trees=,saplings=c(Abundance="count", "Basal Area"="size", "Precent of Plots Occupied"="presab"),
+         seedlings=,shseedlings=,shrubs=,vines=c(Abundance="count","Precent of Plots Occupied"="presab"),
+         herbs=c("Percent Cover"="size","Precent of Plots Occupied"="presab")
+         
+  )
+})
+#render the control
+output$DensValControl<-renderUI({
+  selectInput(inputId="densvalues", label="Data to Plot:", choices=DensValuesUse())
+  
+})
 
 ####################### Control for comparison
 output$CompareSelect<-renderUI({
@@ -245,23 +284,26 @@ output$CompareSelect<-renderUI({
   )
 })
 ############## Need Compare species to keep the number of species to display to accepted number
-CompareSpecies<-reactive({as.character(
-  dens(object=NCRN[input$ParkIn], group=input$densgroup, years=c((input$YearIn-3):input$YearIn),values=input$densvalues)[
-    order(-dens(object=NCRN[input$ParkIn], group=input$densgroup, years=c((input$YearIn-3):input$YearIn),
-               values=input$densvalues)["Mean"]),][2:(1+input$TopIn),1] 
-  )})
-output$Test<-renderText({CompareSpecies()})
+CompareSpecies<-reactive({
+  if(input$CompareType=="None") {NA} else {
+    as.character(dens(object=NCRN[input$ParkIn], group=input$densgroup, years=c((input$YearIn-3):input$YearIn),values=input$densvalues,
+      Total=F)[order(-dens(object=NCRN[input$ParkIn], group=input$densgroup, years=c((input$YearIn-3):input$YearIn),
+               values=input$densvalues, Total=F)["Mean"]),][1:input$TopIn,1] )
+  }
+})
 ################### make compare and labels arguments for densplot()
 
 DensCompare<-reactive({switch(input$CompareType,
     None=return(NA),
     Park=  if (is.null(input$ComparePark) || nchar(input$ComparePark)==0) {return(NA)}
       else{
-        return(list(object=NCRN[input$ComparePark], group=input$densgroup,  years=c((input$YearIn-3):input$YearIn),values=input$densvalues))
+        return(list(object=NCRN[input$ComparePark], group=input$densgroup,  years=c((input$YearIn-3):input$YearIn),
+                    values=input$densvalues, species=CompareSpecies() ))
       },
-    
-    "Growth Stage"=return(list(object=NCRN[input$ParkIn], group=input$CompareGroup,years=c((input$YearIn-3):input$YearIn),values=input$densvalues)),
-    Time=return(list(object=NCRN[input$ParkIn], group=input$densgroup, years=c((input$CompareYear-3):input$CompareYear),values=input$densvalues))
+    "Growth Stage"=return(list(object=NCRN[input$ParkIn], group=input$CompareGroup,years=c((input$YearIn-3):input$YearIn),
+                    values=input$densvalues, species=CompareSpecies() )),
+    Time=return(list(object=NCRN[input$ParkIn], group=input$densgroup, years=c((input$CompareYear-3):input$CompareYear),
+                     values=input$densvalues, species=CompareSpecies()))
     )
 })
 
@@ -281,14 +323,19 @@ DensLabels<-reactive({switch(input$CompareType,
 )
 })
 ############Density Plot Function
-output$Testdens<-renderPlot({
-  print(
+output$DensPlot<-renderPlot({
+  #print(
     if (is.null(input$ParkIn) || nchar(input$ParkIn)==0) {return()}
     else{
-      densplot(NCRN[input$ParkIn], densargs=list(group=input$densgroup, years=c((input$YearIn-3):input$YearIn),values=input$densvalues),
+      validate(need(try(
+        densplot(NCRN[input$ParkIn], densargs=list(group=input$densgroup, years=c((input$YearIn-3):input$YearIn),input$densvalues),
+              compare=list(DensCompare()),labels= DensLabels(), top=input$TopIn, Total=F, col=rainbow(10)) ),
+       "There is no data for this combination of choices. The type of plant you selected was not found in the park during those years."
+       ))
+      densplot(NCRN[input$ParkIn], densargs=list(group=input$densgroup, years=c((input$YearIn-3):input$YearIn),input$densvalues),
                compare=list(DensCompare()),labels= DensLabels(), top=input$TopIn, Total=F, col=rainbow(10))
     }
-  )
+  #)
 })
 
 

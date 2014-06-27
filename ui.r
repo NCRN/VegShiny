@@ -45,14 +45,14 @@ shinyUI(
                        selected="1", inline=TRUE)
         )
       ),
-                 
+
 ########################## Zoom  Control
       fixedPanel(id="controls",class="modal",draggable=TRUE,cursor="auto",top=50,bottom="auto",height="auto", left=350,width=175,
         h4("Zoom to:"),
         uiOutput("ParkZoomControl"),
         actionButton(inputId="MapZoom", label="Go",icon=icon("search-plus"))
       ),
-                 
+
 ##################### Map Legend
       fixedPanel( id="controls", class="floater",style="", draggable=TRUE, cursor="auto", top=50, bottom="auto", height=200,
             right=300, left="auto", width=150,
@@ -61,6 +61,8 @@ shinyUI(
       ) 
     )
   ),
+
+
 
 
 ######################################## Graphs Panel ##########################################################
@@ -72,12 +74,11 @@ shinyUI(
           sliderInput(inputId="YearIn", label="Display data from the 4 years ending:", min=2009, max=2013, value=2013, format="####"),
           sliderInput(inputId="TopIn", label="Number of species to display (in order of mean value):", min=1, max=10, value=5, format="##"),
           hr(),
-          radioButtons(inputId="densvalues", label="Type of data to display", 
-                       choices=list("Abundance"="count","Size"="size","Occupancy"="presab"), inline=TRUE),
+          tags$div(title="Choose the type of plant you want to work with", selectizeInput(inputId="densgroup", label="Type of plant:",   
+                choices=c(Trees="trees",Saplings="saplings","Tree seedlings"="seedlings",Shrubs="shrubs","Shrub seedlings"="shseedlings",
+                          "Understory plants"="herbs","Vines on Trees"="vines"))),
           hr(),
-          tags$div(title="Choose the type of plant you want to work with",
-            radioButtons(inputId="densgroup", label="Type of plant",choices=c("trees","saplings","seedlings"), inline=TRUE)
-          ),
+          uiOutput(outputId="DensValControl"),
           hr(),
           h4("Comparison Data:"),
           radioButtons(inputId="CompareType", label ="Compare to another:", choices=c("None","Park","Growth Stage","Time"),
@@ -85,8 +86,7 @@ shinyUI(
           uiOutput(outputId="CompareSelect")
         )),
         column(9,
-          tags$div(title="Mean and 95% Confidence interval",plotOutput("Testdens")),
-          textOutput("Test")
+          tags$div(title="Mean and 95% Confidence interval",plotOutput("DensPlot"))
         )
       )
     )
