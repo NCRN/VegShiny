@@ -5,14 +5,14 @@ library(lattice)
 library(rgdal)
 
 #################### Temp storage for function to create polygons
-GetPolys<-function(Map){
+GetPolys<-function(MapIn){
   lat<-lng<-Class<-NULL
-  for(i in seq_along (Map@polygons)){
-    for(j in seq_along(Map@polygons[[i]]@Polygons)){
-        lng<-c(lng,Map@polygons[[i]]@Polygons[[j]]@coords[,1],NA)
-        lat<-c(lat,Map@polygons[[i]]@Polygons[[j]]@coords[,2],NA)
-        Class<-c(Class,if(!is.na(Map@data[i,1])){as.character(Map@data[i,1])} else("None")  )
-    }
+  for(i in seq_along (MapIn@polygons)){
+    #for(j in seq_along(Map@polygons[[i]]@Polygons)){
+        lng<-c(lng,MapIn@polygons[[i]]@Polygons[[1]]@coords[,1],NA)
+        lat<-c(lat,MapIn@polygons[[i]]@Polygons[[1]]@coords[,2],NA)
+        Class<-c(Class,if(!is.na(MapIn@data[i,1])){as.character(MapIn@data[i,1])} else("None")  )
+    #}
   }
  ClassNum<-as.numeric(factor(Class))
  layerId<-as.character(seq_along(Class))
@@ -110,6 +110,7 @@ output$MapSpeciesControl<-renderUI({
   }
 })
 
+
 ####################   Calculate the values for the circles on the map. ######################
 
 ### HouseKeeping
@@ -144,25 +145,27 @@ MapData<-reactive({
 #########  Data for Legend, etc.
 MapMetaData<-reactive(MapLegend[[MapSpeciesType()]][[input$MapValues]][[input$MapGroup]])
 
-##############Data for polygons
 
 
-############ Add points to map
+
+############ Add points and Polygons to map
+PolyOpts<-lapply(X=PolyData$ClassNum, FUN=function(X) {
+  list(color=BluePur(8)[X])
+})
 
 session$onFlushed(once=TRUE, function() {   ##onFlushed comes superzip - makes map draw befrore circles
   MapObs<-observe({ 
-    map$clearShapes()
- 
-    PolyOpts<-lapply(X=PolyData$ClassNum, FUN=function(X) {
-        list(color=BluePur(8)[X])
-      })
-    
-      map$addPolygon(lng=PolyData$lng,
-                lat=PolyData$lat, 
-                layerId=PolyData$layerId,
-                options=PolyOpts#BluePur(8)[PolyData$ClassNum]) NEED LLIst OF Lists for Options
- )
- 
+    input$ShowMap
+   map$clearShapes()
+
+if(input$ShowMap){   
+  map$addPolygon(lng=PolyData$lng,
+                 lat=PolyData$lat, 
+                 layerId=PolyData$layerId,
+                 options=PolyOpts,
+                 defaultOptions=list(weight=0, opacity=.5)
+  )
+}
  
  try(silent=TRUE,                       #try deals with issue where the group has changed but species has not yet caught up.
       if(is.null(MapData()$Values )) {
@@ -172,7 +175,7 @@ session$onFlushed(once=TRUE, function() {   ##onFlushed comes superzip - makes m
         map$addCircle(as.character(MapData()$Latitude), as.character(MapData()$Longitude), 15*as.numeric(input$PlotSize),
           layerId=MapData()$Plot_Name,   #This is apparently the id of the circle to match to other data
           options=list(color=BluePur(8)[cut(MapData()$Values,breaks=c(MapMetaData()$Cuts), labels = FALSE)],
-            fillOpacity=.7, 
+           fillOpacity=.7, 
             weight=5)
         )
       }
@@ -183,6 +186,11 @@ session$onFlushed(once=TRUE, function() {   ##onFlushed comes superzip - makes m
   # attempting to write to the websocket after the session is gone.
 session$onSessionEnded(MapObs$suspend)
 })
+
+
+
+ 
+
 
 
 ######################  UIoutput for Legend
@@ -269,16 +277,41 @@ output$DensValControl<-renderUI({
   selectInput(inputId="densvalues", label="Data to Plot:", choices=DensValuesUse())
   
 })
+############################ Species Control for desnity plots
+output$DensSpeciesControl<-renderUI({
+  if(is.null(input$ParkIn) || nchar(input$ParkIn)==0) {
+    return()
+  }
+  else{
+   # if(input$MapPark=="All"){
+  #    selectizeInput(inputId="MapSpecies", label="Choose a species", 
+   #                  choices=c("All Species"="All",sort(unique(getPlants(object=NCRN, group=input$MapGroup, years=MapYears)$Latin_Name))) )
+    #}
+    #else{
+      selectInput(inputId="DensSpecies", label="Choose a species", 
+                  choices=c("All Species"="All",sort(unique(getPlants(object=NCRN[input$ParkIn], group=input$densgroup, 
+                                                             years=c((input$YearIn-3):input$YearIn))$Latin_Name ))) )
+  #  }
+  }
+})
 
 ####################### Control for comparison
+
+
 output$CompareSelect<-renderUI({
   switch(input$CompareType, 
     None=,return(),
     Park= selectizeInput(inputId="ComparePark",choices=ParkList, label="Park:",
            options = list(placeholder='Choose a park',onInitialize = I('function() { this.setValue(""); }') )),
     
-    "Growth Stage"=selectizeInput(inputId="CompareGroup", label="Growth Stage:",choices=c(Trees="trees", 
-                                          Saplings="saplings", Seedlings="seedlings") ),
+    "Growth Stage"=selectizeInput(inputId="CompareGroup", label="Growth Stage:",
+                                  choices=switch(input$densgroup,
+                                      trees=,saplings=,seedlings=c(Trees="trees", Saplings="saplings", "Tree Seedlings"="seedlings"),
+                                      shrubs=, shseedlings=c(Shrubs="shrubs", "Shrub Seedlings"="shseedlings"),
+                                      vines=,herbs=c('Only one growth stage monitored.'=NA)
+                                  )
+                                   # c(Trees="trees",   Saplings="saplings", Seedlings="seedlings") 
+                                    ),
     Time=return(sliderInput(inputId="CompareYear", label="Display data from the 4 years ending:", min=2009, max=2013, 
                             value=2013, format="####"))
   )
@@ -319,9 +352,28 @@ DensLabels<-reactive({switch(input$CompareType,
     Time=if (is.null(input$CompareYear) || nchar(input$CompareYear)==0) {return(NA)}
     else{return(c( paste0(as.character(input$YearIn-3),"-",as.character(input$YearIn)) ,
                   paste0(as.character(input$CompareYear-3),"-",as.character(input$CompareYear)) ))}
-                              
-)
+  )
 })
+
+############### Y axis labels for density plot
+densYlabel<-reactive({
+  switch(input$densvalues,
+    count=switch(input$densgroup,
+      trees="Trees / ha",
+      saplings="Saplings / ha",
+      seedlings="Tree seedlings / ha",
+      shrubs="Shrubs / ha",
+      shseedlings="Shrub seedlings / ha",
+      vines="Vines on Trees / ha",
+    ),
+    size=switch(input$densgroup,
+      trees=,saplings="Basal area cm2/ ha",
+      herbs="Percent Cover"
+    ),
+    presab="Percent of Plots Occupied"
+  )
+})
+
 ############Density Plot Function
 output$DensPlot<-renderPlot({
   #print(
@@ -333,7 +385,7 @@ output$DensPlot<-renderPlot({
        "There is no data for this combination of choices. The type of plant you selected was not found in the park during those years."
        ))
       densplot(NCRN[input$ParkIn], densargs=list(group=input$densgroup, years=c((input$YearIn-3):input$YearIn),input$densvalues),
-               compare=list(DensCompare()),labels= DensLabels(), top=input$TopIn, Total=F, col=rainbow(10))
+               compare=list(DensCompare()),labels= DensLabels(), top=input$TopIn, Total=F, col=rainbow(10), ylab=densYlabel())
     }
   #)
 })

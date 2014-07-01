@@ -16,7 +16,6 @@ shinyUI(
           initialTileLayerAttribution = HTML("&copy; <a href='http://mapbox.com/about/maps' target='_blank'>Mapbox</a> 
           &copy; <a href='http://openstreetmap.org/copyright' target='_blank'>OpenStreetMap</a> contributors | 
           <a class='improve-park-tiles' href='http://www.nps.gov/npmap/park-tiles/improve/' target='_blank'>Improve Park Tiles</a>"),
-                                                                #'Maps by <a href="http://www.mapbox.com/">Mapbox</a>'),
         options=list(
           center = c(39.03, -77.80),
           zoom = 9,
@@ -43,7 +42,9 @@ shinyUI(
         tags$div(title="Increases size of plots for easier viewing",
           radioButtons(inputId="PlotSize", label="Magnify plots: 1X=to scale", choices=c("1X"="1", "4X"="2", "9X"="3", "16X"="4"), 
                        selected="1", inline=TRUE)
-        )
+        ),
+        hr(),
+        checkboxInput(inputId="ShowMap", label="Show Soil Map", value=FALSE)
       ),
 
 ########################## Zoom  Control
@@ -72,13 +73,19 @@ shinyUI(
           h4("Base Data:"),
           uiOutput(outputId="ParkControl"),
           sliderInput(inputId="YearIn", label="Display data from the 4 years ending:", min=2009, max=2013, value=2013, format="####"),
-          sliderInput(inputId="TopIn", label="Number of species to display (in order of mean value):", min=1, max=10, value=5, format="##"),
           hr(),
           tags$div(title="Choose the type of plant you want to work with", selectizeInput(inputId="densgroup", label="Type of plant:",   
                 choices=c(Trees="trees",Saplings="saplings","Tree seedlings"="seedlings",Shrubs="shrubs","Shrub seedlings"="shseedlings",
-                          "Understory plants"="herbs","Vines on Trees"="vines"))),
+                "Understory plants"="herbs","Vines on Trees"="vines"))),
+          radioButtons(inputId="SpecVsTop", label="Plot common species or pick indvidual species?", 
+                       choices=c("Common species"="common","Pick Species"="pick"), inline=TRUE),
+          hr(),
+          
+          sliderInput(inputId="TopIn", label="Number of species to display (in order of mean value):", min=1, max=10, value=5, format="##"),
           hr(),
           uiOutput(outputId="DensValControl"),
+          hr(),
+          uiOutput(outputId="DensSpeciesControl"),
           hr(),
           h4("Comparison Data:"),
           radioButtons(inputId="CompareType", label ="Compare to another:", choices=c("None","Park","Growth Stage","Time"),
