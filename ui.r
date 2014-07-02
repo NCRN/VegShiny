@@ -72,25 +72,24 @@ shinyUI(
         column(3,wellPanel(
           h4("Base Data:"),
           uiOutput(outputId="ParkControl"),
-          sliderInput(inputId="YearIn", label="Display data from the 4 years ending:", min=2009, max=2013, value=2013, format="####"),
+          sliderInput(inputId="DensYearIn", label="Display data from the 4 years ending:", min=2009, max=2013, value=2013, format="####"),
           hr(),
           tags$div(title="Choose the type of plant you want to work with", selectizeInput(inputId="densgroup", label="Type of plant:",   
                 choices=c(Trees="trees",Saplings="saplings","Tree seedlings"="seedlings",Shrubs="shrubs","Shrub seedlings"="shseedlings",
                 "Understory plants"="herbs","Vines on Trees"="vines"))),
-          radioButtons(inputId="SpecVsTop", label="Plot common species or pick indvidual species?", 
-                       choices=c("Common species"="common","Pick Species"="pick"), inline=TRUE),
-          hr(),
           
-          sliderInput(inputId="TopIn", label="Number of species to display (in order of mean value):", min=1, max=10, value=5, format="##"),
-          hr(),
-          uiOutput(outputId="DensValControl"),
+          radioButtons(inputId="SpeciesType", label="Which species?", 
+                       choices=c("Most common species"="Common","Pick individual species"="Pick", "All species combined"="All"), inline=TRUE),
           hr(),
           uiOutput(outputId="DensSpeciesControl"),
+          hr(),
+          uiOutput(outputId="DensValControl"),
           hr(),
           h4("Comparison Data:"),
           radioButtons(inputId="CompareType", label ="Compare to another:", choices=c("None","Park","Growth Stage","Time"),
                        selected="None",inline=TRUE),
-          uiOutput(outputId="CompareSelect")
+          uiOutput(outputId="CompareSelect"),
+          h1(br(),br(),br(),br(),br())
         )),
         column(9,
           tags$div(title="Mean and 95% Confidence interval",plotOutput("DensPlot"))
