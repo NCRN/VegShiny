@@ -7,7 +7,7 @@ shinyUI(
   navbarPage(title="Forest Vegetation Visualizer", windowTitle="Forest Veg",
   
 ######################################### Map Panel ####################################################################
-    tabPanel("Map",
+    tabPanel(title="Map",
       div(class="outer",
         tags$head(
           includeCSS("mapstyles.css")
@@ -25,7 +25,7 @@ shinyUI(
       ),
 
 ################### Main Map Controls 
-      fixedPanel(id="controls",class="modal",draggable=TRUE,cursor="auto",top=50,bottom="auto",height="auto",right=20,left="auto",width=200,
+      fixedPanel(id="controls",class="modal",draggable=TRUE,cursor="auto",top=50,bottom="auto",height="auto",right=20,left="auto", width=200,
         h3("Forest Explorer"),
         
         selectInput(inputId="MapGroup", label="Type of plant:",
@@ -33,6 +33,7 @@ shinyUI(
             "Understory plants"="herbs","Vines on Trees"="vines")),
                             
         uiOutput("PlantValueControl"),
+       # sliderInput(inputId="MapYear", label="Display data from the 4 years ending:", min=2009, max=2013, value=2013, format="####",width="150px"),
                             
         tags$div(title="Choose a species of plants to map",
           uiOutput("MapSpeciesControl")
@@ -40,7 +41,7 @@ shinyUI(
         uiOutput("MapParkControl"),
         hr(),
         tags$div(title="Increases size of plots for easier viewing",
-          radioButtons(inputId="PlotSize", label="Magnify plots: 1X=to scale", choices=c("1X"="1", "4X"="2", "9X"="3", "16X"="4"), 
+          radioButtons(inputId="PlotSize", label="Magnify plots: 1X = to scale", choices=c("1X"="1", "4X"="2", "9X"="3", "16X"="4"), 
                        selected="1", inline=TRUE)
         ),
         hr(),
@@ -67,23 +68,27 @@ shinyUI(
 
 
 ######################################## Graphs Panel ##########################################################
-    tabPanel("Graphs",    
+
+navbarMenu("Plots",    
+
+#############  densplot() based plots
+tabPanel(title="Data by Park and Species",    
       fluidRow(
         column(3,wellPanel(
           h4("Base Data:"),
-          uiOutput(outputId="ParkControl"),
-          sliderInput(inputId="DensYearIn", label="Display data from the 4 years ending:", min=2009, max=2013, value=2013, format="####"),
+          uiOutput(outputId="densParkControl"),
+          sliderInput(inputId="densYear", label="Display data from the 4 years ending:", min=2009, max=2013, value=2013, format="####"),
           hr(),
-          tags$div(title="Choose the type of plant you want to work with", selectizeInput(inputId="densgroup", label="Type of plant:",   
+          tags$div(title="Choose the type of plant you want to work with", selectizeInput(inputId="densGroup", label="Type of plant:",   
                 choices=c(Trees="trees",Saplings="saplings","Tree seedlings"="seedlings",Shrubs="shrubs","Shrub seedlings"="shseedlings",
                 "Understory plants"="herbs","Vines on Trees"="vines"))),
           
-          radioButtons(inputId="SpeciesType", label="Which species?", 
+          radioButtons(inputId="densSpeciesType", label="Which species?", 
                        choices=c("Most common species"="Common","Pick individual species"="Pick", "All species combined"="All"), inline=TRUE),
           hr(),
-          uiOutput(outputId="DensSpeciesControl"),
+          uiOutput(outputId="densSpeciesControl"),
           hr(),
-          uiOutput(outputId="DensValControl"),
+          uiOutput(outputId="densValControl"),
           hr(),
           h4("Comparison Data:"),
           radioButtons(inputId="CompareType", label ="Compare to another:", choices=c("None","Park","Growth Stage","Time"),
@@ -92,8 +97,38 @@ shinyUI(
           h1(br(),br(),br(),br(),br())
         )),
         column(9,
-          tags$div(title="Mean and 95% Confidence interval",plotOutput("DensPlot"))
+          tags$div(title="Mean and 95% Confidence interval",plotOutput(outputId="DensPlot", height="600px"))
         )
       )
+    ),
+tabPanel(title="Forestry Importance Values (IV)",
+  fluidRow(
+    column(3,
+      wellPanel(
+        uiOutput("IVParkControl"),
+        br(),
+        tags$div(title="Choose the type of plant you want to work with", selectizeInput(inputId="IVGroup", label="Type of plant:",   
+          choices=c(Trees="trees",Saplings="saplings","Tree seedlings"="seedlings","Shrub seedlings"="shseedlings",
+                    "Understory plants"="herbs"))),
+        br(),
+        sliderInput(inputId="IVYear", label="Display data from the 4 years ending:", min=2009, max=2013, value=2013, format="####"),
+        br(),
+        checkboxInput(inputId="IVPart", label="Show Components of the Importance Value?", value=FALSE),
+        br(),
+        sliderInput(inputId="IVTop",label="Number of species to display (in order of IV):",min=1, max=20,value=10, format="##")
+      )
+    ),
+    column(9,
+      plotOutput("IVPlot")
     )
-))
+  )
+)),
+tabPanel("Project Informaiton",
+         h3("Add some words here")
+    ),
+
+tabPanel("Citations and References",
+         h3("Words and links here")
+  )
+
+)) #end navabarPage() and shinyUI()
