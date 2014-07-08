@@ -6,20 +6,18 @@ library(rgdal)
 
 #################### Temp storage for function to create polygons
 GetPolys<-function(MapIn){
-  lat<-lng<-Class<-NULL
+  lat<-lng<-MapClass<-NULL
   for(i in seq_along (MapIn@polygons)){
     #for(j in seq_along(Map@polygons[[i]]@Polygons)){
         lng<-c(lng,MapIn@polygons[[i]]@Polygons[[1]]@coords[,1],NA)
         lat<-c(lat,MapIn@polygons[[i]]@Polygons[[1]]@coords[,2],NA)
-        Class<-c(Class,if(!is.na(MapIn@data[i,1])){as.character(MapIn@data[i,1])} else("None")  )
+        MapClass<-c(MapClass,if(!is.na(MapIn@data[i,"MapClass"])){as.character(MapIn@data[i,"MapClass"])} else("None")  )
     #}
   }
- ClassNum<-as.numeric(factor(Class))
- layerId<-as.character(seq_along(Class))
-  MapData<-list(lat=lat,lng=lng,Class=Class, ClassNum=ClassNum,layerId=layerId)
+ ClassNum<-as.numeric(factor(MapClass))
+ layerId<-as.character(seq_along(MapClass))
+  MapData<-list(lat=lat, lng=lng, MapClass=MapClass,layerId=layerId, ClassNum=ClassNum)
 }
-
-
 ##################### Housekeeping prior to start of the server funciton
 
 NCRN<-importNCRN("T:/I&M/MONITORING/Forest_Vegetation/RCode/VegData")
@@ -29,8 +27,6 @@ names(ParkList)<-getNames(NCRN)
 
 ParkBounds<-read.csv("boundboxes.csv", as.is=TRUE)
 
-NCRNSoilMap<-readOGR("./Maps",layer="SOIL_TaxonomySSURGO_NCRN_py_WGS84_Dissolved_SinglePart")
-PolyData<-GetPolys(NCRNSoilMap)
 
 
 #################### Begin Server Function
@@ -100,7 +96,8 @@ output$MapSpeciesControl<-renderUI({
   else{
     if(input$MapPark=="All"){
     selectizeInput(inputId="MapSpecies", label="Choose a species", 
-             choices=c("All Species"="All",sort(unique(getPlants(object=NCRN, group=input$MapGroup, years=MapYears() )$Latin_Name))) )
+             choices=c("All Species"="All",sort(unique(getPlants(object=NCRN, group=input$MapGroup, years=MapYears(), 
+                                                                  )$Latin_Name))) )
     }
     else{
       selectInput(inputId="MapSpecies", label="Choose a species", 
@@ -142,15 +139,27 @@ MapData<-reactive({
     )
   }
 })
-#########  Data for Legend, etc.
+#########  Data for Legend
 MapMetaData<-reactive({ MapLegend[[MapSpeciesType()]][[input$MapValues]][[input$MapGroup]] })
 
+
+#### Get polygons to display
+MapLayer<-reactive({
+  switch(input$MapLayer,
+  None=return(),
+  ForArea=GetPolys(readOGR("./Maps",layer="Forest_NLCD_2011_Clip_WGS84_Simplified")),
+  SoilMap=GetPolys(readOGR("./Maps",layer="SOIL_TaxonomySSURGO_NCRN_py_WGS84_Dissolved_SinglePart"))
+  
+  )
+})
 
 
 
 ############ Add points and Polygons to map
-PolyOpts<-lapply(X=PolyData$ClassNum, FUN=function(X) {
-  list(color=BluePur(8)[X])
+PolyOpts<-reactive({
+  lapply(X=MapLayer()$ClassNum, Y=length(unique(MapLayer()$MapClass)), FUN=function(X,Y) {
+  list(color=AquaYel(Y)[X])
+  })
 })
 
 session$onFlushed(once=TRUE, function() {   ##onFlushed comes superzip - makes map draw befrore circles
@@ -158,12 +167,12 @@ session$onFlushed(once=TRUE, function() {   ##onFlushed comes superzip - makes m
     input$ShowMap
    map$clearShapes()
 
-if(input$ShowMap){   
-  map$addPolygon(lng=PolyData$lng,
-                 lat=PolyData$lat, 
-                 layerId=PolyData$layerId,
-                 options=PolyOpts,
-                 defaultOptions=list(weight=0, opacity=.5)
+if(input$MapLayer!="none"){   
+  map$addPolygon(lng=MapLayer()$lng, 
+                 lat=MapLayer()$lat,  
+                 layerId=MapLayer()$layerId, 
+                 options=PolyOpts(),
+                 defaultOptions=list(weight=0, fillOpacity=.75)
   )
 }
  
@@ -250,7 +259,25 @@ clickObs <- observe({
 })
 session$onSessionEnded(clickObs$suspend)
 
-
+############## Legend for Map Layers
+output$LayerLegend<-renderUI({
+  
+  if(input$MapLayer=="None"){
+    return()
+  }
+  else{
+    tags$table(
+      mapply(
+        function(BoxLabel,color){
+          tags$tr(tags$td(tags$div(
+            style=sprintf("width: 16px; height: 16px; background-color: %s;", color)
+          )),
+          tags$td(": ",BoxLabel)
+          )}, 
+        c(unique(MapLayer()$MapClass)), AquaYel( length( unique(MapLayer()$MapClass))), SIMPLIFY=FALSE ))
+  }
+  
+})
 
 
 ############################## Plots Tab ###############################################################################
@@ -287,7 +314,7 @@ output$densSpeciesControl<-renderUI({
          Common= sliderInput(inputId="densTop",label="Number of species to display (in order of mean value):",min=1, max=10,value=5, format="##"),
          Pick= if(is.null(input$densPark) || nchar(input$densPark)==0) {  return()  }
                 else{
-                  selectizeInput(inputId="densSpecies", label="Choose one or more species, backspace to remove", 
+                  selectizeInput(inputId="densSpecies", label="Choose one or more species (Latin name only), backspace to remove", 
                       choices=c(sort(unique(getPlants(object=NCRN[input$densPark], group=input$densGroup,years=densYears())$Latin_Name ))),
                       multiple=TRUE )
                 }
@@ -336,12 +363,12 @@ DensCompare<-reactive({switch(input$CompareType,
     Park=  if (is.null(input$ComparePark) || nchar(input$ComparePark)==0) {return(NA)}
       else{
         return(list(object=NCRN[input$ComparePark], group=input$densGroup,  years=densYears(),
-                    values=input$densvalues, species=CompareSpecies() ))
+                    values=input$densvalues, species=CompareSpecies(), common=input$densCommon ))
       },
     "Growth Stage"=return(list(object=NCRN[input$densPark], group=input$CompareGroup, years=densYears(),
-                    values=input$densvalues, species=CompareSpecies() )),
+                    values=input$densvalues, species=CompareSpecies(),common=input$densCommon )),
     Time=return(list(object=NCRN[input$densPark], group=input$densGroup, years=c((input$CompareYear-3):input$CompareYear),
-                     values=input$densvalues, species=CompareSpecies()))
+                     values=input$densvalues, species=CompareSpecies(),common=input$densCommon))
     )
 })
 
@@ -436,6 +463,7 @@ DensPlotArgs<-reactive({
       group=input$densGroup,
       years=densYears(),
       values=input$densvalues,
+      common=input$densCommon,
       species=switch(input$densSpeciesType,
         Pick= {species=input$densSpecies},
         Common=  {species=NA},
@@ -469,6 +497,13 @@ output$DensPlot<-renderPlot({
     }
 })
 
+
+output$densTable<-renderDataTable({
+  tempTable<-dens(object=DensPlotArgs()$object,group=DensPlotArgs()$densargs$group, years=DensPlotArgs()$densargs$years,
+       values=DensPlotArgs()$densargs$values,common=DensPlotArgs()$densargs$common)
+})
+
+
 ########################################################## IV Plots
 ############ Park Control for IV plot  
 output$IVParkControl<-renderUI({
@@ -488,7 +523,7 @@ IVPlotArgs<-reactive({
     IVargs=list(
       group=input$IVGroup,
       years=IVYears(),
-      common=F
+      common=input$IVCommon
     ),
     parts=input$IVPart,
     top=input$IVTop,
@@ -506,6 +541,12 @@ output$IVPlot<-renderPlot({
     ))
     do.call(IVplot, IVPlotArgs())
   }
+})
+
+
+
+output$IVData<-renderDataTable({
+  IV(object=IVPlotArgs()$object, group=IVPlotArgs()$IVargs$group, years=IVPlotArgs()$IVargs$years, common=IVPlotArgs()$IVargs$common)
 })
 
 
