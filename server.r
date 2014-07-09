@@ -11,7 +11,7 @@ GetPolys<-function(MapIn){
     #for(j in seq_along(Map@polygons[[i]]@Polygons)){
         lng<-c(lng,MapIn@polygons[[i]]@Polygons[[1]]@coords[,1],NA)
         lat<-c(lat,MapIn@polygons[[i]]@Polygons[[1]]@coords[,2],NA)
-        MapClass<-c(MapClass,if(!is.na(MapIn@data[i,"MapClass"])){as.character(MapIn@data[i,"MapClass"])} else("None")  )
+        MapClass<-c(MapClass,if(!is.na(MapIn@data[i,"MapClass"])){as.character(MapIn@data[i,"MapClass"])} else("Not classified")  )
     #}
   }
  ClassNum<-as.numeric(factor(MapClass))
@@ -38,7 +38,7 @@ shinyServer(function(input,output,session){
 ### Create Map  
 map<-createLeafletMap(session,"map")
 
-MapYears<-reactive({ c(2010:2013)})  #(input$MapYear-3):input$MapYear  })  #may be replaced by a slider
+MapYears<-reactive({   (as.numeric(input$MapYear)-3):as.numeric(input$MapYear)  })  # c(2010:2013)}) #may be replaced by a slider
 
 #########################################################################################################
 
@@ -224,12 +224,12 @@ output$MapLegend<-renderUI({
 })
 
 
-output$MapLegendTitle<-renderUI({ 
+output$MapLegendTitle<-renderText({ 
   if(is.null(input$MapSpecies) || nchar(input$MapSpecies)==0){
     return()
   }
   else{
-    h4(MapMetaData()$Title) 
+    MapMetaData()$Title
   }
 })
 
@@ -260,6 +260,16 @@ clickObs <- observe({
 session$onSessionEnded(clickObs$suspend)
 
 ############## Legend for Map Layers
+output$LayerLegendTitle<-renderText({
+  switch(input$MapLayer,
+         None=return(),
+         ForArea=return("Forested Area"),
+         SoilMap=return("Soil Type")
+         
+  )
+})
+
+
 output$LayerLegend<-renderUI({
   
   if(input$MapLayer=="None"){
@@ -274,7 +284,7 @@ output$LayerLegend<-renderUI({
           )),
           tags$td(": ",BoxLabel)
           )}, 
-        c(unique(MapLayer()$MapClass)), AquaYel( length( unique(MapLayer()$MapClass))), SIMPLIFY=FALSE ))
+        c(sort(unique(MapLayer()$MapClass))), AquaYel( length( unique(MapLayer()$MapClass))), SIMPLIFY=FALSE ))
   }
   
 })
@@ -311,7 +321,8 @@ output$densValControl<-renderUI({
 
 output$densSpeciesControl<-renderUI({
   switch(input$densSpeciesType,
-         Common= sliderInput(inputId="densTop",label="Number of species to display (in order of mean value):",min=1, max=10,value=5, format="##"),
+         Common= sliderInput(inputId="densTop",label="Number of species to display (in order of mean value):",min=1, max=10,value=5, 
+                             format="##"),
          Pick= if(is.null(input$densPark) || nchar(input$densPark)==0) {  return()  }
                 else{
                   selectizeInput(inputId="densSpecies", label="Choose one or more species (Latin name only), backspace to remove", 

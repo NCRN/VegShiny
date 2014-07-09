@@ -8,81 +8,97 @@ shinyUI(
   
 ######################################### Map Panel ####################################################################
     tabPanel(title="Map",
-
-      
       div(class="outer",
         tags$head(
           includeCSS("mapstyles.css")
         ),
-
         leafletMap("map", width="100%", height="100%",initialTileLayer="//{s}.tiles.mapbox.com/v3/nps.2yxv8n84/{z}/{x}/{y}.png",
           initialTileLayerAttribution = HTML("&copy; <a href='http://mapbox.com/about/maps' target='_blank'>Mapbox</a> 
           &copy; <a href='http://openstreetmap.org/copyright' target='_blank'>OpenStreetMap</a> contributors | 
           <a class='improve-park-tiles' href='http://www.nps.gov/npmap/park-tiles/improve/' target='_blank'>Improve Park Tiles</a>"),
-        options=list(
-          center = c(39.03, -77.80),
-          zoom = 9,
-          maxBounds = list(list(37.70,-79.5), list(40.36,-76.1)), # Show NCRN only
-          minZoom=8
-        )
-      ),
-      
-
+          options=list(
+            center = c(39.03, -77.80),
+            zoom = 9,
+            maxBounds = list(list(37.70,-79.5), list(40.36,-76.1)), # Show NCRN only
+            minZoom=8
+          )
+        ),
 ################### Main Map Controls 
-      fixedPanel(id="controls",class="modal",draggable=TRUE,cursor="auto",top=50,bottom="auto",height="auto",right=20, left="auto", width=200,
-        h3("Forest Explorer"),
-        
-        selectInput(inputId="MapGroup", label="Type of plant:",
-          choices=c(Trees="trees",Saplings="saplings","Tree seedlings"="seedlings",Shrubs="shrubs","Shrub seedlings"="shseedlings",
-            "Understory plants"="herbs","Vines on Trees"="vines")),
+        conditionalPanel(condition="input.ShowControls",
+          fixedPanel(id="controls",class="modal",draggable=TRUE,cursor="auto",top=50,bottom="auto",height="auto",right=20, 
+                     left="auto", width=200,
+            h3("Forest Explorer"),
+            selectInput(inputId="MapGroup", label="Type of plant:",
+                      choices=c(Trees="trees",Saplings="saplings","Tree seedlings"="seedlings",Shrubs="shrubs",
+                                "Shrub seedlings"="shseedlings","Understory plants"="herbs","Vines on Trees"="vines")),
+            uiOutput("PlantValueControl"),
+       # sliderInput(inputId="MapYear", label="Display data from the 4 years ending:", min=2009, max=2013, 
+                #value=2013, format="####",width="150px"),
+            selectizeInput(inputId="MapYear", label="Display data from the 4 years ending:", choices=c(2009:2013),selected=2013 ),
                             
-        uiOutput("PlantValueControl"),
-       # sliderInput(inputId="MapYear", label="Display data from the 4 years ending:", min=2009, max=2013, value=2013, format="####",width="150px"),
-                            
-        tags$div(title="Choose a species of plants to map",
-          uiOutput("MapSpeciesControl")
-        ),  
-        uiOutput("MapParkControl")
-      ),
-
+            tags$div(title="Choose a species of plants to map",
+              uiOutput("MapSpeciesControl")
+            ),  
+            uiOutput("MapParkControl")
+          )
+       ),
 ############### Add a layer control
-      fixedPanel(id="controls",class="modal",draggable=TRUE,cursor="auto",top=500,bottom="auto",height="auto",right=20,left="auto",width=200,
-        h4("Map Layers"),
-        selectizeInput(inputId="MapLayer", label="Add a map layer:", choices=c(None="None", "Forested Areas"="ForArea",
+        conditionalPanel(condition="input.ShowLayers",
+          fixedPanel(id="controls",class="modal",draggable=TRUE,cursor="auto",top="80%",bottom="auto",height="auto",right=20,
+                     left="auto",width=200,
+            h4("Map Layers"),
+            selectizeInput(inputId="MapLayer", label="Add a map layer:", choices=c(None="None", "Forested Areas"="ForArea",
                                                                                 "Soil Map (slow)"="SoilMap"))
-      ),
+          )
+        ),
 
 ########################## Zoom  Control
-      fixedPanel(id="controls",class="modal",draggable=TRUE,cursor="auto",top=50,bottom="auto",height="auto", left=350,width=200,
-        h4("Zoom to:"),
-        uiOutput("ParkZoomControl"),
-        actionButton(inputId="MapZoom", label="Go",icon=icon("search-plus")),
-        hr(),
-        tags$div(title="Increases size of plots for easier viewing",
+        conditionalPanel(condition="input.ShowZoom",
+          fixedPanel(id="controls",class="modal",draggable=TRUE,cursor="auto",top=50,bottom="auto",height="auto", left=350,width=200,
+            h4("Zoom to:"),
+            uiOutput("ParkZoomControl"),
+            actionButton(inputId="MapZoom", label="Go",icon=icon("search-plus")),
+            hr(),
+            tags$div(title="Increases size of plots for easier viewing",
                  radioButtons(inputId="PlotSize", label="Magnify plots: 1X = to scale", choices=c("1X"="1", "4X"="2", "9X"="3", "16X"="4"), 
-                              selected="1", inline=TRUE)
-        )
-      ),
+                        selected="1", inline=TRUE)
+            )
+          )
+        ),
 
 ##################### Map Legend
-      fixedPanel( id="controls", class="floater",style="", draggable=TRUE, cursor="auto", top=50, bottom="auto", height=200,
-            right=300, left="auto", width=150,
-        uiOutput("MapLegendTitle"),
-        uiOutput("MapLegend")
-      ),
-
+        conditionalPanel(condition="input.ShowPlots",
+          fixedPanel( id="controls", class="modal", draggable=TRUE, cursor="auto", top=50, bottom="auto", height=200,
+              right=300, left="auto", width=150,
+            h4(uiOutput("MapLegendTitle")),
+            uiOutput("MapLegend")
+          )
+        ),
+################Layer Legend
 
       conditionalPanel(
-        condition="input.MapLayer!='None'",
-        fixedPanel( id="controls", class="floater", draggable=TRUE, cursor="auto", top=50, bottom="auto", height=200,
+        condition="input.MapLayer!='None' & input.ShowLayerLegend",
+        fixedPanel( id="controls", class="modal", draggable=TRUE, cursor="auto", top=325, bottom="auto", height="auto",
                     right="auto", left=350, width=150,
-                    br(),
+                    h4(uiOutput("LayerLegendTitle")),
                     uiOutput("LayerLegend")
-      ))
+      )),
+############## Show hide Panel
+      absolutePanel(id="controls", class="modal", draggable=TRUE, cursor="auto",top="95%", height=15, left=350, width=600,
+                flowLayout(
+                  strong("Show:"),
+                  checkboxInput(inputId="ShowControls", label="Map Controls", value=TRUE),
+                  checkboxInput(inputId="ShowPlots", label="Plot Legend", value=TRUE),
+                  checkboxInput(inputId="ShowZoom", label="Zoom", value=TRUE),
+                  checkboxInput(inputId="ShowLayers", label="Map Layers", value=TRUE),
+                  checkboxInput(inputId="ShowLayerLegend", label="Layer legend", value=TRUE)
+                )
+      )
 
-    )
-  ),
-################Layer Lengend
+
+    ) ## end of map div
+  ),  ## end of map page
+
 
 
 

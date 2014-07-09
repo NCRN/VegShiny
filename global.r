@@ -1,6 +1,6 @@
 
 BluePur<-colorRampPalette(c("cyan","magenta4","orangered3")) #now that the color ramp includes oragne, thsi should be changed.
-AquaYel<-colorRampPalette(c("aquamarine3","darkgreen","darkgoldenrod3"))
+AquaYel<-colorRampPalette(c("aquamarine4","green","yellow","goldenrod4"))
 ######################### Legend for Map
 MapLegend<-list(
   Total=list(
