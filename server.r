@@ -508,11 +508,24 @@ output$DensPlot<-renderPlot({
     }
 })
 
+DensTableArgs<-reactive({
+  list(
+    object=DensPlotArgs()$object,
+    group=DensPlotArgs()$densargs$group,
+    years=DensPlotArgs()$densargs$years,
+    values=DensPlotArgs()$densargs$values,
+    common=DensPlotArgs()$densargs$common
+  )
+})
 
 output$densTable<-renderDataTable({
-  tempTable<-dens(object=DensPlotArgs()$object,group=DensPlotArgs()$densargs$group, years=DensPlotArgs()$densargs$years,
-       values=DensPlotArgs()$densargs$values,common=DensPlotArgs()$densargs$common)
+  validate(need(try(
+    do.call(dens, DensTableArgs() )),
+    "There is no data for this combination of choices. Either you need to select a park, or the type of plant you selected was not found in the park during those years"
+           ))
+  do.call(dens,DensTableArgs() )
 })
+
 
 
 ########################################################## IV Plots
@@ -554,11 +567,27 @@ output$IVPlot<-renderPlot({
   }
 })
 
-
-
-output$IVData<-renderDataTable({
-  IV(object=IVPlotArgs()$object, group=IVPlotArgs()$IVargs$group, years=IVPlotArgs()$IVargs$years, common=IVPlotArgs()$IVargs$common)
+IVTableArgs<-reactive({
+  list(
+    object=IVPlotArgs()$object,
+    group=IVPlotArgs()$IVargs$group, 
+    years=IVPlotArgs()$IVargs$years, 
+    common=IVPlotArgs()$IVargs$common
+  )
 })
+    
+    
+output$IVData<-renderDataTable({
+  validate(need(try(
+    do.call(IV,IVTableArgs() )),
+    "Please select a park"
+  ))
+  do.call(IV,IVTableArgs())
+})
+  
+  
+#  IV(object=IVPlotArgs()$object, group=IVPlotArgs()$IVargs$group, years=IVPlotArgs()$IVargs$years, common=IVPlotArgs()$IVargs$common)
+#})
 
 
 })# end of shinyServer() function
