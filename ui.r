@@ -1,16 +1,23 @@
 library(shiny)
 library(NPSForVeg)
 library(leaflet)
-#$logo="<img src='ah_large_black.gif', style='float:right; padding-right:25px'/>",
+# /* "<div style='position:fixed; left:-250px'> 
 
 shinyUI(
+  fluidPage(
+   div( style="padding: 1px 0px;; height: 0px; width: '100%'", ### oNCE 0.10.1 comes out get rid of titlePanel/fluidpage 
+     titlePanel(
+       title="",windowTitle="Forest Vegetation" )
+     ),
   
-  
-  navbarPage(title="Forest Vegetation Visualizer", #windowTitle="Forest Veg",
-  icon="AH_small_flat_4C_12x16.png",inverse=T,
-  #echo($logo)
-  #img(src="ah_large_black.gif", style="float:right; padding-right:25px"),
- 
+  navbarPage(title=HTML("<div style='float:left';>
+                        <img src='ah_small_black.gif',  alt='Forest Vegetation Visualizer' >
+                          Forest Vegetation Visualizer
+                        </div>"),
+            # icon="AH_small_flat_4C_12x16.png", #restore this on 10.1
+inverse=T,
+#tags$head( HTML('<link rel="icon", href="AH_small_flat_4C_12x16.png", type="image/png" />')), #this cna go aver 10.1 too.
+
   ######################################### Map Panel ####################################################################
     tabPanel(title="Map",
       div(class="outer",
@@ -32,18 +39,15 @@ shinyUI(
         ),
 ################### Main Map Controls 
         conditionalPanel(condition="input.ShowControls",
-          fixedPanel(id="controls",class="modal",draggable=TRUE,cursor="auto",top=50,bottom="auto",height="auto",right=20, 
+          fixedPanel(id="controls",class="modal",draggable=TRUE,cursor="auto",top=70,bottom="auto",height="auto",right=20, 
                      left="auto", width=200,
-            h3("Forest Explorer"),
+            h4("Data to Map"),
             selectInput(inputId="MapGroup", label="Type of plant:",
                       choices=c(Trees="trees",Saplings="saplings","Tree seedlings"="seedlings",Shrubs="shrubs",
-                                "Shrub seedlings"="shseedlings","Understory plants"="herbs","Vines on Trees"="vines")),
+                          "Shrub seedlings"="shseedlings","Understory plants"="herbs","Vines on Trees"="vines")),
             uiOutput("PlantValueControl"),
-       # sliderInput(inputId="MapYear", label="Display data from the 4 years ending:", min=2009, max=2013, 
-                #value=2013, format="####",width="150px"),
-            selectizeInput(inputId="MapYear", label="Display data from the 4 years ending:", 
-                           choices=c(2009:2013),selected=2013 ),
-                            
+            sliderInput(inputId="MapYear", label="Display data from the 4 years ending:", min=2009, max=2013, 
+                value=2013, format="####",width="150px"),
             tags$div(title="Choose a species of plants to map",
               uiOutput("MapSpeciesControl")
             ),  
@@ -62,8 +66,8 @@ shinyUI(
 
 ########################## Zoom  Control
         conditionalPanel(condition="input.ShowZoom",
-          fixedPanel(id="controls",class="modal",draggable=TRUE,cursor="auto",top=50,bottom="auto",height="auto",
-                     left=350,width=200,
+          fixedPanel(id="controls",class="modal",draggable=TRUE,cursor="auto",top=70,bottom="auto",height="auto",
+                     left=350,width="200",
             h4("Zoom to:"),
             uiOutput("ParkZoomControl"),
             actionButton(inputId="MapZoom", label="Go",icon=icon("search-plus")),
@@ -77,8 +81,8 @@ shinyUI(
 
 ##################### Map Legend
         conditionalPanel(condition="input.ShowPlots",
-          fixedPanel( id="controls", class="modal", draggable=TRUE, cursor="auto", top=50, bottom="auto", height=200,
-              right=300, left="auto", width=150,
+          fixedPanel( id="controls", class="modal", draggable=TRUE, cursor="auto", top=70, bottom="auto", height="auto",
+              right=300, left="auto", width="auto",
             h4(uiOutput("MapLegendTitle")),
             uiOutput("MapLegend")
           )
@@ -88,7 +92,7 @@ shinyUI(
       conditionalPanel(
         condition="input.MapLayer!='None' & input.ShowLayerLegend",
         fixedPanel( id="controls", class="modal", draggable=TRUE, cursor="auto", top=325, bottom="auto", height="auto",
-                    right="auto", left=350, width=150,
+                    right="auto", left=350, width="auto",
                     h4(uiOutput("LayerLegendTitle")),
                     uiOutput("LayerLegend")
       )),
@@ -216,4 +220,6 @@ shinyUI(
     tabPanel("Citations and References",
       h3("Words and links here")
     )
-))#end navabarPage() and shinyUI()
+)#end navpbarPage(0)
+)#end fluidPanel - kill after 0.10.1 and navabarPage windowTitle comes out
+)#end  shinyUI()

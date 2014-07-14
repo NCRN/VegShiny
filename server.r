@@ -38,8 +38,9 @@ shinyServer(function(input,output,session){
 ### Create Map  
 map<-createLeafletMap(session,"map")
 
-MapYears<-reactive({   (as.numeric(input$MapYear)-3):as.numeric(input$MapYear)  })  # c(2010:2013)}) #may be replaced by a slider
-
+MapYears<-reactive({  # (as.numeric(input$MapYear)-3):as.numeric(input$MapYear)  }) 
+  # c(2010:2013)}) #may be replaced by a slider
+  (input$MapYear-3):input$MapYear  })
 #########################################################################################################
 
 ######## Zoom control for map
@@ -112,7 +113,6 @@ output$MapSpeciesControl<-renderUI({
 
 ### HouseKeeping
 
-MapSpeciesType<-reactive({ifelse(input$MapSpecies=="All", "Total","Individual") })
 MapSpeciesUse<-reactive({ifelse(input$MapSpecies=="All", NA, input$MapSpecies) })
 
 
@@ -140,7 +140,7 @@ MapData<-reactive({
   }
 })
 #########  Data for Legend
-MapMetaData<-reactive({ MapLegend[[MapSpeciesType()]][[input$MapValues]][[input$MapGroup]] })
+MapMetaData<-reactive({ MapLegend[[input$MapValues]][[input$MapGroup]] })
 
 
 #### Get polygons to display
@@ -148,8 +148,8 @@ MapLayer<-reactive({
   switch(input$MapLayer,
   None=return(),
   ForArea=GetPolys(readOGR("./Maps",layer="Forest_NLCD_2011_Clip_WGS84_Simplified")),
-  SoilMap=GetPolys(readOGR("./Maps",layer="SOIL_TaxonomySSURGO_NCRN_py_WGS84_Dissolved_SinglePart"))
-  
+  #SoilMap=GetPolys(readOGR("./Maps",layer="SOIL_TaxonomySSURGO_NCRN_py_WGS84_Dissolved_SinglePart"))
+  SoilMap=GetPolys(readOGR("./Maps",layer="SOIL_TaxonomySSURGO_NCRN_py_WGS84_SinglePart_Dissolved"))
   )
 })
 
@@ -183,7 +183,7 @@ if(input$MapLayer!="none"){
       else {
         map$addCircle(as.character(MapData()$Latitude), as.character(MapData()$Longitude), 15*as.numeric(input$PlotSize),
           layerId=MapData()$Plot_Name,   #This is apparently the id of the circle to match to other data
-          options=list(color=BluePur(8)[cut(MapData()$Values,breaks=c(MapMetaData()$Cuts), labels = FALSE)],
+          options=list(color=BlueOr(8)[cut(MapData()$Values,breaks=c(MapMetaData()$Cuts), labels = FALSE)],
            fillOpacity=.7, 
             weight=5)
         )
@@ -218,7 +218,7 @@ output$MapLegend<-renderUI({
         )),
         tags$td(": ",BoxLabel)
         )}, 
-      c(MapMetaData()$Labels),BluePur(8),SIMPLIFY=FALSE ))
+      c(MapMetaData()$Labels),BlueOr(8),SIMPLIFY=FALSE ))
   }
  
 })

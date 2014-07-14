@@ -4,7 +4,7 @@ input[type="number"] {
 
 div.outer {
   position: fixed;
-  top: 41px;
+  top: 65px;
   left: 0;
   right: 0;
   bottom: 0;
@@ -26,7 +26,7 @@ padding: 0 20px 20px 20px;
 cursor: move;
 /* Fade out while not hovering */
   opacity: 0.65;
-zoom: 0.9;
+/*zoom: 0.9;
 transition: opacity 500ms 1s;
 }
 #controls:hover {
@@ -47,3 +47,7 @@ font-size: 12px;
   .leaflet-container {
     background-color: white !important;
   }
+
+.container-fluid{
+padding: 0 0 0 0;
+}
