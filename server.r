@@ -557,9 +557,9 @@ IVPlotArgs<-reactive({
 })
 
 output$IVPlot<-renderPlot({
-  if (is.null(input$IVPark) || nchar(input$IVPark)==0) {return()}
-  else{
-    validate(need(try(
+ if (is.null(input$IVPark) || nchar(input$IVPark)==0) {validate(need(input$IVPark, "Please select a park"))}
+ else{ 
+  validate(need(try(
       do.call(IVplot,IVPlotArgs() )),
       "There is no data for this combination of choices. The type of plant you selected was not found in the park during those years."
     ))

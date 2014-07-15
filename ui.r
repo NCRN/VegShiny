@@ -5,15 +5,21 @@ library(leaflet)
 
 shinyUI(
   fluidPage(
-   div( style="padding: 1px 0px;; height: 0px; width: '100%'", ### oNCE 0.10.1 comes out get rid of titlePanel/fluidpage 
+    list(tags$head(HTML( '<link rel="icon", href="AH_small_flat_4C_12x16.png", type="image/png" />'))), #this can go at version 0.10.1 too.
+   div( style="padding: 1px 0px; height: 0px; width: '100%'", ### oNCE 0.10.1 comes out get rid of titlePanel/fluidpage 
      titlePanel(
        title="",windowTitle="Forest Vegetation" )
+    
      ),
   
-  navbarPage(title=HTML("<div style='float:left';>
-                        <img src='ah_small_black.gif',  alt='Forest Vegetation Visualizer' >
-                          Forest Vegetation Visualizer
-                        </div>"),
+  navbarPage(title=#HTML("<div>
+                  #      <img src='ah_small_black.gif',alt='Forest Vegetation Visualizer'>
+                   #       Forest Vegetation Visualizer
+                    #    </div>"),
+             div(img (src='ah_small_black.gif'),
+                 "Forest Vegetation Visualizer"
+             ),
+            #            ,
             # icon="AH_small_flat_4C_12x16.png", #restore this on 10.1
 inverse=T,
 #tags$head( HTML('<link rel="icon", href="AH_small_flat_4C_12x16.png", type="image/png" />')), #this cna go aver 10.1 too.
@@ -117,7 +123,7 @@ inverse=T,
 
 ######################################## Graphs Panel ##########################################################
 
-    navbarMenu("Plots",    
+    navbarMenu("Graphs",    
 #############  densplot() based plots
       tabPanel(title="Data by Park and Species",    
         fluidRow(
@@ -154,7 +160,7 @@ inverse=T,
           ),
           column(9,
             tabsetPanel(type="pills",
-              tabPanel(title="Plot",
+              tabPanel(title="Graph",
                 tags$div(title="Mean and 95% Confidence interval",plotOutput(outputId="DensPlot", height="600px"))
               ),
               tabPanel(title="Data",
@@ -193,10 +199,11 @@ inverse=T,
           ),
           column(9,
             tabsetPanel(type="pills",
-              tabPanel("Plot",
+              tabPanel("Graph",
                 plotOutput("IVPlot")
               ),
               tabPanel(title="Data",
+                       h3("Importance Values for all Species Monitored"),
                 dataTableOutput("IVData")
               ),
               tabPanel(title="About this graph...",
@@ -221,5 +228,5 @@ inverse=T,
       h3("Words and links here")
     )
 )#end navpbarPage(0)
-)#end fluidPanel - kill after 0.10.1 and navabarPage windowTitle comes out
+)#end fluidPage - kill after 0.10.1 and navabarPage windowTitle comes out
 )#end  shinyUI()
