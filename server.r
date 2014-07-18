@@ -314,21 +314,25 @@ DensValuesUse<-reactive({
 })
 
 output$densValControl<-renderUI({
-  selectInput(inputId="densvalues", label="Data to Plot:", choices=DensValuesUse())
+  selectInput(inputId="densvalues", label="Data to Graph:", choices=DensValuesUse())
   
 })
 ############################ Species Control (top species vs list) for density plots
 
 output$densSpeciesControl<-renderUI({
   switch(input$densSpeciesType,
-         Common= sliderInput(inputId="densTop",label="Number of species to display (in order of mean value):",min=1, max=10,value=5, 
-                             format="##"),
+         Common= tags$div(title="# of species to display", 
+            sliderInput(inputId="densTop",label="Number of species to display (in order of mean value):",
+                min=1, max=10,value=5, format="##")
+          ),
          Pick= if(is.null(input$densPark) || nchar(input$densPark)==0) {  return()  }
-                else{
-                  selectizeInput(inputId="densSpecies", label="Choose one or more species (Latin name only), backspace to remove", 
-                      choices=c(sort(unique(getPlants(object=NCRN[input$densPark], group=input$densGroup,years=densYears())$Latin_Name ))),
-                      multiple=TRUE )
-                }
+          else{
+            tags$div(title="Pick the species you want to graph",
+              selectizeInput(inputId="densSpecies", label="Choose one or more species (Latin name only),
+              backspace to remove", choices=c(sort(unique(getPlants(object=NCRN[input$densPark], group=input$densGroup,
+                years=densYears())$Latin_Name ))),multiple=TRUE )
+            )
+          }
   )
 })
 
@@ -339,17 +343,22 @@ output$densSpeciesControl<-renderUI({
 output$CompareSelect<-renderUI({
   switch(input$CompareType, 
     None=,return(),
-    Park= selectizeInput(inputId="ComparePark",choices=ParkList, label="Park:",
-           options = list(placeholder='Choose a park',onInitialize = I('function() { this.setValue(""); }') )),
+    Park= tags$div(title= "Choose a second park",
+            selectizeInput(inputId="ComparePark",choices=ParkList, label="Park:",
+           options = list(placeholder='Choose a park',onInitialize = I('function() { this.setValue(""); }') ))
+          ),
     
-    "Growth Stage"=selectizeInput(inputId="CompareGroup", label="Growth Stage:",
-                                  choices=switch(input$densGroup,
-                                      trees=,saplings=,seedlings=c(Trees="trees", Saplings="saplings", "Tree Seedlings"="seedlings"),
-                                      shrubs=, shseedlings=c(Shrubs="shrubs", "Shrub Seedlings"="shseedlings"),
-                                      vines=,herbs=c('Only one growth stage monitored.'=NA)
-                                  )
+    "Growth Stage"=tags$div(title="Choose an additional growth stage",
+                    selectizeInput(inputId="CompareGroup", label="Growth Stage:", 
+                      choices=switch(input$densGroup,
+                      trees=,saplings=,seedlings=c(Trees="trees", Saplings="saplings", "Tree Seedlings"="seedlings"),
+                      shrubs=, shseedlings=c(Shrubs="shrubs", "Shrub Seedlings"="shseedlings"),
+                      vines=,herbs=c('Only one growth stage monitored.'=NA)
+                      )
+                    )
                   ),
-    Time=return(sliderInput(inputId="CompareYear", label="Display data from the 4 years ending:", min=2009, max=2013, 
+    Time=tags$div(title= "Choose a second range of years",
+                sliderInput(inputId="CompareYear", label="Display data from the 4 years ending:", min=2009, max=2013, 
                             value=2013, format="####"))
   )
 })
@@ -563,7 +572,7 @@ output$IVPlot<-renderPlot({
       do.call(IVplot,IVPlotArgs() )),
       "There is no data for this combination of choices. The type of plant you selected was not found in the park during those years."
     ))
-    do.call(IVplot, IVPlotArgs())
+    update(do.call(IVplot, IVPlotArgs()), scales=list(cex=1.04))
   }
 })
 
@@ -585,9 +594,7 @@ output$IVData<-renderDataTable({
   do.call(IV,IVTableArgs())
 })
   
-  
-#  IV(object=IVPlotArgs()$object, group=IVPlotArgs()$IVargs$group, years=IVPlotArgs()$IVargs$years, common=IVPlotArgs()$IVargs$common)
-#})
+
 
 
 })# end of shinyServer() function

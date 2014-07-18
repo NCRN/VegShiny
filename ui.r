@@ -123,36 +123,46 @@ inverse=T,
 
 ######################################## Graphs Panel ##########################################################
 
-    navbarMenu("Graphs",    
+    navbarMenu(tags$div(title="Graph the data","Graphs"),    
 #############  densplot() based plots
-      tabPanel(title="Data by Park and Species",    
+      tabPanel(tags$div(title="Graph abundance, basal area, percent cover, &c.","Data by Park and Species"),   
         fluidRow(
           column(3,
             wellPanel(
               h4("Base Data:"),
-              uiOutput(outputId="densParkControl"),
-              sliderInput(inputId="densYear", label="Display data from the 4 years ending:", 
-                          min=2009, max=2013, value=2013, format="####"),
+              tags$div(title="Choose a park to work with.",
+                       uiOutput(outputId="densParkControl")
+              ),
+              tags$div(title="Pick the four year period you want to graph",
+                       sliderInput(inputId="densYear", label="Display data from the 4 years ending:", 
+                          min=2009, max=2013, value=2013, format="####")
+              ),
               hr(),
               tags$div(title="Choose the type of plant you want to work with", 
                 selectizeInput(inputId="densGroup", label="Type of plant:",   choices=c(Trees="trees",
                     Saplings="saplings","Tree seedlings"="seedlings",Shrubs="shrubs",
                     "Shrub seedlings"="shseedlings","Understory plants"="herbs","Vines on Trees"="vines"))
               ),
-              radioButtons(inputId="densSpeciesType", label="Which species?", 
+              tags$div(title="Graph the most common species, species you choose, or all species combined.",
+                radioButtons(inputId="densSpeciesType", label="Which species?", 
                 choices=c("Most common species"="Common","Pick individual species"="Pick",
-                          "All species combined"="All"),inline=TRUE
+                          "All species combined"="All"),inline=TRUE)
               ),
-              br(),
-              checkboxInput(inputId="densCommon", label="Show common names?", value=FALSE ),
               hr(),
               uiOutput(outputId="densSpeciesControl"),
               hr(),
-              uiOutput(outputId="densValControl"),
+              tags$div(title="Toggle between common and scientific names",
+                checkboxInput(inputId="densCommon", label="Show common names?", value=FALSE )
+              ),
+              br(),
+              tags$div(title="Type of data to graph",
+                uiOutput(outputId="densValControl")
+              ),
               hr(),
               h4("Comparison Data:"),
-              radioButtons(inputId="CompareType", label ="Compare to another:",
-                choices=c("None","Park","Growth Stage","Time"),selected="None",inline=TRUE
+              tags$div(title="Comare the base data with a differnet park, growth stage, or time period",
+                radioButtons(inputId="CompareType", label ="Compare to another:",
+                choices=c("None","Park","Growth Stage","Time"),selected="None",inline=TRUE)
               ),
               uiOutput(outputId="CompareSelect"),
               h1(br(),br(),br(),br(),br())
@@ -175,38 +185,60 @@ inverse=T,
       ),
 
 ###############IV Plots
-      tabPanel(title="Forestry Importance Values (IV)",
+      tabPanel(tags$div(title="Graph IV", "Forestry Importance Values (IV)"),
         fluidRow(
           column(3,
             wellPanel(
-              uiOutput("IVParkControl"),
+              tags$div(
+                title="Choose a park to work with.",
+                uiOutput("IVParkControl")
+              ),
               br(),
-              tags$div(title="Choose the type of plant you want to work with", 
+              tags$div(
+                title="Choose the type of plant you want to work with", 
                 selectizeInput(inputId="IVGroup", label="Type of plant:",choices=c(Trees="trees",Saplings="saplings",
                     "Tree seedlings"="seedlings","Shrub seedlings"="shseedlings","Understory plants"="herbs"))
               ),
               br(),
-              sliderInput(inputId="IVYear", label="Display data from the 4 years ending:", min=2009, max=2013,
-                          value=2013, format="####"),
+              tags$div(
+                title="Pick the four year period you want to graph",
+                sliderInput(inputId="IVYear", label="Display data from the 4 years ending:", min=2009, max=2013,
+                          value=2013, format="####")
+              ),
               br(),
-              checkboxInput(inputId="IVPart", label="Show Components of the Importance Value?", value=FALSE),
+              tags$div(
+                title="Show density, size and disbribution separately",
+                checkboxInput(inputId="IVPart", label="Show Components of the Importance Value?", value=FALSE)
+              ),
               br(),
-              checkboxInput(inputId="IVCommon", label="Show common names?", value=FALSE),
+              tags$div(
+                title="Toggle between common and scientific names",
+                checkboxInput(inputId="IVCommon", label="Show common names?", value=FALSE)
+              ),
               br(),
-              sliderInput(inputId="IVTop",label="Number of species to plot (in order of IV):",min=1, max=20,
-                          value=10, format="##",ticks=FALSE)
+              tags$div(
+                title="Chose the maximum number of species to display.",
+                sliderInput(inputId="IVTop",label="Number of species to plot (in order of IV):",min=1, max=20,
+                  value=10, format="##",ticks=FALSE)
+              )
             )
           ),
           column(9,
             tabsetPanel(type="pills",
-              tabPanel("Graph",
-                plotOutput("IVPlot")
+              tabPanel(tags$div(title="Graph the data",
+                  "Graph"
+                ),
+                tags$div(title="Graph of IV",plotOutput("IVPlot"))
               ),
-              tabPanel(title="Data",
-                       h3("Importance Values for all Species Monitored"),
+              tabPanel(tags$div(title="See all data in a table",
+                  "Data"
+                ),
+                h3("Importance Values for all Species Monitored"),
                 dataTableOutput("IVData")
               ),
-              tabPanel(title="About this graph...",
+              tabPanel(tags$div(title="Explanation of the graph",
+                  "About this graph..."
+                ),
                 includeHTML(paste0(getwd(),"/www/","IVPlot.html"))
               )
             )
@@ -216,7 +248,7 @@ inverse=T,
     ),
 
 ################################# Project Information
-    tabPanel("Project Informaiton",
+    tabPanel("Project Information",
       h3("Add some words here")
     ),
 
