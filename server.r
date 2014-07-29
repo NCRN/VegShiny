@@ -122,6 +122,7 @@ MapData<-reactive({
   }
   else{
     data.frame(getPlots(NCRN, years=MapYears(), output="dataframe",type="all")[c("Plot_Name","Unit_Code","Latitude","Longitude")],
+      Year=getEvents(object=NCRN, years=MapYears())[["Event_Year"]],
       Values= 
         if(input$MapGroup != "herbs"){
           if(input$MapValues!="size"){
@@ -181,11 +182,11 @@ if(input$MapLayer!="none"){
         return()
       }
       else {
-        map$addCircle(as.character(MapData()$Latitude), as.character(MapData()$Longitude), 15*as.numeric(input$PlotSize),
-          layerId=MapData()$Plot_Name,   #This is apparently the id of the circle to match to other data
+        map$addCircle(MapData()$Latitude, MapData()$Longitude, 15*as.numeric(input$PlotSize),
+          layerId=MapData()$Plot_Name,   #This is the ID of the circle to match to other data
           options=list(color=BlueOr(8)[cut(MapData()$Values,breaks=c(MapMetaData()$Cuts), labels = FALSE)],
-           fillOpacity=.7, 
-            weight=5)
+          fillOpacity=.7, 
+          weight=5)
         )
       }
     ) 
@@ -195,10 +196,6 @@ if(input$MapLayer!="none"){
   # attempting to write to the websocket after the session is gone.
 session$onSessionEnded(MapObs$suspend)
 })
-
-
-
- 
 
 
 
@@ -240,8 +237,8 @@ showPlotPopup <- function(Plot_Name, lat, lng) {
   selectedPlot <- MapData()[MapData()$Plot_Name == Plot_Name,]
   content <- as.character(tagList(
    tags$h5(getNames(NCRN[selectedPlot$Unit_Code],"long")),
-   br(),
-   tags$h4(input$MapSpecies,":",format(signif(selectedPlot$Values,2), big.mark=","), " ", MapMetaData()$Title)
+   tags$h6("Year Monitored:",selectedPlot$Year),
+   tags$h6(input$MapSpecies,":",format(signif(selectedPlot$Values,2), big.mark=","), " ", MapMetaData()$Title)
   ))
   map$showPopup(lat, lng, content, Plot_Name)
 }
@@ -306,9 +303,9 @@ densYears<-reactive({ (input$densYear-3):input$densYear })
 ##################### Data to display control for density plot
 DensValuesUse<-reactive({
   switch(input$densGroup,
-         trees=,saplings=c(Abundance="count", "Basal Area"="size", "Precent of Plots Occupied"="presab"),
-         seedlings=,shseedlings=,shrubs=,vines=c(Abundance="count","Precent of Plots Occupied"="presab"),
-         herbs=c("Percent Cover"="size","Precent of Plots Occupied"="presab")
+         trees=,saplings=c(Abundance="count", "Basal Area"="size", "Proportion of Plots Occupied"="presab"),
+         seedlings=,shseedlings=,shrubs=,vines=c(Abundance="count","Proportion of Plots Occupied"="presab"),
+         herbs=c("Percent Cover"="size","Proportion of Plots Occupied"="presab")
          
   )
 })
@@ -327,7 +324,7 @@ output$densSpeciesControl<-renderUI({
           ),
          Pick= if(is.null(input$densPark) || nchar(input$densPark)==0) {  return()  }
           else{
-            tags$div(title="Pick the species you want to graph",
+            tags$div(title="Click here to pick the species you want to graph",
               selectizeInput(inputId="densSpecies", label="Choose one or more species (Latin name only),
               backspace to remove", choices=c(sort(unique(getPlants(object=NCRN[input$densPark], group=input$densGroup,
                 years=densYears())$Latin_Name ))),multiple=TRUE )
@@ -422,7 +419,7 @@ densYlabel<-reactive({
       trees=,saplings="Basal area cm2/ ha",
       herbs="Percent Cover"
     ),
-    presab="Percent of Plots Occupied"
+    presab="Proportion of Plots Occupied"
   )
 })
 
@@ -457,7 +454,7 @@ densTitleValues<-reactive({
                      trees=,saplings="Basal Area",
                      herbs="Percent Cover"
          ),
-         presab="Percent of Plots Occupied"
+         presab="Proportion of Plots Occupied"
   )
 })
 DensTitle<-reactive({
@@ -467,7 +464,8 @@ DensTitle<-reactive({
          Park=return(paste(getNames(NCRN[input$densPark],"long"),"vs.",getNames(NCRN[input$ComparePark],"long"),":",
                            densTitleGroup(),densTitleValues(), 
                            paste0(as.character(input$densYear-3),"-",as.character(input$densYear)) )),
-         "Growth Stage"= return(paste(getNames(NCRN[input$densPark],"long"),":",densTitleGroup(),"vs.",compareTitleGroup(), densTitleValues(), 
+         "Growth Stage"= return(paste(getNames(NCRN[input$densPark],"long"),":",densTitleGroup(),"vs.",
+                                      compareTitleGroup(), densTitleValues(), 
                                       paste0(as.character(input$densYear-3),"-",as.character(input$densYear)) )),
          Time=return(paste(getNames(NCRN[input$densPark],"long"),":",densTitleGroup(),densTitleValues(), 
                            paste0(as.character(input$densYear-3),"-",as.character(input$densYear)),"vs.",
@@ -532,7 +530,9 @@ output$densTable<-renderDataTable({
     do.call(dens, DensTableArgs() )),
     "There is no data for this combination of choices. Either you need to select a park, or the type of plant you selected was not found in the park during those years"
            ))
-  do.call(dens,DensTableArgs() )
+  TableOut<-do.call(dens,DensTableArgs())
+  names(TableOut)<-c("Species",'Mean',"Lower 95% CI", "Upper 95% CI")
+  return(TableOut)
 })
 
 
@@ -550,6 +550,24 @@ output$IVParkControl<-renderUI({
 ################ All arguments for IVPlot
 IVYears<-reactive({ (input$IVYear-3):input$IVYear})
 
+##Title for Iv plot
+IVTitleGroup<-reactive({
+  switch(input$IVGroup,
+         trees="Tree",
+         saplings="Sapling",
+         seedlings="Tree Seedling",
+         shseedlings="Shrub Seedlings",
+         herbs="Understory Plant"
+  )
+})
+
+         
+IVTitle<-reactive({
+  return(paste(getNames(NCRN[input$IVPark],"long"),":","\n", IVTitleGroup(),"Importance Values", 
+                             paste0(as.character(input$IVYear-3),"-",as.character(input$IVYear)) ))
+         
+})
+
 IVPlotArgs<-reactive({
   list(
     object=NCRN[input$IVPark],
@@ -561,7 +579,8 @@ IVPlotArgs<-reactive({
     parts=input$IVPart,
     top=input$IVTop,
     compare=NA,
-    labels=NA
+    labels=NA,
+    main=IVTitle()
   )
 })
 

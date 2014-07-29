@@ -1,28 +1,20 @@
 library(shiny)
 library(NPSForVeg)
 library(leaflet)
-# /* "<div style='position:fixed; left:-250px'> 
+
 
 shinyUI(
-  fluidPage(
-    list(tags$head(HTML( '<link rel="icon", href="AH_small_flat_4C_12x16.png", type="image/png" />'))), #this can go at version 0.10.1 too.
-   div( style="padding: 1px 0px; height: 0px; width: '100%'", ### oNCE 0.10.1 comes out get rid of titlePanel/fluidpage 
-     titlePanel(
-       title="",windowTitle="Forest Vegetation" )
+  ### fluid page is only there to get the icon in the browser tab.
+  fluidPage(list(tags$head(HTML('<link rel="icon", href="AH_small_flat_4C_12x16.png",type="image/png" />'))),
+  navbarPage(
     
-     ),
-  
-  navbarPage(title=#HTML("<div>
-                  #      <img src='ah_small_black.gif',alt='Forest Vegetation Visualizer'>
-                   #       Forest Vegetation Visualizer
-                    #    </div>"),
-             div(img (src='ah_small_black.gif'),
-                 "Forest Vegetation Visualizer"
-             ),
-            #            ,
-            # icon="AH_small_flat_4C_12x16.png", #restore this on 10.1
-inverse=T,
-#tags$head( HTML('<link rel="icon", href="AH_small_flat_4C_12x16.png", type="image/png" />')), #this cna go aver 10.1 too.
+    windowTitle="Forest Vegetation",
+    #icon="./www/AH_small_flat_4C_12x16.png", #restore this on 10.1
+    title=HTML("<div> <img src='ah_small_black.gif',alt='Forest Vegetation Visualizer'>
+              Forest Vegetation Visualizer</div>"),
+ 
+    inverse=T,
+
 
   ######################################### Map Panel ####################################################################
     tabPanel(title="Map",
@@ -48,39 +40,39 @@ inverse=T,
           fixedPanel(id="controls",class="modal",draggable=TRUE,cursor="auto",top=70,bottom="auto",height="auto",right=20, 
                      left="auto", width=200,
             h4("Data to Map"),
-            selectInput(inputId="MapGroup", label="Type of plant:",
-                      choices=c(Trees="trees",Saplings="saplings","Tree seedlings"="seedlings",Shrubs="shrubs",
-                          "Shrub seedlings"="shseedlings","Understory plants"="herbs","Vines on Trees"="vines")),
-            uiOutput("PlantValueControl"),
-            sliderInput(inputId="MapYear", label="Display data from the 4 years ending:", min=2009, max=2013, 
-                value=2013, format="####",width="150px"),
-            tags$div(title="Choose a species of plants to map",
-              uiOutput("MapSpeciesControl")
-            ),  
-            uiOutput("MapParkControl")
+            tags$div(title="Choose the type of plant you want to work with", selectInput(inputId="MapGroup", 
+              label="Type of plant:", choices=c(Trees="trees",Saplings="saplings","Tree seedlings"="seedlings",
+                Shrubs="shrubs", "Shrub seedlings"="shseedlings","Understory plants"="herbs","Vines on Trees"="vines"))),
+            tags$div(title="Type of data to map",uiOutput("PlantValueControl")),
+            tags$div(title="Choose the four year period you want to work with.", sliderInput(inputId="MapYear", 
+              label="Display data from the 4 years ending:", min=2009, max=2013,value=2013, format="####",width="150px")),
+            tags$div(title="Choose a species of plants to map", uiOutput("MapSpeciesControl")),  
+            tags$div(title="Filter the species list so only species found in a particular park are listed",
+                     uiOutput("MapParkControl"))
           )
        ),
 ############### Add a layer control
-        conditionalPanel(condition="input.ShowLayers",
-          fixedPanel(id="controls",class="modal",draggable=TRUE,cursor="auto",top="80%",bottom="auto"
+        tags$div(title="Overlay additional data onto the parks",
+          conditionalPanel(condition="input.ShowLayers",
+            fixedPanel(id="controls",class="modal",draggable=TRUE,cursor="auto",top="80%",bottom="auto"
                      ,height="auto",right=20,left="auto",width=200,
             h4("Map Layers"),
             selectizeInput(inputId="MapLayer", label="Add a map layer:", 
-                           choices=c(None="None", "Forested Areas"="ForArea","Soil Map (slow)"="SoilMap"))
+                        choices=c(None="None", "Forested Areas"="ForArea","Soil Map (slow)"="SoilMap")))
           )
         ),
 
 ########################## Zoom  Control
         conditionalPanel(condition="input.ShowZoom",
           fixedPanel(id="controls",class="modal",draggable=TRUE,cursor="auto",top=70,bottom="auto",height="auto",
-                     left=350,width="200",
+                     left=350,width="210",
             h4("Zoom to:"),
-            uiOutput("ParkZoomControl"),
-            actionButton(inputId="MapZoom", label="Go",icon=icon("search-plus")),
+            tags$div(title="Choose a park and click 'Go'", uiOutput("ParkZoomControl"),
+            actionButton(inputId="MapZoom", label="Go",icon=icon("search-plus"))),
             hr(),
             tags$div(title="Increases size of plots for easier viewing",
                  radioButtons(inputId="PlotSize", label="Magnify plots: 1X = to scale", 
-                              choices=c("1X"="1", "4X"="2", "9X"="3", "16X"="4"), selected="1", inline=TRUE)
+                              choices=c("1X"=1, "5X"=sqrt(5), "10X"=sqrt(10), "25X"=5), selected="1", inline=TRUE)
             )
           )
         ),
@@ -103,18 +95,19 @@ inverse=T,
                     uiOutput("LayerLegend")
       )),
 ############## Show hide Panel
-      absolutePanel(id="controls", class="modal", draggable=TRUE, cursor="auto",top="95%", height=15, left=350, width=600,
-                flowLayout(
-                  strong("Show:"),
-                  checkboxInput(inputId="ShowControls", label="Map Controls", value=TRUE),
-                  checkboxInput(inputId="ShowPlots", label="Plot Legend", value=TRUE),
-                  checkboxInput(inputId="ShowZoom", label="Zoom", value=TRUE),
-                  checkboxInput(inputId="ShowLayers", label="Map Layers", value=TRUE),
-                  checkboxInput(inputId="ShowLayerLegend", label="Layer legend", value=TRUE)
-                )
+      tags$div(title="Choose to show or hide panels",
+        absolutePanel(id="controls", class="modal", draggable=TRUE, cursor="auto",top="95%", height=15, 
+                      left=350, width=600,
+          flowLayout(
+            strong("Show:"),
+            checkboxInput(inputId="ShowControls", label="Map Controls", value=TRUE),
+            checkboxInput(inputId="ShowPlots", label="Plot Legend", value=TRUE),
+            checkboxInput(inputId="ShowZoom", label="Zoom", value=TRUE),
+            checkboxInput(inputId="ShowLayers", label="Map Layers", value=TRUE),
+            checkboxInput(inputId="ShowLayerLegend", label="Layer legend", value=TRUE)
+          )
+        )
       )
-
-
     ) ## end of map div
   ),  ## end of map page
 
@@ -170,14 +163,14 @@ inverse=T,
           ),
           column(9,
             tabsetPanel(type="pills",
-              tabPanel(title="Graph",
+                tabPanel(tags$div(title="Graph the data", "Graph"),
                 tags$div(title="Mean and 95% Confidence interval",plotOutput(outputId="DensPlot", height="600px"))
               ),
-              tabPanel(title="Data",
+              tabPanel(tags$div(title="See all data in a table","Data"),
                 dataTableOutput("densTable")
               ),
-              tabPanel(title="About this graph...",
-                h4("Add explanation of graph here")
+              tabPanel(tags$div(title="Explanation of the graph","About this graph..."),
+                       includeHTML(paste0(getwd(),"/www/","DensPlot.html"))
               )
             )
           )
@@ -259,6 +252,6 @@ inverse=T,
     tabPanel("Citations and References",
       h3("Words and links here")
     )
-)#end navpbarPage(0)
-)#end fluidPage - kill after 0.10.1 and navabarPage windowTitle comes out
+)#end navbarPage()
+)#end fluidPage()
 )#end  shinyUI()
