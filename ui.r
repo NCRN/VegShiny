@@ -5,11 +5,11 @@ library(leaflet)
 
 shinyUI(
   ### fluid page is only there to get the icon in the browser tab.
-  fluidPage(list(tags$head(HTML('<link rel="icon", href="AH_small_flat_4C_12x16.png",type="image/png" />'))),
+  fluidPage(list(tags$head(HTML('<link rel="icon",href="AH_small_flat_4C_12x16.png",type="image/png" />'))),
   navbarPage(
     
     windowTitle="Forest Vegetation",
-    #icon="./www/AH_small_flat_4C_12x16.png", #restore this on 10.1
+    #icon="./www/AH_small_flat_4C_12x16.png", #restore this on 10.1 - did not work 
     title=HTML("<div> <img src='ah_small_black.gif',alt='Forest Vegetation Visualizer'>
               Forest Vegetation Visualizer</div>"),
  
@@ -46,6 +46,8 @@ shinyUI(
             tags$div(title="Type of data to map",uiOutput("PlantValueControl")),
             tags$div(title="Choose the four year period you want to work with.", sliderInput(inputId="MapYear", 
               label="Display data from the 4 years ending:", min=2009, max=2013,value=2013, format="####",width="150px")),
+            tags$div(title="Toggle between common and scientific names",
+                     checkboxInput(inputId="mapCommon", label="Show common names?", value=FALSE )),
             tags$div(title="Choose a species of plants to map", uiOutput("MapSpeciesControl")),  
             tags$div(title="Filter the species list so only species found in a particular park are listed",
                      uiOutput("MapParkControl"))
@@ -58,7 +60,7 @@ shinyUI(
                      ,height="auto",right=20,left="auto",width=200,
             h4("Map Layers"),
             selectizeInput(inputId="MapLayer", label="Add a map layer:", 
-                        choices=c(None="None", "Forested Areas"="ForArea","Soil Map (slow)"="SoilMap")))
+                        choices=c(None="None", "EcoRegions"="EcoReg","Forested Areas"="ForArea","Soil Map (slow)"="SoilMap")))
           )
         ),
 
@@ -167,7 +169,8 @@ shinyUI(
                 tags$div(title="Mean and 95% Confidence interval",plotOutput(outputId="DensPlot", height="600px"))
               ),
               tabPanel(tags$div(title="See all data in a table","Data"),
-                dataTableOutput("densTable")
+                      h3(textOutput("densTableTitle")),
+                      dataTableOutput("densTable")
               ),
               tabPanel(tags$div(title="Explanation of the graph","About this graph..."),
                        includeHTML(paste0(getwd(),"/www/","DensPlot.html"))
@@ -226,7 +229,7 @@ shinyUI(
               tabPanel(tags$div(title="See all data in a table",
                   "Data"
                 ),
-                h3("Importance Values for all Species Monitored"),
+                h3(textOutput("IVTableTitle")),
                 dataTableOutput("IVData")
               ),
               tabPanel(tags$div(title="Explanation of the graph",

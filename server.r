@@ -20,7 +20,8 @@ GetPolys<-function(MapIn){
 }
 ##################### Housekeeping prior to start of the server funciton
 
-NCRN<-importNCRN("T:/I&M/MONITORING/Forest_Vegetation/RCode/VegData")
+#NCRN<-importNCRN("T:/I&M/MONITORING/Forest_Vegetation/RCode/VegData")
+NCRN<-importNCRN("./Data/NCRN")
 names(NCRN)<-getNames(NCRN, name.class="code")
 ParkList<-getNames(NCRN,name.class="code")
 names(ParkList)<-getNames(NCRN)
@@ -38,16 +39,14 @@ shinyServer(function(input,output,session){
 ### Create Map  
 map<-createLeafletMap(session,"map")
 
-MapYears<-reactive({  # (as.numeric(input$MapYear)-3):as.numeric(input$MapYear)  }) 
-  # c(2010:2013)}) #may be replaced by a slider
-  (input$MapYear-3):input$MapYear  })
+MapYears<-reactive({(input$MapYear-3):input$MapYear  })
 #########################################################################################################
 
 ######## Zoom control for map
 
 output$ParkZoomControl<-renderUI({
   selectInput(inputId="ParkZoom",label=NULL,
-              choices=c(All="All",ParkList) )
+              choices=c("All Parks"="All",ParkList) )
 })
 
 
@@ -66,7 +65,7 @@ observe({
 
 output$MapParkControl<-renderUI({
   selectInput(inputId="MapPark", label="Filter species list by park",
-              choices=c(All="All",ParkList) )
+              choices=c("All Parks"="All",ParkList) )
 })
 
 ############################## Data to map control################################################
@@ -90,24 +89,26 @@ output$PlantValueControl<-renderUI({
 #################################################################################################
 
 ########### Species list control for map 
+##List of names, elements are Latin names, names of elements are Latin or common
+MapSpecList<-reactive({
+  SpecTemp<-unique(getPlants(object=if(input$MapPark=="All") {NCRN}  else {NCRN[input$MapPark]} , group=input$MapGroup, 
+    years=MapYears(),common=F )$Latin_Name)
+  SpecNames<-getPlantNames(object=NCRN[[1]], names=SpecTemp, in.style="Latin",out.style=ifelse(input$mapCommon,"common","Latin"))
+  names(SpecTemp)<-SpecNames  
+  SpecTemp<-SpecTemp[order(names(SpecTemp))]
+  SpecTemp<-c("All Species"="All", SpecTemp)
+})
+
+###make the control
 output$MapSpeciesControl<-renderUI({
   if(is.null(input$MapPark) || nchar(input$MapPark)==0) {
     return()
   }
   else{
-    if(input$MapPark=="All"){
-    selectizeInput(inputId="MapSpecies", label="Choose a species", 
-             choices=c("All Species"="All",sort(unique(getPlants(object=NCRN, group=input$MapGroup, years=MapYears(), 
-                                                                  )$Latin_Name))) )
-    }
-    else{
-      selectInput(inputId="MapSpecies", label="Choose a species", 
-                  choices=c("All Species"="All",sort(unique(getPlants(object=NCRN[input$MapPark], group=input$MapGroup, 
-                                          years=MapYears() )$Latin_Name ))) )
-    }
+
+    selectInput(inputId="MapSpecies", label="Choose a species", choices=c(MapSpecList() ))
   }
 })
-
 
 ####################   Calculate the values for the circles on the map. ######################
 
@@ -147,10 +148,10 @@ MapMetaData<-reactive({ MapLegend[[input$MapValues]][[input$MapGroup]] })
 #### Get polygons to display
 MapLayer<-reactive({
   switch(input$MapLayer,
-  None=return(),
-  ForArea=GetPolys(readOGR("./Maps",layer="Forest_NLCD_2011_Clip_WGS84_Simplified")),
-  #SoilMap=GetPolys(readOGR("./Maps",layer="SOIL_TaxonomySSURGO_NCRN_py_WGS84_Dissolved_SinglePart"))
-  SoilMap=GetPolys(readOGR("./Maps",layer="SOIL_TaxonomySSURGO_NCRN_py_WGS84_SinglePart_Dissolved"))
+    None=return(),
+    EcoReg=GetPolys(readOGR("./Maps",layer="Ecoregions_Omernick_Level3_SinglePart_WGS84")),
+    ForArea=GetPolys(readOGR("./Maps",layer="Forest_NLCD_2011_Clip_WGS84_Simplified")),
+    SoilMap=GetPolys(readOGR("./Maps",layer="SOIL_TaxonomySSURGO_NCRN_py_WGS84_SinglePart_Dissolved"))
   )
 })
 
@@ -238,7 +239,7 @@ showPlotPopup <- function(Plot_Name, lat, lng) {
   content <- as.character(tagList(
    tags$h5(getNames(NCRN[selectedPlot$Unit_Code],"long")),
    tags$h6("Year Monitored:",selectedPlot$Year),
-   tags$h6(input$MapSpecies,":",format(signif(selectedPlot$Values,2), big.mark=","), " ", MapMetaData()$Title)
+   tags$h6(names(MapSpecList()[MapSpecList()==input$MapSpecies]),":",format(signif(selectedPlot$Values,2), big.mark=","), " ", MapMetaData()$Title)
   ))
   map$showPopup(lat, lng, content, Plot_Name)
 }
@@ -315,6 +316,13 @@ output$densValControl<-renderUI({
   
 })
 ############################ Species Control (top species vs list) for density plots
+densSpecList<-reactive({
+  SpecTemp<-unique(getPlants(object=NCRN[[input$densPark]], group=input$densGroup,  years=densYears(),common=F )$Latin_Name)
+  SpecNames<-getPlantNames(object=NCRN[[input$densPark]], names=SpecTemp, in.style="Latin",
+                           out.style=ifelse(input$densCommon,"common","Latin"))
+  names(SpecTemp)<-SpecNames  
+  SpecTemp<-SpecTemp[order(names(SpecTemp))]
+})
 
 output$densSpeciesControl<-renderUI({
   switch(input$densSpeciesType,
@@ -325,9 +333,9 @@ output$densSpeciesControl<-renderUI({
          Pick= if(is.null(input$densPark) || nchar(input$densPark)==0) {  return()  }
           else{
             tags$div(title="Click here to pick the species you want to graph",
-              selectizeInput(inputId="densSpecies", label="Choose one or more species (Latin name only),
-              backspace to remove", choices=c(sort(unique(getPlants(object=NCRN[input$densPark], group=input$densGroup,
-                years=densYears())$Latin_Name ))),multiple=TRUE )
+              selectizeInput(inputId="densSpecies", label="Choose one or more species,
+              backspace to remove", choices=densSpecList(),
+                multiple=TRUE )
             )
           }
   )
@@ -363,11 +371,14 @@ output$CompareSelect<-renderUI({
 CompareSpecies<-reactive({
   if(input$CompareType=="None") {NA} else {
     switch(input$densSpeciesType,
-          Common=as.character( dens(object=NCRN[input$densPark], group=input$densGroup, years=densYears(),values=input$densvalues,
-            Total=F)[order(-dens(object=NCRN[input$densPark], group=input$densGroup, years=densYears(), values=input$densvalues, 
-            Total=F)["Mean"]),][1:input$densTop,1] ),
-          Pick=input$densSpecies,
-          All=NA
+      Common=getPlantNames( object=NCRN[[input$densPark]], out.style="Latin", 
+              in.style= ifelse(input$densCommon, "common", "Latin"),
+              names= as.character(dens(object=NCRN[[input$densPark]], group=input$densGroup, years=densYears(),
+                    values=input$densvalues, Total=F, common=input$densCommon)[order(-dens(object=NCRN[[input$densPark]],
+                    group=input$densGroup, years=densYears(),values=input$densvalues, common=input$densCommon, 
+                    Total=F)["Mean"]),][1:input$densTop,1] )),
+      Pick=input$densSpecies,
+      All=NA
     )
   }
 })
@@ -441,7 +452,7 @@ compareTitleGroup<-reactive({
          saplings="Sapling",
          seedlings="Tree Seedling",
          shrubs="Shrub",
-         shseedlings="Shrub Seedlings",
+         shseedlings="Shrub Seedling",
          herbs="Understory Plant",
          vines="Vines on Trees"
   )  
@@ -525,6 +536,19 @@ DensTableArgs<-reactive({
   )
 })
 
+################### Tables Tab
+
+### Title for table
+output$densTableTitle<-renderText({ 
+  validate(need(try(paste(getNames(NCRN[input$densPark],"long"),":",densTitleGroup(),densTitleValues(), 
+                          paste0(as.character(input$densYear-3),"-",as.character(input$densYear)) )), message=FALSE) )
+  paste(getNames(NCRN[input$densPark],"long"),":",densTitleGroup(),densTitleValues(), 
+        paste0(as.character(input$densYear-3),"-",as.character(input$densYear)) )
+})
+  
+  
+
+### Make Table
 output$densTable<-renderDataTable({
   validate(need(try(
     do.call(dens, DensTableArgs() )),
@@ -603,8 +627,17 @@ IVTableArgs<-reactive({
     common=IVPlotArgs()$IVargs$common
   )
 })
-    
-    
+##### IV Table 
+## title
+
+output$IVTableTitle<-renderText({ 
+  validate(need(try(IVTitle()), message=FALSE) )
+  IVTitle()
+})
+
+## Table
+
+  
 output$IVData<-renderDataTable({
   validate(need(try(
     do.call(IV,IVTableArgs() )),
