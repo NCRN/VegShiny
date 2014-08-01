@@ -67,7 +67,7 @@ shinyUI(
 ########################## Zoom  Control
         conditionalPanel(condition="input.ShowZoom",
           fixedPanel(id="controls",class="modal",draggable=TRUE,cursor="auto",top=70,bottom="auto",height="auto",
-                     left=350,width="210",
+                     left=350,width=210,
             h4("Zoom to:"),
             tags$div(title="Choose a park and click 'Go'", uiOutput("ParkZoomControl"),
             actionButton(inputId="MapZoom", label="Go",icon=icon("search-plus"))),
@@ -82,7 +82,7 @@ shinyUI(
 ##################### Map Legend
         conditionalPanel(condition="input.ShowPlots",
           fixedPanel( id="controls", class="modal", draggable=TRUE, cursor="auto", top=70, bottom="auto", height="auto",
-              right=300, left="auto", width="auto",
+              right=300, left="auto", width=100,
             h4(uiOutput("MapLegendTitle")),
             uiOutput("MapLegend")
           )
