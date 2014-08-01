@@ -173,7 +173,7 @@ shinyUI(
                       dataTableOutput("densTable")
               ),
               tabPanel(tags$div(title="Explanation of the graph","About this graph..."),
-                       includeHTML(paste0(getwd(),"/www/","DensPlot.html"))
+                       includeHTML("./www/DensPlot.html")
               )
             )
           )
@@ -235,7 +235,7 @@ shinyUI(
               tabPanel(tags$div(title="Explanation of the graph",
                   "About this graph..."
                 ),
-                includeHTML(paste0(getwd(),"/www/","IVPlot.html"))
+                includeHTML("./www/IVPlot.html")
               )
             )
           )

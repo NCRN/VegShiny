@@ -20,7 +20,7 @@ GetPolys<-function(MapIn){
 }
 ##################### Housekeeping prior to start of the server funciton
 
-#NCRN<-importNCRN("T:/I&M/MONITORING/Forest_Vegetation/RCode/VegData")
+
 NCRN<-importNCRN("./Data/NCRN")
 names(NCRN)<-getNames(NCRN, name.class="code")
 ParkList<-getNames(NCRN,name.class="code")
