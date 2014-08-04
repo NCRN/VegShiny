@@ -169,7 +169,7 @@ session$onFlushed(once=TRUE, function() {   ##onFlushed comes superzip - makes m
     input$ShowMap
    map$clearShapes()
 
-if(input$MapLayer!="none"){   
+if(input$MapLayer!="None"){   
   map$addPolygon(lng=MapLayer()$lng, 
                  lat=MapLayer()$lat,  
                  layerId=MapLayer()$layerId, 

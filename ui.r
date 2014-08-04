@@ -56,8 +56,8 @@ shinyUI(
 ############### Add a layer control
         tags$div(title="Overlay additional data onto the parks",
           conditionalPanel(condition="input.ShowLayers",
-            fixedPanel(id="controls",class="modal",draggable=TRUE,cursor="auto",top="80%",bottom="auto"
-                     ,height="auto",right=20,left="auto",width=200,
+            fixedPanel(id="controls",class="modal",draggable=TRUE,cursor="auto",top="60%",bottom="auto"
+                     ,height="auto",right="auto",left=350,width=200,
             h4("Map Layers"),
             selectizeInput(inputId="MapLayer", label="Add a map layer:", 
                         choices=c(None="None", "EcoRegions"="EcoReg","Forested Areas"="ForArea","Soil Map (slow)"="SoilMap")))
@@ -82,7 +82,7 @@ shinyUI(
 ##################### Map Legend
         conditionalPanel(condition="input.ShowPlots",
           fixedPanel( id="controls", class="modal", draggable=TRUE, cursor="auto", top=70, bottom="auto", height="auto",
-              right=300, left="auto", width=100,
+              right=300, left="auto", width=130,
             h4(uiOutput("MapLegendTitle")),
             uiOutput("MapLegend")
           )
