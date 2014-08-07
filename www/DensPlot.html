@@ -6,31 +6,35 @@
 <body>
 <fontsize="16">
 <h3>Data by Park and Species</h3>
-  <p>These graphs allow you to see esimates of the abundance, size and % of monitoring plots occupied by species in each park. The plots show the mean (dot) and the 95% confidence intervals (bars) for the selected species. By choosing the "Data"" tab at the top of the page you can see a table which shows data for all the species.</p>
+  <p>These graphs allow you to see estimates of the abundance, size and % of monitoring plots occupied by indivdiual species in each park. The plots show the mean (dot) and the 95% confidence intervals (bars) for the selected species. By choosing the "Data table tab at the top of the page you can see a table which shows data for all the species in a park.</p>
 <p>
   There are three options for choosing species to graph:
 <ul>
-  <li><strong>Most common species:</strong> This option will display the species with the largest mean value of abundance, basal area etc. The number of species to display can be selected as well.  </li>
-  <li><strong>Pick individual species:</strong> This option allows you to pick which species to display. Click in the text box to see a list of species and click on a species to choose it. To unselect a species, click on its name and then press the backspace key. </li>
-  <li><strong>All species combined:</strong>This options graphs the data for all of the species added together. This data can also be seen as the "Total" in the table on "Data" tab.</li>
+  <li><strong>Most common species:</strong> This option will display the species with the largest mean value of abundance, basal area etc. You can select the number of species to display.  </li>
+  <li><strong>Pick individual species:</strong> This option allows you to pick which species to display. Click in the box to see a list of species and click on a species to choose it. To unselect a species, click on its name and then press the backspace key. You can choose as many species as you like. </li>
+  <li><strong>All species combined:</strong>This option graphs the data for all of the species added together. This data can also be seen as the "Total" in the table under the "Data table" tab.</li>
 </ul>
 </p>
 <p>Depending upon the type of plant selected there are a variety of measurements that can be graphed:
   <ul>
-    <li><strong>Abundance:</strong>This measure is available for trees, saplings, tree seedlings, shrubs, shrub seedlings and vines on trees. The 95% confidence interval is calculated by fitting the number of plants found in each plot to a negative binomial distribution. The means and confidence intervals are convetred from a per plot basis to a per hecatare basis. Note that using negative binomial esitamation ensures that the 95% conficence interval will never include negative numbers of plants, and often results in confidence interavals that are not symmetric around the mean. </li>
-    <li><strong>Basal Area:</strong> This measure is available for trees and saplings. Basal area is the area of the cross sectional of a tree or sapling at 1.37 meters above the ground. It is a measure of how large a tree is. The 95% confidence interval is calculated by bootstrapping the observed data.</li>
-    <li><strong>Percent of Plots Occupied:</strong> This measure is available for all types of plants. This measure indicates the percentage of monitoring plots that contain a particular species. 95% confidence intervals are calculated by fitting the data to a binomial distribution. </li>
-  <li><strong>Percent cover:</strong> This measure is available for understory plants. Percent cover is a measure of what percent of a plot is covered by vegetation of each species. Like basal area, confidence intervals are calculated using bootstrapping. </li>
-  </ul>
+    <li><strong>Abundance: </strong>This is an esimtate of how many individuals of a given species are found in each foreted hectare in the park. A hecatre is 2.47 acres, approximately the size of two football fields. This measure is available for trees, saplings, tree seedlings, shrubs, shrub seedlings and vines on trees. </li>
+    <li><strong>Basal Area: </strong> Basal area is the area of the cross section of a tree or sapling at 1.37 meters (4.5 feet) above the ground. It is an important measure of the size of a tree. This measure is available for trees and saplings.  </li>
+    <li><strong>Percent of Plots Occupied: </strong> This measure indicates the percentage of monitoring plots in a part that contain a particular species. This measure, along with the map, can indcate how widespread a species is. This measure is available for all types of plants.  </li>
+  <li><strong>Percent cover: </strong> Percent cover is a measure of what percent of a plot is covered by the leaves and stems of a plant species. It can be used a measure of size or abundance. This is particularly useful for species which grow as numerous small individuals, such as blades of grass, which cannot be easily counted.  This measure is available for understory plants.  </li> </ul>
 </p>
-  <p>Once you have selected the base data you wish to graph, you can also graph comparison data. Three options are available:
+  <p>Once you have selected the base data you wish to graph, you can add comparison data. Three options are available:
   <ul>
-    <li><strong>Park:</strong> This will allow you to chose a second park to compare the base park with. If you have selected to graph the "Most common species" then the most common species from the base park will be displayed. If you have selected to "Pick individual species" then you can only chose to pick species present in the base park.</li>
-    <li><strong>Growth Stage:</strong>You can make comparisons between trees, saplings and tree seedlings, or betwween shrubs and shrub seedlings. This option is not available for understory plants or vines on trees.</li>
+    <li><strong>Park:</strong> This will allow you to choose a second park. If you have selected to graph the "Most common species" then the most common species from the base park will be displayed. If you have selected to "Pick individual species" then you can only pick species present in the base park.</li>
+    <li><strong>Growth Stage:</strong>This allows you to compare two different growth stages of the same species. You can make comparisons between trees, saplings and tree seedlings, or betwween shrubs and shrub seedlings. This option is not available for understory plants or vines on trees, as only one growth stage of these species is monitored.</li>
     <li><strong>Time:</strong>This option allows you to make comparisons between different sets of years.  </li>
   </ul>
 </p>
-  
+<br>
+<h4>Statistical Details</h4>
+   <p><strong>Abundance</strong>The 95% confidence interval is calculated by fitting the number of plants found in each plot to a negative binomial distribution. The means and confidence intervals are convetred from a per plot basis to a per hecatare basis. Note that using negative binomial esitamation ensures that the 95% conficence interval will never include negative numbers of plants, and often results in confidence interavals that are not symmetric around the mean.</p>
+  <p><strong>Basal Area</strong>The 95% confidence interval is calculated by bootstrapping the observed data.</p>
+  <p><strong>Percent of plots occupied</strong> 95% confidence intervals are calculated by fitting the data to a binomial distribution.</p>
+  <p><strong>Percent cover</strong>Like basal area, confidence intervals are calculated using bootstrapping.</p>
 </fontsize>
 </body>
 </html>

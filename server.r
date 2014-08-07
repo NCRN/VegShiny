@@ -14,9 +14,22 @@ GetPolys<-function(MapIn){
         MapClass<-c(MapClass,if(!is.na(MapIn@data[i,"MapClass"])){as.character(MapIn@data[i,"MapClass"])} else("Not classified")  )
     #}
   }
- ClassNum<-as.numeric(factor(MapClass))
- layerId<-as.character(seq_along(MapClass))
+   ClassNum<-as.numeric(factor(MapClass))
+  layerId<-as.character(seq_along(MapClass))
   MapData<-list(lat=lat, lng=lng, MapClass=MapClass,layerId=layerId, ClassNum=ClassNum)
+}
+
+GetPolys2<-function(MapIn){
+  Temp<-vector(mode="list",length=length(MapIn@polygons))
+  for(i in seq_along (MapIn@polygons)){
+    Temp[[i]]<-c(list(lng=NA), list(lat=NA),list(MapClass=NA), list(layerID=NA))
+    Temp[[i]][["lng"]]<-MapIn@polygons[[i]]@Polygons[[1]]@coords[,1]
+    Temp[[i]][["lat"]]<-MapIn@polygons[[i]]@Polygons[[1]]@coords[,2]
+    Temp[[i]][["MapClass"]]<-if(!is.na(MapIn@data[i,"MapClass"])){as.character(MapIn@data[i,"MapClass"])} else("Not classified")
+    Temp[[i]][["layerId"]]<-as.character(i)
+  
+  }
+  return(Temp)
 }
 ##################### Housekeeping prior to start of the server funciton
 
@@ -37,166 +50,200 @@ shinyServer(function(input,output,session){
 ################################## Code For Map Panel  ######################################################
 
 ### Create Map  
-map<-createLeafletMap(session,"map")
+  map<-createLeafletMap(session,"map")
 
-MapYears<-reactive({(input$MapYear-3):input$MapYear  })
+  MapYears<-reactive({(input$MapYear-3):input$MapYear  })
 #########################################################################################################
 
 ######## Zoom control for map
 
-output$ParkZoomControl<-renderUI({
-  selectInput(inputId="ParkZoom",label=NULL,
+  output$ParkZoomControl<-renderUI({
+    selectInput(inputId="ParkZoom",label=NULL,
               choices=c("All Parks"="All",ParkList) )
-})
+  })
 
 
 ############Zoom the map
-observe({
-  input$MapZoom
-  isolate({
-    BoundsUse<-reactive({ as.numeric(ParkBounds[ParkBounds$ParkCode==input$ParkZoom,2:5]) })
-    map$fitBounds(BoundsUse()[1],BoundsUse()[2],BoundsUse()[3],BoundsUse()[4])
-  }) 
-})
+  observe({
+    input$MapZoom
+    isolate({
+      BoundsUse<-reactive({ as.numeric(ParkBounds[ParkBounds$ParkCode==input$ParkZoom,2:5]) })
+      map$fitBounds(BoundsUse()[1],BoundsUse()[2],BoundsUse()[3],BoundsUse()[4])
+    }) 
+  })
 
 ###########################################################################################################
 
 #######  Park Filter for species list control for map
 
-output$MapParkControl<-renderUI({
-  selectInput(inputId="MapPark", label="Filter species list by park",
+  output$MapParkControl<-renderUI({
+    selectInput(inputId="MapPark", label="Filter species list by park",
               choices=c("All Parks"="All",ParkList) )
-})
+  })
 
 ############################## Data to map control################################################
 
 #### Data to display control for Map
-ValuesUse<-reactive({
-  switch(input$MapGroup,
+  ValuesUse<-reactive({
+    switch(input$MapGroup,
          trees=,saplings=c(Abundance="count", "Basal Area"="size"),
          seedlings=,shseedlings=,shrubs=,vines=c(Abundance="count"),
          herbs=c("Percent Cover"="size")
          
-  )
-})
+    )
+  })
 
 #render the control
-output$PlantValueControl<-renderUI({
-  selectInput(inputId="MapValues", label="Data to Map:", choices=ValuesUse())
+  output$PlantValueControl<-renderUI({
+    selectInput(inputId="MapValues", label="Data to Map:", choices=ValuesUse())
   
-})
+  })
 
 #################################################################################################
 
 ########### Species list control for map 
 ##List of names, elements are Latin names, names of elements are Latin or common
-MapSpecList<-reactive({
-  SpecTemp<-unique(getPlants(object=if(input$MapPark=="All") {NCRN}  else {NCRN[input$MapPark]} , group=input$MapGroup, 
-    years=MapYears(),common=F )$Latin_Name)
-  SpecNames<-getPlantNames(object=NCRN[[1]], names=SpecTemp, in.style="Latin",out.style=ifelse(input$mapCommon,"common","Latin"))
-  names(SpecTemp)<-SpecNames  
-  SpecTemp<-SpecTemp[order(names(SpecTemp))]
-  SpecTemp<-c("All Species"="All", SpecTemp)
-})
+  MapSpecList<-reactive({
+    SpecTemp<-unique(getPlants(object=if(input$MapPark=="All") {NCRN}  else {NCRN[[input$MapPark]]} , group=input$MapGroup, 
+      years=MapYears(),common=F )$Latin_Name)
+    SpecNames<-getPlantNames(object=NCRN[[1]], names=SpecTemp, in.style="Latin",out.style=ifelse(input$mapCommon,"common","Latin"))
+    names(SpecTemp)<-SpecNames  
+    SpecTemp<-SpecTemp[order(names(SpecTemp))]
+    SpecTemp<-c("All Species"="All", SpecTemp)
+  })
 
 ###make the control
-output$MapSpeciesControl<-renderUI({
-  if(is.null(input$MapPark) || nchar(input$MapPark)==0) {
-    return()
-  }
-  else{
-
-    selectInput(inputId="MapSpecies", label="Choose a species", choices=c(MapSpecList() ))
-  }
-})
+  output$MapSpeciesControl<-renderUI({
+    if(is.null(input$MapPark) || nchar(input$MapPark)==0) {
+      return()
+    }
+    else{
+      selectInput(inputId="MapSpecies", label="Choose a species", choices=c(MapSpecList() ))
+    }
+  })
 
 ####################   Calculate the values for the circles on the map. ######################
 
 ### HouseKeeping
 
-MapSpeciesUse<-reactive({ifelse(input$MapSpecies=="All", NA, input$MapSpecies) })
+  MapSpeciesUse<-reactive({ifelse(input$MapSpecies=="All", NA, input$MapSpecies) })
+### Data to plot on map - always for all parks
 
-
-MapData<-reactive({
-  if(is.null(input$MapSpecies) || nchar(input$MapSpecies)==0){
-    return()
-  }
-  else{
-    data.frame(getPlots(NCRN, years=MapYears(), output="dataframe",type="all")[c("Plot_Name","Unit_Code","Latitude","Longitude")],
-      Year=getEvents(object=NCRN, years=MapYears())[["Event_Year"]],
-      Values= 
-        if(input$MapGroup != "herbs"){
-          if(input$MapValues!="size"){
-            (10000/getArea(NCRN[1],group=input$MapGroup,type="all")) * (
-            SiteXSpec(object=NCRN,group=input$MapGroup, years=MapYears(), species=MapSpeciesUse(), values=input$MapValues)$Total)
+  MapData<-reactive({
+    if(is.null(input$MapSpecies) || nchar(input$MapSpecies)==0){
+      return()
+    }
+    else{
+      data.frame(getPlots(NCRN, years=MapYears(), output="dataframe",type="all")[c("Plot_Name","Unit_Code","Latitude","Longitude")],
+        Year=getEvents(object=NCRN, years=MapYears())[["Event_Year"]],
+        Values= 
+          if(input$MapGroup != "herbs"){
+            if(input$MapValues!="size"){
+              (10000/getArea(NCRN[[1]],group=input$MapGroup,type="all")) * (
+              SiteXSpec(object=NCRN,group=input$MapGroup, years=MapYears(), species=MapSpeciesUse(), values=input$MapValues)$Total)
+            }
+            else{
+              (10000/getArea(NCRN[[1]],group=input$MapGroup,type="all")) * (    #need to convert to m^2/ha from cm^2/ha
+                SiteXSpec(object=NCRN,group=input$MapGroup, years=MapYears(), species=MapSpeciesUse(), 
+                          values=input$MapValues)$Total)/10000
+            }
           }
           else{
-            (10000/getArea(NCRN[1],group=input$MapGroup,type="all")) * (    #need to convert to m^2/ha from cm^2/ha
-              SiteXSpec(object=NCRN,group=input$MapGroup, years=MapYears(), species=MapSpeciesUse(), values=input$MapValues)$Total)/10000
-          }
-        }
-        else{
-        SiteXSpec(object=NCRN,group=input$MapGroup, years=MapYears(), species=MapSpeciesUse(), values=input$MapValues)$Total/12
-        } 
-    )
-  }
-})
+          SiteXSpec(object=NCRN,group=input$MapGroup, years=MapYears(), species=MapSpeciesUse(), values=input$MapValues)$Total/12
+          } 
+      )
+    }
+  })
 #########  Data for Legend
-MapMetaData<-reactive({ MapLegend[[input$MapValues]][[input$MapGroup]] })
+  MapMetaData<-reactive({ MapLegend[[input$MapValues]][[input$MapGroup]] })
 
 
 #### Get polygons to display
-MapLayer<-reactive({
-  switch(input$MapLayer,
-    None=return(),
-    EcoReg=GetPolys(readOGR("./Maps",layer="Ecoregions_Omernick_Level3_SinglePart_WGS84")),
-    ForArea=GetPolys(readOGR("./Maps",layer="Forest_NLCD_2011_Clip_WGS84_Simplified")),
-    SoilMap=GetPolys(readOGR("./Maps",layer="SOIL_TaxonomySSURGO_NCRN_py_WGS84_SinglePart_Dissolved"))
-  )
-})
+  MapLayer<-reactive({
+    switch(input$MapLayer,
+      None=return(),
+      EcoReg=GetPolys(readOGR("./Maps",layer="Ecoregions_Omernick_Level3_SinglePart_WGS84")),
+      ForArea=GetPolys(readOGR("./Maps",layer="Forest_NLCD_2011_Clip_WGS84_Simplified")),
+      #SoilMap=GetPolys(readOGR("./Maps",layer="SOIL_TaxonomySSURGO_NCRN_py_WGS84_SinglePart_Dissolved"))
+    )
+  })
+
+#MapLayer2<-reactive({
+#  switch(input$MapLayer,
+#         None=return(),
+#         EcoReg=GetPolys2(readOGR("./Maps",layer="Ecoregions_Omernick_Level3_SinglePart_WGS84")),
+#         ForArea=GetPolys2(readOGR("./Maps",layer="Forest_NLCD_2011_Clip_WGS84_Simplified")),
+#         SoilMap=GetPolys2(readOGR("./Maps",layer="SOIL_TaxonomySSURGO_NCRN_py_WGS84_SinglePart_Dissolved"))
+#  )
+#})
 
 
 
 ############ Add points and Polygons to map
-PolyOpts<-reactive({
-  lapply(X=MapLayer()$ClassNum, Y=length(unique(MapLayer()$MapClass)), FUN=function(X,Y) {
-  list(color=AquaYel(Y)[X])
+  PolyOpts<-reactive({
+    lapply(X=MapLayer()$ClassNum, Y=length(unique(MapLayer()$MapClass)), FUN=function(X,Y) {
+    list(color=AquaYel(Y)[X])
+    })
   })
-})
+
+#PolyOpts2<-reactive({
+#  Temp<-as.numeric(factor(unlist (lapply(MapLayer2(),"[[", "MapClass"))))
+#  lapply(X=Temp, Y=length(unique(Temp)), FUN=function(X,Y) {
+#    list(color=AquaYel(Y)[X])
+#  })
+#})
+
+
 
 session$onFlushed(once=TRUE, function() {   ##onFlushed comes superzip - makes map draw befrore circles
-  MapObs<-observe({ 
-    input$ShowMap
-   map$clearShapes()
+    MapObs<-observe({ 
+      map$clearShapes()
 
-if(input$MapLayer!="None"){   
-  map$addPolygon(lng=MapLayer()$lng, 
-                 lat=MapLayer()$lat,  
-                 layerId=MapLayer()$layerId, 
-                 options=PolyOpts(),
-                 defaultOptions=list(weight=0, fillOpacity=.75)
-  )
-}
- 
- try(silent=TRUE,                       #try deals with issue where the group has changed but species has not yet caught up.
-      if(is.null(MapData()$Values )) {
-        return()
-      }
-      else {
-        map$addCircle(MapData()$Latitude, MapData()$Longitude, 15*as.numeric(input$PlotSize),
-          layerId=MapData()$Plot_Name,   #This is the ID of the circle to match to other data
-          options=list(color=BlueOr(8)[cut(MapData()$Values,breaks=c(MapMetaData()$Cuts), labels = FALSE)],
-          fillOpacity=.7, 
-          weight=5)
+      if(input$MapLayer!="None"){   
+        try(
+          map$addPolygon(lng=MapLayer()$lng, 
+                       lat=MapLayer()$lat,  
+                       layerId=MapLayer()$layerId, 
+                       options=PolyOpts(),
+                       defaultOptions=list(weight=0, fillOpacity=.75)
+          )
         )
-      }
-    ) 
-  })
+      }  
+
+#      if(input$MapLayer!="None"){   
+#         for (i in seq_along( MapLayer2() ) ) {
+#            try(
+#              map$addPolygon(lng=MapLayer2()[[i]]$lng, 
+#                          lat=MapLayer2()[[i]]$lat,  
+#                          layerId=list(MapLayer2()[[i]]$layerId), 
+#                          options=PolyOpts2()[i],
+#                          defaultOptions=list(weight=0, fillOpacity=.75)
+#              )
+#            )
+#          }
+#       
+#      }  
+      
+      
+      try(silent=TRUE,      #try deals with issue where the group has changed but species has not yet caught up.
+        if(is.null(MapData()$Values )) {
+          return()
+        }
+        else {
+          map$addCircle(MapData()$Latitude, MapData()$Longitude, 15*as.numeric(input$PlotSize),
+            layerId=MapData()$Plot_Name,   #This is the ID of the circle to match to other data
+            options=list(color=BlueOr(8)[cut(MapData()$Values,breaks=c(MapMetaData()$Cuts), labels = FALSE)],
+            fillOpacity=.7, 
+            weight=5)
+          )
+        }
+      ) 
+    })
   
   # TIL this is necessary in order to prevent the observer from
   # attempting to write to the websocket after the session is gone.
-session$onSessionEnded(MapObs$suspend)
-})
+    session$onSessionEnded(MapObs$suspend)
+  })
 
 
 
@@ -237,7 +284,7 @@ output$MapLegendTitle<-renderText({
 showPlotPopup <- function(Plot_Name, lat, lng) {
   selectedPlot <- MapData()[MapData()$Plot_Name == Plot_Name,]
   content <- as.character(tagList(
-   tags$h5(getNames(NCRN[selectedPlot$Unit_Code],"long")),
+   tags$h5(getNames(NCRN[[selectedPlot$Unit_Code]],"long")),
    tags$h6("Year Monitored:",selectedPlot$Year),
    tags$h6(names(MapSpecList()[MapSpecList()==input$MapSpecies]),":",format(signif(selectedPlot$Values,2), big.mark=","), " ", MapMetaData()$Title)
   ))
@@ -549,15 +596,18 @@ output$densTableTitle<-renderText({
   
 
 ### Make Table
-output$densTable<-renderDataTable({
+output$densTable<-renderDataTable(
+  expr={
   validate(need(try(
-    do.call(dens, DensTableArgs() )),
+    do.call(dens, DensTableArgs() ),
+  ),
     "There is no data for this combination of choices. Either you need to select a park, or the type of plant you selected was not found in the park during those years"
-           ))
+          ))
   TableOut<-do.call(dens,DensTableArgs())
   names(TableOut)<-c("Species",'Mean',"Lower 95% CI", "Upper 95% CI")
-  return(TableOut)
-})
+  return(TableOut)}
+  
+)
 
 
 

@@ -5,13 +5,15 @@ library(leaflet)
 
 shinyUI(
   ### fluid page is only there to get the icon in the browser tab.
-  fluidPage(list(tags$head(HTML('<link rel="icon",href="AH_small_flat_4C_12x16.png",type="image/png" />'))),
+  #fluidPage(
+    #list(tags$head(HTML('<link rel="icon",href=".www/AH_small_flat_4C_12x16.png",type="image/png" />'))),
+    #             div(style="paddding: 1px 0px; width: '100%'", windowTitle="XX"),
   navbarPage(
     
     windowTitle="Forest Vegetation",
-    #icon="./www/AH_small_flat_4C_12x16.png", #restore this on 10.1 - did not work 
+    #icon="AH_small_flat_4C_12x16.png", #restore this on 10.1 - did not work 
     title=HTML("<div> <img src='ah_small_black.gif',alt='Forest Vegetation Visualizer'>
-              Forest Vegetation Visualizer</div>"),
+             Forest Vegetation Visualizer</div>"),
  
     inverse=T,
 
@@ -60,7 +62,9 @@ shinyUI(
                      ,height="auto",right="auto",left=350,width=200,
             h4("Map Layers"),
             selectizeInput(inputId="MapLayer", label="Add a map layer:", 
-                        choices=c(None="None", "EcoRegions"="EcoReg","Forested Areas"="ForArea","Soil Map (slow)"="SoilMap")))
+                        choices=c(None="None", "EcoRegions"="EcoReg","Forested Areas"="ForArea"
+                                  #,"Soil Map (slow)"="SoilMap"
+                                  )))
           )
         ),
 
@@ -138,6 +142,10 @@ shinyUI(
                     Saplings="saplings","Tree seedlings"="seedlings",Shrubs="shrubs",
                     "Shrub seedlings"="shseedlings","Understory plants"="herbs","Vines on Trees"="vines"))
               ),
+              tags$div(title="Toggle between common and scientific names",
+                       checkboxInput(inputId="densCommon", label="Show common names?", value=FALSE )
+              ),
+              br(),
               tags$div(title="Graph the most common species, species you choose, or all species combined.",
                 radioButtons(inputId="densSpeciesType", label="Which species?", 
                 choices=c("Most common species"="Common","Pick individual species"="Pick",
@@ -146,31 +154,33 @@ shinyUI(
               hr(),
               uiOutput(outputId="densSpeciesControl"),
               hr(),
-              tags$div(title="Toggle between common and scientific names",
-                checkboxInput(inputId="densCommon", label="Show common names?", value=FALSE )
-              ),
-              br(),
               tags$div(title="Type of data to graph",
                 uiOutput(outputId="densValControl")
               ),
-              hr(),
-              h4("Comparison Data:"),
-              tags$div(title="Comare the base data with a differnet park, growth stage, or time period",
-                radioButtons(inputId="CompareType", label ="Compare to another:",
-                choices=c("None","Park","Growth Stage","Time"),selected="None",inline=TRUE)
-              ),
-              uiOutput(outputId="CompareSelect"),
-              h1(br(),br(),br(),br(),br())
+              conditionalPanel(
+                condition="input.densPanel=='Graph'",
+                hr(),
+                h4("Comparison Data:"),
+                tags$div(title="Comare the base data with a differnet park, growth stage, or time period",
+                  radioButtons(inputId="CompareType", label ="Compare to another:",
+                  choices=c("None","Park","Growth Stage","Time"),selected="None",inline=TRUE)
+                ),
+                uiOutput(outputId="CompareSelect"),
+                h1(br(),br(),br(),br(),br())
+              )
             )
           ),
           column(9,
-            tabsetPanel(type="pills",
-                tabPanel(tags$div(title="Graph the data", "Graph"),
+            tabsetPanel(id="densPanel",type="pills",
+                tabPanel(title=tags$div(title="Graph the data", "Graph"),value="Graph",
                 tags$div(title="Mean and 95% Confidence interval",plotOutput(outputId="DensPlot", height="600px"))
               ),
-              tabPanel(tags$div(title="See all data in a table","Data"),
-                      h3(textOutput("densTableTitle")),
-                      dataTableOutput("densTable")
+              tabPanel(
+                tags$div(title="See all data in a table","Data table"),
+                column(10,
+                 h3(textOutput("densTableTitle")),
+                  dataTableOutput("densTable")
+                )
               ),
               tabPanel(tags$div(title="Explanation of the graph","About this graph..."),
                        includeHTML("./www/DensPlot.html")
@@ -197,6 +207,11 @@ shinyUI(
               ),
               br(),
               tags$div(
+                title="Toggle between common and scientific names",
+                checkboxInput(inputId="IVCommon", label="Show common names?", value=FALSE)
+              ),
+              br(),
+              tags$div(
                 title="Pick the four year period you want to graph",
                 sliderInput(inputId="IVYear", label="Display data from the 4 years ending:", min=2009, max=2013,
                           value=2013, format="####")
@@ -205,11 +220,6 @@ shinyUI(
               tags$div(
                 title="Show density, size and disbribution separately",
                 checkboxInput(inputId="IVPart", label="Show Components of the Importance Value?", value=FALSE)
-              ),
-              br(),
-              tags$div(
-                title="Toggle between common and scientific names",
-                checkboxInput(inputId="IVCommon", label="Show common names?", value=FALSE)
               ),
               br(),
               tags$div(
@@ -226,11 +236,12 @@ shinyUI(
                 ),
                 tags$div(title="Graph of IV",plotOutput("IVPlot"))
               ),
-              tabPanel(tags$div(title="See all data in a table",
-                  "Data"
-                ),
-                h3(textOutput("IVTableTitle")),
-                dataTableOutput("IVData")
+              tabPanel(
+                tags$div(title="See all data in a table","Data table"),
+                column(10,
+                  h3(textOutput("IVTableTitle")),
+                  dataTableOutput("IVData")
+                )
               ),
               tabPanel(tags$div(title="Explanation of the graph",
                   "About this graph..."
@@ -256,5 +267,5 @@ shinyUI(
       h3("Words and links here")
     )
 )#end navbarPage()
-)#end fluidPage()
+#)#end fluidPage()
 )#end  shinyUI()
