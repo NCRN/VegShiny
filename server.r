@@ -12,11 +12,13 @@ GetPolys<-function(MapIn){
         lng<-c(lng,MapIn@polygons[[i]]@Polygons[[1]]@coords[,1],NA)
         lat<-c(lat,MapIn@polygons[[i]]@Polygons[[1]]@coords[,2],NA)
         MapClass<-c(MapClass,if(!is.na(MapIn@data[i,"MapClass"])){as.character(MapIn@data[i,"MapClass"])} else("Not classified")  )
-    #}
+        #}
   }
-   ClassNum<-as.numeric(factor(MapClass))
+  CentLng<-coordinates(MapIn)[,1]
+  CentLat<-coordinates(MapIn)[,2]
+  ClassNum<-as.numeric(factor(MapClass))
   layerId<-as.character(seq_along(MapClass))
-  MapData<-list(lat=lat, lng=lng, MapClass=MapClass,layerId=layerId, ClassNum=ClassNum)
+  MapData<-list(lat=lat, lng=lng, CentLng=CentLng, CentLat=CentLat, MapClass=MapClass,layerId=layerId, ClassNum=ClassNum)
 }
 
 GetPolys2<-function(MapIn){
@@ -31,7 +33,7 @@ GetPolys2<-function(MapIn){
   }
   return(Temp)
 }
-##################### Housekeeping prior to start of the server funciton
+##################### Housekeeping prior to start of the server function
 
 
 NCRN<-importNCRN("./Data/NCRN")
@@ -108,7 +110,7 @@ shinyServer(function(input,output,session){
       years=MapYears(),common=F )$Latin_Name)
     SpecNames<-getPlantNames(object=NCRN[[1]], names=SpecTemp, in.style="Latin",out.style=ifelse(input$mapCommon,"common","Latin"))
     names(SpecTemp)<-SpecNames  
-    SpecTemp<-SpecTemp[order(names(SpecTemp))]
+    SpecTemp<-SpecTemp[order(tolower(names(SpecTemp)))]
     SpecTemp<-c("All Species"="All", SpecTemp)
   })
 
@@ -281,17 +283,26 @@ output$MapLegendTitle<-renderText({
 
 
 ### Function for adding information to, and displaying, popup.
-showPlotPopup <- function(Plot_Name, lat, lng) {
-  selectedPlot <- MapData()[MapData()$Plot_Name == Plot_Name,]
-  content <- as.character(tagList(
-   tags$h5(getNames(NCRN[[selectedPlot$Unit_Code]],"long")),
-   tags$h6("Year Monitored:",selectedPlot$Year),
-   tags$h6(names(MapSpecList()[MapSpecList()==input$MapSpecies]),":",format(signif(selectedPlot$Values,2), big.mark=","), " ", MapMetaData()$Title)
-  ))
-  map$showPopup(lat, lng, content, Plot_Name)
+showPlotPopup <- function(layerId, lat, lng) {
+  selectedPlot <- MapData()[MapData()$Plot_Name == layerId,]
+  if(class(try(getNames(NCRN[[selectedPlot$Unit_Code]],"long"), silent=TRUE    ))!="try-error") {
+    content<-as.character(tagList(
+      tags$h5(getNames(NCRN[[selectedPlot$Unit_Code]],"long")),
+      tags$h6("Year Monitored:",selectedPlot$Year),
+      tags$h6(names(MapSpecList()[MapSpecList()==input$MapSpecies]),":",format(signif(selectedPlot$Values,2), 
+                                                                    big.mark=","), " ", MapMetaData()$Title))
+    )
+  }
+  else{ 
+    lat<-as.character(MapLayer()$CentLat[as.numeric(layerId)])
+    lng<-as.character(MapLayer()$CentLng[as.numeric(layerId)])
+    content<-MapLayer()$MapClass[as.numeric(layerId)]
+  }
+  map$showPopup(lat, lng, content, layerId)
+  
 }
 
-###  When a plot is clicked, show the popup with plot info
+###  When a plot or polygon is clicked, show the popup with plot info
 clickObs <- observe({
   map$clearPopups()
   event <- input$map_shape_click
@@ -309,6 +320,7 @@ output$LayerLegendTitle<-renderText({
   switch(input$MapLayer,
          None=return(),
          ForArea=return("Forested Area"),
+         EcoReg=return("Omernik Ecoregions"),
          SoilMap=return("Soil Type")
          
   )

@@ -31,8 +31,9 @@
 </p>
 <br>
 <h4>Statistical Details</h4>
-   <p><strong>Abundance</strong>The 95% confidence interval is calculated by fitting the number of plants found in each plot to a negative binomial distribution. The means and confidence intervals are convetred from a per plot basis to a per hecatare basis. Note that using negative binomial esitamation ensures that the 95% conficence interval will never include negative numbers of plants, and often results in confidence interavals that are not symmetric around the mean.</p>
-  <p><strong>Basal Area</strong>The 95% confidence interval is calculated by bootstrapping the observed data.</p>
+<p> Mean values are always calculated by first summing the values for the montioring plots in a park and then dividing by the number of plots in the park.  The means and confidence intervals are first calcualted on a per plot basis and then converted to a per hecatare basis. The 95% confidence intervals are more complicated to calculate and depend on the type of data graphed.</p>
+   <p><strong>Abundance</strong>The 95% confidence interval is calculated by fitting the number of plants found in each plot to a negative binomial distribution. Using  negative binomial esitamation ensures that the 95% conficence interval will never include negative numbers of plants, and often results in confidence interavals that are not symmetric around the mean.</p>
+  <p><strong>Basal Area</strong>Basal area measurements often do not fit any standard statistical distribution. To account for this, the 95% confidence interval is calculated by bootstrapping the observed data.</p>
   <p><strong>Percent of plots occupied</strong> 95% confidence intervals are calculated by fitting the data to a binomial distribution.</p>
   <p><strong>Percent cover</strong>Like basal area, confidence intervals are calculated using bootstrapping.</p>
 </fontsize>

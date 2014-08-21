@@ -41,7 +41,7 @@ shinyUI(
         conditionalPanel(condition="input.ShowControls",
           fixedPanel(id="controls",class="modal",draggable=TRUE,cursor="auto",top=70,bottom="auto",height="auto",right=20, 
                      left="auto", width=200,
-            h4("Data to Map"),
+            h4("Map Controls"),
             tags$div(title="Choose the type of plant you want to work with", selectInput(inputId="MapGroup", 
               label="Type of plant:", choices=c(Trees="trees",Saplings="saplings","Tree seedlings"="seedlings",
                 Shrubs="shrubs", "Shrub seedlings"="shseedlings","Understory plants"="herbs","Vines on Trees"="vines"))),
@@ -49,7 +49,7 @@ shinyUI(
             tags$div(title="Choose the four year period you want to work with.", sliderInput(inputId="MapYear", 
               label="Display data from the 4 years ending:", min=2009, max=2013,value=2013, format="####",width="150px")),
             tags$div(title="Toggle between common and scientific names",
-                     checkboxInput(inputId="mapCommon", label="Show common names?", value=FALSE )),
+                     checkboxInput(inputId="mapCommon", label="Show common names?", value=TRUE )),
             tags$div(title="Choose a species of plants to map", uiOutput("MapSpeciesControl")),  
             tags$div(title="Filter the species list so only species found in a particular park are listed",
                      uiOutput("MapParkControl"))
@@ -74,10 +74,10 @@ shinyUI(
                      left=350,width=210,
             h4("Zoom to:"),
             tags$div(title="Choose a park and click 'Go'", uiOutput("ParkZoomControl"),
-            actionButton(inputId="MapZoom", label="Go",icon=icon("search-plus"))),
+            actionButton(inputId="MapZoom", label="Go")),
             hr(),
             tags$div(title="Increases size of plots for easier viewing",
-                 radioButtons(inputId="PlotSize", label="Magnify plots: 1X = to scale", 
+                 radioButtons(inputId="PlotSize", label="Enlarge plots: 1X = to scale", 
                               choices=c("1X"=1, "5X"=sqrt(5), "10X"=sqrt(10), "25X"=5), selected="1", inline=TRUE)
             )
           )
@@ -87,7 +87,8 @@ shinyUI(
         conditionalPanel(condition="input.ShowPlots",
           fixedPanel( id="controls", class="modal", draggable=TRUE, cursor="auto", top=70, bottom="auto", height="auto",
               right=300, left="auto", width=130,
-            h4(uiOutput("MapLegendTitle")),
+            h4("Legend"),
+            uiOutput("MapLegendTitle"),
             uiOutput("MapLegend")
           )
         ),
@@ -97,7 +98,8 @@ shinyUI(
         condition="input.MapLayer!='None' & input.ShowLayerLegend",
         fixedPanel( id="controls", class="modal", draggable=TRUE, cursor="auto", top=325, bottom="auto", height="auto",
                     right="auto", left=350, width="auto",
-                    h4(uiOutput("LayerLegendTitle")),
+                    h4("Layer Legend"),
+                    strong(uiOutput("LayerLegendTitle")),
                     uiOutput("LayerLegend")
       )),
 ############## Show hide Panel
@@ -107,7 +109,7 @@ shinyUI(
           flowLayout(
             strong("Show:"),
             checkboxInput(inputId="ShowControls", label="Map Controls", value=TRUE),
-            checkboxInput(inputId="ShowPlots", label="Plot Legend", value=TRUE),
+            checkboxInput(inputId="ShowPlots", label="Legend", value=TRUE),
             checkboxInput(inputId="ShowZoom", label="Zoom", value=TRUE),
             checkboxInput(inputId="ShowLayers", label="Map Layers", value=TRUE),
             checkboxInput(inputId="ShowLayerLegend", label="Layer legend", value=TRUE)
@@ -117,14 +119,21 @@ shinyUI(
     ) ## end of map div
   ),  ## end of map page
 
+############################################## About the map... panel ###########################
 
-
+  tabPanel(
+    tags$div(
+      title="Explanation of the map and controls", "About the map ..."
+    ),
+    h3("Text here")
+    #includeHTML("./www/Information.html")
+  ),
 
 ######################################## Graphs Panel ##########################################################
 
     navbarMenu(tags$div(title="Graph the data","Graphs"),    
 #############  densplot() based plots
-      tabPanel(tags$div(title="Graph abundance, basal area, percent cover, &c.","Data by Park and Species"),   
+      tabPanel(tags$div(title="Graph abundance, basal area, percent cover, etc.","Data by Park and Species"),   
         fluidRow(
           column(3,
             wellPanel(
@@ -191,7 +200,7 @@ shinyUI(
       ),
 
 ###############IV Plots
-      tabPanel(tags$div(title="Graph IV", "Forestry Importance Values (IV)"),
+      tabPanel(tags$div(title="Graph Importance Values", "Forestry Importance Values (IV)"),
         fluidRow(
           column(3,
             wellPanel(
@@ -203,7 +212,7 @@ shinyUI(
               tags$div(
                 title="Choose the type of plant you want to work with", 
                 selectizeInput(inputId="IVGroup", label="Type of plant:",choices=c(Trees="trees",Saplings="saplings",
-                    "Tree seedlings"="seedlings","Shrub seedlings"="shseedlings","Understory plants"="herbs"))
+                    "Tree seedlings"="seedlings","Shrub seedlings"="shseedlings"))
               ),
               br(),
               tags$div(
@@ -255,15 +264,18 @@ shinyUI(
     ),
 
 ################################# Project Information
-    tabPanel("Project Information",
-      h3("Add some words here")
+    tabPanel(
+      tags$div(
+        title="Background Informaiton", "Project Information"
+      ),
+      includeHTML("./www/Information.html")
     ),
 
 
 
 ################ Citations 
 
-    tabPanel("Citations and References",
+    tabPanel("Citations & References",
       h3("Words and links here")
     )
 )#end navbarPage()
