@@ -9,12 +9,9 @@ shinyUI(
     #list(tags$head(HTML('<link rel="icon",href=".www/AH_small_flat_4C_12x16.png",type="image/png" />'))),
     #             div(style="paddding: 1px 0px; width: '100%'", windowTitle="XX"),
   navbarPage(
-    
     windowTitle="Forest Vegetation",
     #icon="AH_small_flat_4C_12x16.png", #restore this on 10.1 - did not work 
-    title=HTML("<div> <img src='ah_small_black.gif',alt='Forest Vegetation Visualizer'>
-             Forest Vegetation Visualizer</div>"),
- 
+    title=HTML("<div> <img src='ah_small_black.gif', alt='Forest Vegetation Visualizer'> Forest Vegetation Visualizer</div>"),
     inverse=T,
 
 
@@ -125,8 +122,7 @@ shinyUI(
     tags$div(
       title="Explanation of the map and controls", "About the map ..."
     ),
-    h3("Text here")
-    #includeHTML("./www/Information.html")
+    includeHTML("./www/AboutMap.html")
   ),
 
 ######################################## Graphs Panel ##########################################################
@@ -276,7 +272,7 @@ shinyUI(
 ################ Citations 
 
     tabPanel("Citations & References",
-      h3("Words and links here")
+     includeHTML("./www/Citations.html")
     )
 )#end navbarPage()
 #)#end fluidPage()
