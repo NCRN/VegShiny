@@ -543,6 +543,16 @@ DensTitle<-reactive({
   )
 })
 
+######################## Graph options for densPlot
+#output$DGraphOptions<- 
+ # renderUI
+  #  fixedPanel(id="DGraphPanel",class="modal",draggable=TRUE,cursor="auto",top="auto", bottom="auto",height="auto",
+   #       right="auto",left="auto",width="auto",
+    #  h4("Grahpics Options") 
+  #                   )
+  
+
+
 ################ All arguments for densityPlot
 DensPlotArgs<-reactive({
   list(
@@ -566,7 +576,7 @@ DensPlotArgs<-reactive({
                 All = {top=0}
     ),
     Total=if(input$densSpeciesType=="All"){Total=T} else {Total=F} ,
-    col=rainbow(10),
+    col=if(input$CompareType=="None"){input$densBaseColor} else{c(input$densBaseColor,input$densCompareColor)}, 
     ylab=densYlabel(),
     main=DensTitle()
   )
@@ -581,7 +591,8 @@ output$DensPlot<-renderPlot({
         do.call(densplot,DensPlotArgs() )),
        "There is no data for this combination of choices. The type of plant you selected was not found in the park during those years."
        ))
-      do.call(densplot, DensPlotArgs())
+      update(do.call(densplot, DensPlotArgs()), par.settings=list(fontsize=list(text=input$densFontSize,
+                                                                                points=input$densPointSize )))
     }
 })
 

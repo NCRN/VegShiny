@@ -1,7 +1,7 @@
 library(shiny)
 library(NPSForVeg)
 library(leaflet)
-
+library(shinyBS)
 
 shinyUI(
   ### fluid page is only there to get the icon in the browser tab.
@@ -19,7 +19,7 @@ shinyUI(
     tabPanel(title="Map",
       div(class="outer",
         tags$head(
-          includeCSS("mapstyles.css")
+          includeCSS("./www/mapstyles.css")
         ),
         leafletMap("map", width="100%", height="100%",
           initialTileLayer="//{s}.tiles.mapbox.com/v3/nps.2yxv8n84/{z}/{x}/{y}.png",
@@ -148,7 +148,7 @@ shinyUI(
                     "Shrub seedlings"="shseedlings","Understory plants"="herbs","Vines on Trees"="vines"))
               ),
               tags$div(title="Toggle between common and scientific names",
-                       checkboxInput(inputId="densCommon", label="Show common names?", value=FALSE )
+                       checkboxInput(inputId="densCommon", label="Show common names?", value=TRUE )
               ),
               br(),
               tags$div(title="Graph the most common species, species you choose, or all species combined.",
@@ -162,11 +162,13 @@ shinyUI(
               tags$div(title="Type of data to graph",
                 uiOutput(outputId="densValControl")
               ),
+              hr(),
+              bsButton(inputId="densGraphButton", label="Show Display Options",style="primary"),
               conditionalPanel(
                 condition="input.densPanel=='Graph'",
                 hr(),
                 h4("Comparison Data:"),
-                tags$div(title="Comare the base data with a differnet park, growth stage, or time period",
+                tags$div(title="Compare the base data with a differnet park, growth stage, or time period",
                   radioButtons(inputId="CompareType", label ="Compare to another:",
                   choices=c("None","Park","Growth Stage","Time"),selected="None",inline=TRUE)
                 ),
@@ -178,8 +180,16 @@ shinyUI(
           column(9,
             tabsetPanel(id="densPanel",type="pills",
                 tabPanel(title=tags$div(title="Graph the data", "Graph"),value="Graph",
-                tags$div(title="Mean and 95% Confidence interval",plotOutput(outputId="DensPlot", height="600px"))
-              ),
+                  tags$div(title="Mean and 95% Confidence interval",plotOutput(outputId="DensPlot", height="600px")),
+                  
+                  bsModal(id="DensModal", title="Display Options", trigger="densGraphButton",
+                    selectizeInput("densBaseColor","Base Data Color:",choices=ColorNames, selected="blue"),
+                    selectizeInput("densCompareColor","Comparison Data Color:",choices=ColorNames, selected="red"),
+                    sliderInput("densPointSize", "Change Point Size", min=4, max=24, value=8, step=2),
+                    sliderInput("densFontSize", "Change Font Size", min=12, max=32, value=20, step=2),
+                    br(),br(),br()
+                  )
+                ),
               tabPanel(
                 tags$div(title="See all data in a table","Data table"),
                 column(10,

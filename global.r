@@ -1,4 +1,6 @@
-
+GraphColors<-read.csv("./Data/colors.csv", header=T, as.is=T)
+ColorNames<-GraphColors$Rcolor
+names(ColorNames)<-GraphColors$DisplayColor
 BlueOr<-colorRampPalette(c("cyan","magenta4","orangered3")) # colors for circles
 AquaYel<-colorRampPalette(c("aquamarine4","green","yellow","goldenrod4")) #colors for polygons
 ######################### Legend for Map
