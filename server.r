@@ -543,15 +543,6 @@ DensTitle<-reactive({
   )
 })
 
-######################## Graph options for densPlot
-#output$DGraphOptions<- 
- # renderUI
-  #  fixedPanel(id="DGraphPanel",class="modal",draggable=TRUE,cursor="auto",top="auto", bottom="auto",height="auto",
-   #       right="auto",left="auto",width="auto",
-    #  h4("Grahpics Options") 
-  #                   )
-  
-
 
 ################ All arguments for densityPlot
 DensPlotArgs<-reactive({
@@ -584,8 +575,10 @@ DensPlotArgs<-reactive({
 
 
 ############Density Plot Function
-output$DensPlot<-renderPlot({
-    if (is.null(input$densPark) || nchar(input$densPark)==0) {return()}
+#output$DensPlot<-renderPlot({
+ 
+tempDensPlot<-reactive({
+  if (is.null(input$densPark) || nchar(input$densPark)==0) {return()}
     else{
       validate(need(try(
         do.call(densplot,DensPlotArgs() )),
@@ -596,6 +589,8 @@ output$DensPlot<-renderPlot({
     }
 })
 
+output$DensPlot<-renderPlot(print(tempDensPlot()))
+
 DensTableArgs<-reactive({
   list(
     object=DensPlotArgs()$object,
@@ -605,6 +600,16 @@ DensTableArgs<-reactive({
     common=DensPlotArgs()$densargs$common
   )
 })
+
+########### Plot download
+output$densGraphDownload<-downloadHandler(
+  filename=function(){paste(DensTitle(), ".jpeg", sep="")}, 
+  content=function (file){
+    jpeg(file,width=15,height=6,units="in",res=300, quality=100)
+    print(tempDensPlot())
+    dev.off()
+  }
+)
 
 ################### Tables Tab
 
@@ -677,12 +682,16 @@ IVPlotArgs<-reactive({
     top=input$IVTop,
     compare=NA,
     labels=NA,
-    main=IVTitle()
+    if(input$IVPart==FALSE){colors=input$IVBaseColor} else {colors=c(input$IVDensityColor,input$IVSizeColor,
+                                                                     input$IVDistributionColor)},
+    main=IVTitle(),
+    par.settings=list(fontsize=list(text=input$IVFontSize))
   )
 })
 
-output$IVPlot<-renderPlot({
- if (is.null(input$IVPark) || nchar(input$IVPark)==0) {validate(need(input$IVPark, "Please select a park"))}
+
+tempIVPlot<-reactive({ 
+  if (is.null(input$IVPark) || nchar(input$IVPark)==0) {validate(need(input$IVPark, "Please select a park"))}
  else{ 
   validate(need(try(
       do.call(IVplot,IVPlotArgs() )),
@@ -691,6 +700,19 @@ output$IVPlot<-renderPlot({
     update(do.call(IVplot, IVPlotArgs()), scales=list(cex=1.04))
   }
 })
+
+output$IVPlot<-renderPlot({tempIVPlot()})
+
+### Plot Download
+output$IVGraphDownload<-downloadHandler(
+  filename=function(){paste(IVTitle(), ".jpeg", sep="")}, 
+  content=function (file){
+    jpeg(file,width=15,height=6,units="in",res=300, quality=100)
+    print(tempIVPlot())
+    dev.off()
+  }
+)
+
 
 IVTableArgs<-reactive({
   list(

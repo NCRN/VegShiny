@@ -162,10 +162,13 @@ shinyUI(
               tags$div(title="Type of data to graph",
                 uiOutput(outputId="densValControl")
               ),
-              hr(),
-              bsButton(inputId="densGraphButton", label="Show Display Options",style="primary"),
               conditionalPanel(
                 condition="input.densPanel=='Graph'",
+                hr(),
+                flowLayout(
+                  bsButton(inputId="densGraphButton", label="Show Display Options",style="primary"),
+                  downloadButton(outputId="densGraphDownload", label="Download Graph (.jpg)", class="btn btn-primary")
+                ),
                 hr(),
                 h4("Comparison Data:"),
                 tags$div(title="Compare the base data with a differnet park, growth stage, or time period",
@@ -181,13 +184,18 @@ shinyUI(
             tabsetPanel(id="densPanel",type="pills",
                 tabPanel(title=tags$div(title="Graph the data", "Graph"),value="Graph",
                   tags$div(title="Mean and 95% Confidence interval",plotOutput(outputId="DensPlot", height="600px")),
-                  
                   bsModal(id="DensModal", title="Display Options", trigger="densGraphButton",
-                    selectizeInput("densBaseColor","Base Data Color:",choices=ColorNames, selected="blue"),
-                    selectizeInput("densCompareColor","Comparison Data Color:",choices=ColorNames, selected="red"),
-                    sliderInput("densPointSize", "Change Point Size", min=4, max=24, value=8, step=2),
-                    sliderInput("densFontSize", "Change Font Size", min=12, max=32, value=20, step=2),
-                    br(),br(),br()
+                    tags$head(tags$style(HTML("#DensModal{ width:400px; background-color:rgba(255,255,255, 0.8)} 
+                                              #DensModal:hover {background-color:rgba(255,255,255, 1)}
+                                              #DensModal .modal-body{height:275px} "))),
+                    flowLayout(
+                      selectizeInput("densBaseColor","Base Data Color:",choices=ColorNames, selected="blue",width="125px"),
+                      selectizeInput("densCompareColor","Comparison Data Color:",choices=ColorNames, selected="red",width="125px")
+                    ),
+                    flowLayout(
+                    sliderInput("densPointSize", "Change Point Size", min=4, max=24, value=8, step=2,width="125px"),
+                    sliderInput("densFontSize", "Change Font Size", min=12, max=32, value=20, step=2,width="125px")
+                    )
                   )
                 ),
               tabPanel(
@@ -223,7 +231,7 @@ shinyUI(
               br(),
               tags$div(
                 title="Toggle between common and scientific names",
-                checkboxInput(inputId="IVCommon", label="Show common names?", value=FALSE)
+                checkboxInput(inputId="IVCommon", label="Show common names?", value=TRUE)
               ),
               br(),
               tags$div(
@@ -240,16 +248,35 @@ shinyUI(
               tags$div(
                 title="Chose the maximum number of species to display.",
                 sliderInput(inputId="IVTop",label="Number of species to plot (in order of IV):",min=1, max=20,
-                  value=10, format="##",ticks=FALSE)
-              )
+                  value=10, format="##",ticks=FALSE)),
+                hr(),
+                flowLayout(
+                  bsButton(inputId="IVGraphButton", label="Show Display Options", style="primary"),
+                  downloadButton(outputId="IVGraphDownload", label="Download Graph (.jpg)", class="btn btn-primary")
+                )
             )
           ),
           column(9,
             tabsetPanel(type="pills",
-              tabPanel(tags$div(title="Graph the data",
-                  "Graph"
-                ),
-                tags$div(title="Graph of IV",plotOutput("IVPlot"))
+              tabPanel(
+                tags$div(title="Graph the data","Graph"),
+                tags$div(title="Graph of IV",plotOutput("IVPlot",height="600px")),
+                bsModal(id="IVModal", title="Display Options", trigger="IVGraphButton",
+                        tags$head(tags$style(HTML("#IVModal {width:475px; background-color:rgba(255,255,255, 0.8)} 
+                                                  #IVModal:hover {background-color:rgba(255,255,255, 1)}
+                                                  #IVModal .modal-body {height:380px} "))),
+                        flowLayout(
+                          selectizeInput("IVBaseColor","Base Color:",choices=ColorNames, selected="green4",width="125px"),
+                          sliderInput("IVFontSize", "Change Font Size", min=10, max=24, value=14, step=2,width="175px")
+                        ),
+                        h5("Component Colors:"),
+                        flowLayout(
+                          selectizeInput("IVDensityColor","Density Color:",choices=ColorNames, selected="green4", width="125px"),
+                          selectizeInput("IVSizeColor","Size Color:",choices=ColorNames, selected="chartreuse",width="125px"),
+                          selectizeInput("IVDistributionColor","Distribution Color:",choices=ColorNames, selected="yellow",
+                                       width="125px")
+                        )
+                )
               ),
               tabPanel(
                 tags$div(title="See all data in a table","Data table"),
