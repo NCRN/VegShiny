@@ -614,17 +614,18 @@ output$densGraphDownload<-downloadHandler(
 ################### Tables Tab
 
 ### Title for table
-output$densTableTitle<-renderText({ 
+tempDensTableTitle<-reactive({
   validate(need(try(paste(getNames(NCRN[input$densPark],"long"),":",densTitleGroup(),densTitleValues(), 
-                          paste0(as.character(input$densYear-3),"-",as.character(input$densYear)) )), message=FALSE) )
+                          paste0(as.character(input$densYear-3),"-",as.character(input$densYear),"(",densYlabel(),")") )), message=FALSE) )
   paste(getNames(NCRN[input$densPark],"long"),":",densTitleGroup(),densTitleValues(), 
-        paste0(as.character(input$densYear-3),"-",as.character(input$densYear)) )
+        paste0(as.character(input$densYear-3),"-",as.character(input$densYear) ," (",densYlabel(),")") )
 })
   
-  
+output$densTableTitle<-renderText({ tempDensTableTitle() })  
 
 ### Make Table
-output$densTable<-renderDataTable(
+
+tempDensTable<-reactive({
   expr={
   validate(need(try(
     do.call(dens, DensTableArgs() ),
@@ -635,9 +636,18 @@ output$densTable<-renderDataTable(
   names(TableOut)<-c("Species",'Mean',"Lower 95% CI", "Upper 95% CI")
   return(TableOut)}
   
+})
+
+output$densTable<-renderDataTable(tempDensTable())
+
+###Table Downlaod
+
+output$densTableDownload<-downloadHandler(
+  filename=function(){paste(tempDensTableTitle(), ".csv", sep="")}, 
+  content=function (file){
+    write.csv(tempDensTable(),file)
+  }
 )
-
-
 
 ########################################################## IV Plots
 ############ Park Control for IV plot  
@@ -725,15 +735,15 @@ IVTableArgs<-reactive({
 ##### IV Table 
 ## title
 
-output$IVTableTitle<-renderText({ 
+tempIVTableTitle<-reactive({ 
   validate(need(try(IVTitle()), message=FALSE) )
   IVTitle()
 })
 
 ## Table
-
+output$IVTableTitle<-renderText({tempIVTableTitle() })
   
-output$IVData<-renderDataTable({
+tempIVTable<-reactive({
   validate(need(try(
     do.call(IV,IVTableArgs() )),
     "Please select a park"
@@ -741,7 +751,15 @@ output$IVData<-renderDataTable({
   do.call(IV,IVTableArgs())
 })
   
+output$IVData<-renderDataTable({tempIVTable() })
+###IV Table download
 
+output$IVTableDownload<-downloadHandler(
+  filename=function(){paste(tempIVTableTitle(), ".csv", sep="")}, 
+  content=function (file){
+    write.csv(tempIVTable(),file)
+  }
+)
 
 
 })# end of shinyServer() function

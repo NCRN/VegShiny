@@ -4,23 +4,17 @@ library(leaflet)
 library(shinyBS)
 
 shinyUI(
-  ### fluid page is only there to get the icon in the browser tab.
-  #fluidPage(
-    #list(tags$head(HTML('<link rel="icon",href=".www/AH_small_flat_4C_12x16.png",type="image/png" />'))),
-    #             div(style="paddding: 1px 0px; width: '100%'", windowTitle="XX"),
   navbarPage(
     windowTitle="Forest Vegetation",
-    #icon="AH_small_flat_4C_12x16.png", #restore this on 10.1 - did not work 
+    #icon="AH_small_flat_4C_12x16.png", #this does not work on Shiny 10.1
     title=HTML("<div> <img src='ah_small_black.gif', alt='Forest Vegetation Visualizer'> Forest Vegetation Visualizer</div>"),
     inverse=T,
-
-
+   
   ######################################### Map Panel ####################################################################
     tabPanel(title="Map",
+      tags$head(HTML('<link rel="icon", href="AH_small_flat_4C_12x16.png", type="image/png" />')), #puts up icon on tab
       div(class="outer",
-        tags$head(
-          includeCSS("./www/mapstyles.css")
-        ),
+        tags$head(includeCSS("./www/mapstyles.css") ),  # defines css file
         leafletMap("map", width="100%", height="100%",
           initialTileLayer="//{s}.tiles.mapbox.com/v3/nps.2yxv8n84/{z}/{x}/{y}.png",
           initialTileLayerAttribution = HTML("&copy; <a href='http://mapbox.com/about/maps' target='_blank'>Mapbox</a> 
@@ -166,8 +160,8 @@ shinyUI(
                 condition="input.densPanel=='Graph'",
                 hr(),
                 flowLayout(
-                  bsButton(inputId="densGraphButton", label="Show Display Options",style="primary"),
-                  downloadButton(outputId="densGraphDownload", label="Download Graph (.jpg)", class="btn btn-primary")
+                  bsButton(inputId="densGraphButton", label="Display Options",style="primary"),
+                  downloadButton(outputId="densGraphDownload", label="Save Graph (.jpg)", class="btn btn-primary")
                 ),
                 hr(),
                 h4("Comparison Data:"),
@@ -177,6 +171,11 @@ shinyUI(
                 ),
                 uiOutput(outputId="CompareSelect"),
                 h1(br(),br(),br(),br(),br())
+              ),
+              conditionalPanel(
+                condition="input.densPanel=='Table'",
+                hr(),
+                downloadButton(outputId="densTableDownload", label="Save Table (.csv)", class="btn btn-primary")
               )
             )
           ),
@@ -185,21 +184,23 @@ shinyUI(
                 tabPanel(title=tags$div(title="Graph the data", "Graph"),value="Graph",
                   tags$div(title="Mean and 95% Confidence interval",plotOutput(outputId="DensPlot", height="600px")),
                   bsModal(id="DensModal", title="Display Options", trigger="densGraphButton",
-                    tags$head(tags$style(HTML("#DensModal{ width:400px; background-color:rgba(255,255,255, 0.8)} 
+                    tags$head(tags$style(HTML("#DensModal{ width:350px; background-color:rgba(255,255,255, 0.8)} 
                                               #DensModal:hover {background-color:rgba(255,255,255, 1)}
-                                              #DensModal .modal-body{height:275px} "))),
+                                              #DensModal .modal-body{height:150px; overflow:visible} "))),
                     flowLayout(
                       selectizeInput("densBaseColor","Base Data Color:",choices=ColorNames, selected="blue",width="125px"),
                       selectizeInput("densCompareColor","Comparison Data Color:",choices=ColorNames, selected="red",width="125px")
                     ),
+                    br(),
                     flowLayout(
-                    sliderInput("densPointSize", "Change Point Size", min=4, max=24, value=8, step=2,width="125px"),
-                    sliderInput("densFontSize", "Change Font Size", min=12, max=32, value=20, step=2,width="125px")
+                      sliderInput("densPointSize", "Change Point Size", min=4, max=24, value=8, step=2,width="125px"),
+                      sliderInput("densFontSize", "Change Font Size", min=12, max=32, value=20, step=2,width="125px")
                     )
                   )
                 ),
               tabPanel(
                 tags$div(title="See all data in a table","Data table"),
+                value="Table",
                 column(10,
                  h3(textOutput("densTableTitle")),
                   dataTableOutput("densTable")
@@ -249,22 +250,31 @@ shinyUI(
                 title="Chose the maximum number of species to display.",
                 sliderInput(inputId="IVTop",label="Number of species to plot (in order of IV):",min=1, max=20,
                   value=10, format="##",ticks=FALSE)),
-                hr(),
-                flowLayout(
-                  bsButton(inputId="IVGraphButton", label="Show Display Options", style="primary"),
-                  downloadButton(outputId="IVGraphDownload", label="Download Graph (.jpg)", class="btn btn-primary")
+                conditionalPanel(
+                  condition="input.IVPanel=='Graph'",
+                  hr(),
+                  flowLayout(
+                    bsButton(inputId="IVGraphButton", label="Display Options", style="primary"),
+                    downloadButton(outputId="IVGraphDownload", label="Save Graph (.jpg)", class="btn btn-primary")
+                  )),
+                  conditionalPanel(
+                    condition="input.IVPanel=='Table'",
+                    hr(),
+                    flowLayout(
+                      downloadButton(outputId="IVTableDownload", label="Save Table (.csv)", class="btn btn-primary")
+                    )
                 )
             )
           ),
           column(9,
-            tabsetPanel(type="pills",
-              tabPanel(
+            tabsetPanel(id="IVPanel",type="pills",
+              tabPanel(value="Graph",
                 tags$div(title="Graph the data","Graph"),
                 tags$div(title="Graph of IV",plotOutput("IVPlot",height="600px")),
                 bsModal(id="IVModal", title="Display Options", trigger="IVGraphButton",
                         tags$head(tags$style(HTML("#IVModal {width:475px; background-color:rgba(255,255,255, 0.8)} 
                                                   #IVModal:hover {background-color:rgba(255,255,255, 1)}
-                                                  #IVModal .modal-body {height:380px} "))),
+                                                  #IVModal .modal-body {height:200px; overflow:visible} "))),
                         flowLayout(
                           selectizeInput("IVBaseColor","Base Color:",choices=ColorNames, selected="green4",width="125px"),
                           sliderInput("IVFontSize", "Change Font Size", min=10, max=24, value=14, step=2,width="175px")
@@ -278,7 +288,7 @@ shinyUI(
                         )
                 )
               ),
-              tabPanel(
+              tabPanel(value="Table",
                 tags$div(title="See all data in a table","Data table"),
                 column(10,
                   h3(textOutput("IVTableTitle")),
@@ -312,5 +322,4 @@ shinyUI(
      includeHTML("./www/Citations.html")
     )
 )#end navbarPage()
-#)#end fluidPage()
 )#end  shinyUI()
