@@ -164,7 +164,7 @@ shinyServer(function(input,output,session){
   MapLayer<-reactive({
     switch(input$MapLayer,
       None=return(),
-      EcoReg=GetPolys(readOGR("./Maps",layer="Ecoregions_Omernick_Level3_SinglePart_WGS84")),
+      EcoReg=GetPolys(readOGR("./Maps",layer="Ecoregions_Omernick_Level3_WGS84")),
       ForArea=GetPolys(readOGR("./Maps",layer="Forest_NLCD_2011_Clip_WGS84_Simplified")),
       #SoilMap=GetPolys(readOGR("./Maps",layer="SOIL_TaxonomySSURGO_NCRN_py_WGS84_SinglePart_Dissolved"))
     )
@@ -761,6 +761,29 @@ output$IVTableDownload<-downloadHandler(
   }
 )
 
+####################################### Species list
+## Speces list park control
+output$SpListParkControl<-renderUI({
+  selectizeInput(inputId="SpListPark",choices=ParkList, label="Park:",
+                 options = list(placeholder='Choose a park',
+                                onInitialize = I('function() { this.setValue(""); }') )) 
+})
+LatinList<-reactive({
+  unique(c(
+    getPlants(object=NCRN[[input$SpListPark]], group="trees")$Latin_Name,
+    getPlants(object=NCRN[[input$SpListPark]], group="saplings")$Latin_Name,
+    getPlants(object=NCRN[[input$SpListPark]], group="seedlings")$Latin_Name,
+    getPlants(object=NCRN[[input$SpListPark]], group="shrubs")$Latin_Name,
+    getPlants(object=NCRN[[input$SpListPark]], group="shseedlings")$Latin_Name,
+    getPlants(object=NCRN[[input$SpListPark]], group="vines")$Latin_Name,
+    getPlants(object=NCRN[[input$SpListPark]], group="herbs")$Latin_Name
+    ))
+})
+CommonList<-reactive(getPlantNames(object=NCRN[[input$SpListPark]], names=LatinList(), out.style="common",in.style="Latin"))
+
+output$SpeciesTable<- renderDataTable({
+    if (is.null(input$SpListPark) || nchar(input$SpListPark)==0) {return()}
+  else{data.frame(Latin=LatinList(),Common=CommonList())[order(LatinList()),] }})
 
 })# end of shinyServer() function
 

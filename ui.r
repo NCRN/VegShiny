@@ -186,7 +186,8 @@ shinyUI(
                   bsModal(id="DensModal", title="Display Options", trigger="densGraphButton",
                     tags$head(tags$style(HTML("#DensModal{ width:350px; background-color:rgba(255,255,255, 0.8)} 
                                               #DensModal:hover {background-color:rgba(255,255,255, 1)}
-                                              #DensModal .modal-body{height:150px; overflow:visible} "))),
+                                              #DensModal .modal-body{height:150px; overflow:visible}
+                                              #DensModal .modal-footer{background-color:rgba(245,245,245,0.5)} "))),
                     flowLayout(
                       selectizeInput("densBaseColor","Base Data Color:",choices=ColorNames, selected="blue",width="125px"),
                       selectizeInput("densCompareColor","Comparison Data Color:",choices=ColorNames, selected="red",width="125px")
@@ -274,7 +275,8 @@ shinyUI(
                 bsModal(id="IVModal", title="Display Options", trigger="IVGraphButton",
                         tags$head(tags$style(HTML("#IVModal {width:475px; background-color:rgba(255,255,255, 0.8)} 
                                                   #IVModal:hover {background-color:rgba(255,255,255, 1)}
-                                                  #IVModal .modal-body {height:200px; overflow:visible} "))),
+                                                  #IVModal .modal-body {height:200px; overflow:visible}
+                                                  #IVModal .modal-footer{background-color:rgba(245,245,245,0.5)}"))),
                         flowLayout(
                           selectizeInput("IVBaseColor","Base Color:",choices=ColorNames, selected="green4",width="125px"),
                           sliderInput("IVFontSize", "Change Font Size", min=10, max=24, value=14, step=2,width="175px")
@@ -303,6 +305,25 @@ shinyUI(
             )
           )
         )
+      )
+    ),
+
+############################## Species Lists
+    tabPanel(id="SpeciesPanel",
+      tags$div(
+        title="Lists of plants found in the parks", "Species Lists"
+      ),
+      column(3,id="SpeciesControls",
+        tags$head(tags$style(HTML("#SpeciesControls{height:400px}"))),
+        wellPanel(
+          tags$div(
+            title="Choose a park to work with.",uiOutput("SpListParkControl")
+          )
+        )
+      ),
+      column(9,
+        h3("Species Found in the Monitoring Plots"),
+        dataTableOutput("SpeciesTable")
       )
     ),
 
