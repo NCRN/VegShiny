@@ -288,6 +288,7 @@ showPlotPopup <- function(layerId, lat, lng) {
   if(class(try(getNames(NCRN[[selectedPlot$Unit_Code]],"long"), silent=TRUE    ))!="try-error") {
     content<-as.character(tagList(
       tags$h5(getNames(NCRN[[selectedPlot$Unit_Code]],"long")),
+      tags$h6("Monitoring Plot:",selectedPlot$Plot_Name),
       tags$h6("Year Monitored:",selectedPlot$Year),
       tags$h6(names(MapSpecList()[MapSpecList()==input$MapSpecies]),":",format(signif(selectedPlot$Values,2), 
                                                                     big.mark=","), " ", MapMetaData()$Title))

@@ -4,33 +4,22 @@ library(leaflet)
 library(shinyBS)
 
 shinyUI(
-  tags$head(tags$script(
-    
-    (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
-      (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
-      m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
-    })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
-    
-    ga('create', 'UA-46937828-2','auto')
-    ga('send', 'pageview');
-    
-    $(document).on('change','#client',function(evt) {
-      ga('send', 'event', 'Setup', 'Set Name', $(this).val());
-    });
-    
-    
-    ))
+
   
   
   navbarPage(
+    
+
     windowTitle="Forest Vegetation",
     #icon="AH_small_flat_4C_12x16.png", #this does not work on Shiny 10.1
     title=HTML("<div> <img src='ah_small_black.gif', alt='Forest Vegetation Visualizer'> Forest Vegetation Visualizer</div>"),
     inverse=T,
+
    
   ######################################### Map Panel ####################################################################
     tabPanel(title="Map",
       tags$head(HTML('<link rel="icon", href="AH_small_flat_4C_12x16.png", type="image/png" />')), #puts up icon on tab
+      tags$head(includeScript("./www/forveg-analytics.js")),  
       div(class="outer",
         tags$head(includeCSS("./www/mapstyles.css") ),  # defines css file
         leafletMap("map", width="100%", height="100%",
