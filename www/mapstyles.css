@@ -3,7 +3,7 @@ input[type="number"] {
 }
 
 div.outer {
-  position: fixed;
+   position: fixed;
   top: 65px;
   left: 0;
   right: 0;
@@ -17,21 +17,25 @@ body, label, input, button, select {
     font-family: 'Helvetica Neue', Helvetica;
     font-weight: 200;
   }
+
 h1, h2, h3, h4 { font-weight: 400; }
 
-#controls {
+#controls {                           
+
 /* Appearance */
+
   background-color: white;
   padding: 0 20px 20px 20px;
-  cursor: move;
-/* Fade out while not hovering */
-  opacity: 0.65;
-/*zoom: 0.9; commented out as this messes up sliders*/ 
-  transition: opacity 500ms 1s;
-}
+  cursor: move;                        
 
-#controls:hover {
+/* Fade out while not hovering */
+  opacity: 0.65;                     
+  transition: opacity 500ms 1s;       
+/* zoom 0.9;  Removed as it messes up sliders */
+}                                    
+
 /* Fade in while hovering */
+#controls:hover {
   opacity: 0.95;
   transition-delay: 0;
 }
@@ -45,15 +49,15 @@ h1, h2, h3, h4 { font-weight: 400; }
 }
 
 /* If not using map tiles, show a white background */
-  .leaflet-container {
+ .leaflet-container {
     background-color: white !important;
-  }
+  } 
 
 .container-fluid{
 padding: 0 0 0 0;
 }
 
-.navbar .nav{
+ .navbar .nav{
   margin-top: 15px;
 }
 
@@ -61,3 +65,4 @@ padding: 0 0 0 0;
 .modal-backdrop.fade.in{
   opacity: 0.05
 }
+

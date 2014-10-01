@@ -20,8 +20,17 @@ shinyUI(
     tabPanel(title="Map",
       tags$head(HTML('<link rel="icon", href="AH_small_flat_4C_12x16.png", type="image/png" />')), #puts up icon on tab
       tags$head(includeScript("./www/forveg-analytics.js")),  
+  
+  
+##### About the Map modal goes here so it does not get caught in the "outer" div below here it has css problems
+      bsModal(id="MapInfoModal", title="About the Map",,  role="dialog", trigger="AboutMapButton", href="AboutMap.html" ),
+
       div(class="outer",
-        tags$head(includeCSS("./www/mapstyles.css") ),  # defines css file
+        tags$head(includeCSS("./www/mapstyles.css") ), # defines css file
+        
+
+
+        
         leafletMap("map", width="100%", height="100%",
           initialTileLayer="//{s}.tiles.mapbox.com/v3/nps.2yxv8n84/{z}/{x}/{y}.png",
           initialTileLayerAttribution = HTML("&copy; <a href='http://mapbox.com/about/maps' target='_blank'>Mapbox</a> 
@@ -50,9 +59,14 @@ shinyUI(
                      checkboxInput(inputId="mapCommon", label="Show common names?", value=TRUE )),
             tags$div(title="Choose a species of plants to map", uiOutput("MapSpeciesControl")),  
             tags$div(title="Filter the species list so only species found in a particular park are listed",
-                     uiOutput("MapParkControl"))
+                     uiOutput("MapParkControl")),
+            bsButton(inputId="AboutMapButton",label="About the map...",style="primary")
           )
        ),
+
+############### Map Modal 
+
+
 ############### Add a layer control
         tags$div(title="Overlay additional data onto the parks",
           conditionalPanel(condition="input.ShowLayers",
@@ -117,14 +131,6 @@ shinyUI(
     ) ## end of map div
   ),  ## end of map page
 
-############################################## About the map... panel ###########################
-
-  tabPanel(
-    tags$div(
-      title="Explanation of the map and controls", "About the map ..."
-    ),
-    includeHTML("./www/AboutMap.html")
-  ),
 
 ######################################## Graphs Panel ##########################################################
 
@@ -334,6 +340,12 @@ shinyUI(
       )
     ),
 
+##################### About
+    navbarMenu(
+      tags$div(
+        title="About the project", "About"
+        ),
+
 ################################# Project Information
     tabPanel(
       tags$div(
@@ -349,5 +361,6 @@ shinyUI(
     tabPanel("Citations & References",
      includeHTML("./www/Citations.html")
     )
+) #end About menu
 )#end navbarPage()
 )#end  shinyUI()
