@@ -780,11 +780,14 @@ LatinList<-reactive({
     getPlants(object=NCRN[[input$SpListPark]], group="herbs")$Latin_Name
     ))
 })
-CommonList<-reactive(getPlantNames(object=NCRN[[input$SpListPark]], names=LatinList(), out.style="common",in.style="Latin"))
+CommonList<-reactive(enc2native(getPlantNames(object=NCRN[[input$SpListPark]], names=LatinList(), out.style="common",in.style="Latin")))
+
+
 
 output$SpeciesTable<- renderDataTable({
-    if (is.null(input$SpListPark) || nchar(input$SpListPark)==0) {return()}
-  else{data.frame(Latin=LatinList(),Common=CommonList())[order(LatinList()),] }})
+  if (is.null(input$SpListPark) || nchar(input$SpListPark)==0) {return()}
+  else{data.frame(Latin=LatinList(),Common=CommonList())[order(LatinList()),] }
+})
 
 })# end of shinyServer() function
 
