@@ -797,7 +797,7 @@ decapitalize <- function(string) {     ########### used to hack around sorting/e
   return(string)
 }
 
-CommonList<-reactive(decapitalize(tgetPlantNames(object=NCRN[[input$SpListPark]], names=LatinList(), out.style="common",in.style="Latin")))
+CommonList<-reactive(decapitalize(getPlantNames(object=NCRN[[input$SpListPark]], names=LatinList(), out.style="common",in.style="Latin")))
 
 
 
