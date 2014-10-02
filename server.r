@@ -602,11 +602,21 @@ DensTableArgs<-reactive({
   )
 })
 
-########### Plot download
+########### jpeg Plot download
 output$densGraphDownload<-downloadHandler(
   filename=function(){paste(DensTitle(), ".jpeg", sep="")}, 
   content=function (file){
     jpeg(file,width=15,height=6,units="in",res=300, quality=100)
+    print(tempDensPlot())
+    dev.off()
+  }
+)
+
+############# wmf plot download
+output$densWmfDownload<-downloadHandler(
+  filename=function(){paste(DensTitle(), ".wmf", sep="")}, 
+  content=function (file){
+    win.metafile(file,width=15,height=6)
     print(tempDensPlot())
     dev.off()
   }
@@ -780,7 +790,14 @@ LatinList<-reactive({
     getPlants(object=NCRN[[input$SpListPark]], group="herbs")$Latin_Name
     ))
 })
-CommonList<-reactive(enc2native(getPlantNames(object=NCRN[[input$SpListPark]], names=LatinList(), out.style="common",in.style="Latin")))
+
+
+decapitalize <- function(string) {     ########### used to hack around sorting/encoding issues
+  substr(string, 1, 1) <- tolower(substr(string, 1, 1))
+  return(string)
+}
+
+CommonList<-reactive(decapitalize(tgetPlantNames(object=NCRN[[input$SpListPark]], names=LatinList(), out.style="common",in.style="Latin")))
 
 
 

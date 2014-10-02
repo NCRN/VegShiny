@@ -174,7 +174,8 @@ shinyUI(
                 hr(),
                 flowLayout(
                   bsButton(inputId="densGraphButton", label="Display Options",style="primary"),
-                  downloadButton(outputId="densGraphDownload", label="Save Graph (.jpg)", class="btn btn-primary")
+                  downloadButton(outputId="densGraphDownload", label="Save Graph (.jpg)", class="btn btn-primary"),
+                  downloadButton(outputId="densWmfDownload", label="Save graph (.wmf)", class="btn btn-primary")
                 ),
                 hr(),
                 h4("Comparison Data:"),
