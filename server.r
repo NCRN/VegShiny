@@ -792,7 +792,7 @@ LatinList<-reactive({
 })
 
 
-capitalize <- function(string) {     ########### used to hack around sorting/encoding issues
+decapitalize <- function(string) {     ########### used to hack around sorting/encoding issues
   substr(string, 1, 1) <- toupper(substr(string, 1, 1))
   return(string)
 }
