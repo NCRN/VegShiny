@@ -286,7 +286,7 @@ output$MapLegendTitle<-renderText({
 showPlotPopup <- function(layerId, lat, lng) {
   selectedPlot <- MapData()[MapData()$Plot_Name == layerId,]
   if(class(try(getNames(NCRN[[selectedPlot$Unit_Code]],"long"), silent=TRUE    ))!="try-error") {
-    content<-as.character(tagList(
+    content<- as.character(tagList(
       tags$h5(getNames(NCRN[[selectedPlot$Unit_Code]],"long")),
       tags$h6("Monitoring Plot:",selectedPlot$Plot_Name),
       tags$h6("Year Monitored:",selectedPlot$Year),
@@ -576,7 +576,7 @@ DensPlotArgs<-reactive({
 
 
 ############Density Plot Function
-#output$DensPlot<-renderPlot({
+
  
 tempDensPlot<-reactive({
   if (is.null(input$densPark) || nchar(input$densPark)==0) {return()}
@@ -724,11 +724,21 @@ tempIVPlot<-reactive({
 
 output$IVPlot<-renderPlot({tempIVPlot()})
 
-### Plot Download
+### jpeg Plot Download
 output$IVGraphDownload<-downloadHandler(
   filename=function(){paste(IVTitle(), ".jpeg", sep="")}, 
   content=function (file){
     jpeg(file,width=15,height=6,units="in",res=300, quality=100)
+    print(tempIVPlot())
+    dev.off()
+  }
+)
+
+############# wmf plot download
+output$IVWmfDownload<-downloadHandler(
+  filename=function(){paste(IVTitle(), ".wmf", sep="")}, 
+  content=function (file){
+    win.metafile(file,width=15,height=6)
     print(tempIVPlot())
     dev.off()
   }

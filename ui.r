@@ -60,7 +60,8 @@ shinyUI(
             tags$div(title="Choose a species of plants to map", uiOutput("MapSpeciesControl")),  
             tags$div(title="Filter the species list so only species found in a particular park are listed",
                      uiOutput("MapParkControl")),
-            bsButton(inputId="AboutMapButton",label="About the map...",style="primary")
+            bsButton(inputId="AboutMapButton",label="About the map...",style="primary"),
+            bsButton(inputId="VideoButton", label='"How To" video', style="primary")
           )
        ),
 
@@ -172,11 +173,10 @@ shinyUI(
               conditionalPanel(
                 condition="input.densPanel=='Graph'",
                 hr(),
-                flowLayout(
-                  bsButton(inputId="densGraphButton", label="Display Options",style="primary"),
-                  downloadButton(outputId="densGraphDownload", label="Save Graph (.jpg)", class="btn btn-primary"),
-                  downloadButton(outputId="densWmfDownload", label="Save graph (.wmf)", class="btn btn-primary")
-                ),
+                bsButton(inputId="densGraphButton", label="Display Options",style="primary"),
+                br(),
+                downloadButton(outputId="densGraphDownload", label="Save Graph (.jpg)", class="btn btn-primary"),
+                downloadButton(outputId="densWmfDownload", label="Save Graph (.wmf)", class="btn  btn-primary"),
                 hr(),
                 h4("Comparison Data:"),
                 tags$div(title="Compare the base data with a differnet park, growth stage, or time period",
@@ -268,10 +268,11 @@ shinyUI(
                 conditionalPanel(
                   condition="input.IVPanel=='Graph'",
                   hr(),
-                  flowLayout(
-                    bsButton(inputId="IVGraphButton", label="Display Options", style="primary"),
-                    downloadButton(outputId="IVGraphDownload", label="Save Graph (.jpg)", class="btn btn-primary")
-                  )),
+                  bsButton(inputId="IVGraphButton", label="Display Options", style="primary"),
+                  br(),
+                  downloadButton(outputId="IVGraphDownload", label="Save Graph (.jpg)", class="btn btn-primary"),
+                  downloadButton(outputId="IVWmfDownload", label="Save Graph (.wmf)", class="btn  btn-primary")
+                ),  
                   conditionalPanel(
                     condition="input.IVPanel=='Table'",
                     hr(),
