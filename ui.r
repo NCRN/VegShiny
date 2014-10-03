@@ -21,15 +21,20 @@ shinyUI(
       tags$head(HTML('<link rel="icon", href="AH_small_flat_4C_12x16.png", type="image/png" />')), #puts up icon on tab
       tags$head(includeScript("./www/forveg-analytics.js")),  
   
+      
+      
+      
   
 ##### About the Map modal goes here so it does not get caught in the "outer" div below here it has css problems
-      bsModal(id="MapInfoModal", title="About the Map",,  role="dialog", trigger="AboutMapButton", href="AboutMap.html" ),
+      bsModal(id="MapInfoModal", title="About the Map", trigger="AboutMapButton", href="AboutMap.html" ),
+     
+#####  How to video modal
+      bsModal(id="VideoModal", title='"How To" Video', trigger = "VideoButton" ),
 
-      div(class="outer",
+
+
+  div(class="outer",
         tags$head(includeCSS("./www/mapstyles.css") ), # defines css file
-        
-
-
         
         leafletMap("map", width="100%", height="100%",
           initialTileLayer="//{s}.tiles.mapbox.com/v3/nps.2yxv8n84/{z}/{x}/{y}.png",
