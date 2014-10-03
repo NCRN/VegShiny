@@ -29,7 +29,7 @@ shinyUI(
       bsModal(id="MapInfoModal", title="About the Map", trigger="AboutMapButton", href="AboutMap.html" ),
      
 #####  How to video modal
-      bsModal(id="VideoModal", title='"How To" Video', trigger = "VideoButton" ),
+      bsModal(id="VideoModal", title='"How To" Video', trigger = "VideoButton", HTML('<iframe width="560" height="315" src="//www.youtube.com/embed/Kg9FvgPa6Lc" frameborder="0" allowfullscreen></iframe>'), tags$head(tags$style(HTML("width:800px;"))) ),
 
 
 
