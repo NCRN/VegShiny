@@ -783,21 +783,39 @@ output$IVTableDownload<-downloadHandler(
 )
 
 ####################################### Species list
-## Speces list park control
+## Species list park control
 output$SpListParkControl<-renderUI({
-  selectizeInput(inputId="SpListPark",choices=ParkList, label="Park:",
+  if(length(ParkList)==0) return() else{
+    selectizeInput(inputId="SpListPark",choices=ParkList, label="Park:",
                  options = list(placeholder='Choose a park',
                                 onInitialize = I('function() { this.setValue(""); }') )) 
+  }
 })
+
+
+#### Species list plot control
+
+output$SpListPlotControl <-renderUI({
+  validate(need(input$SpListPark!="", "Please select a Park"))
+  selectizeInput(inputId="SpListPlot", choices=c("All Plots"="All", getPlotNames(NCRN[[input$SpListPark]],type="all")),
+        label="Plots (optional)", multiple=TRUE, selected="All"
+    )
+})
+
+SpListPlotUse<-reactive({
+  if(length(input$SpListPlot)==0 || "All" %in%  input$SpListPlot ) return(NA) else return(input$SpListPlot)
+
+})
+
 LatinList<-reactive({
   unique(c(
-    getPlants(object=NCRN[[input$SpListPark]], group="trees")$Latin_Name,
-    getPlants(object=NCRN[[input$SpListPark]], group="saplings")$Latin_Name,
-    getPlants(object=NCRN[[input$SpListPark]], group="seedlings")$Latin_Name,
-    getPlants(object=NCRN[[input$SpListPark]], group="shrubs")$Latin_Name,
-    getPlants(object=NCRN[[input$SpListPark]], group="shseedlings")$Latin_Name,
-    getPlants(object=NCRN[[input$SpListPark]], group="vines")$Latin_Name,
-    getPlants(object=NCRN[[input$SpListPark]], group="herbs")$Latin_Name
+    getPlants(object=NCRN[[input$SpListPark]], group="trees", plots=SpListPlotUse())$Latin_Name,
+    getPlants(object=NCRN[[input$SpListPark]], group="saplings",plots=SpListPlotUse())$Latin_Name,
+    getPlants(object=NCRN[[input$SpListPark]], group="seedlings", plots=SpListPlotUse())$Latin_Name,
+    getPlants(object=NCRN[[input$SpListPark]], group="shrubs", plots=SpListPlotUse())$Latin_Name,
+    getPlants(object=NCRN[[input$SpListPark]], group="shseedlings", plots=SpListPlotUse())$Latin_Name,
+    getPlants(object=NCRN[[input$SpListPark]], group="vines", plots=SpListPlotUse())$Latin_Name,
+    getPlants(object=NCRN[[input$SpListPark]], group="herbs", plots=SpListPlotUse())$Latin_Name
     ))
 })
 

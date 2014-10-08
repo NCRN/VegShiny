@@ -338,6 +338,9 @@ shinyUI(
         wellPanel(
           tags$div(
             title="Choose a park to work with.",uiOutput("SpListParkControl")
+          ),
+          tags$div(
+            title="Choose one or more plots, select and backspace to delete.", uiOutput("SpListPlotControl")
           )
         )
       ),
