@@ -66,7 +66,8 @@ shinyUI(
             tags$div(title="Filter the species list so only species found in a particular park are listed",
                      uiOutput("MapParkControl")),
             bsButton(inputId="AboutMapButton",label="About the map...",style="primary"),
-            bsButton(inputId="VideoButton", label='"How To" video', style="primary")
+            bsButton(inputId="VideoButton", label='"How To" video', style="primary"),
+            textOutput("IdTest")
           )
        ),
 

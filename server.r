@@ -4,6 +4,7 @@ library(leaflet)
 library(lattice)
 library(rgdal)
 
+
 #################### Temp storage for function to create polygons
 GetPolys<-function(MapIn){
   lat<-lng<-MapClass<-NULL
@@ -49,12 +50,13 @@ ParkBounds<-read.csv("boundboxes.csv", as.is=TRUE)
 
 shinyServer(function(input,output,session){
 
+  Values<-reactiveValues(MapLayer="Start", PolygonId="Start")
 ################################## Code For Map Panel  ######################################################
 
 ### Create Map  
   map<-createLeafletMap(session,"map")
 
-  MapYears<-reactive({(input$MapYear-3):input$MapYear  })
+  MapYears<-reactive({(input$MapYear-3):input$MapYear  })  #put in reactiveValues?
 #########################################################################################################
 
 ######## Zoom control for map
@@ -63,7 +65,6 @@ shinyServer(function(input,output,session){
     selectInput(inputId="ParkZoom",label=NULL,
               choices=c("All Parks"="All",ParkList) )
   })
-
 
 ############Zoom the map
   observe({
@@ -128,12 +129,12 @@ shinyServer(function(input,output,session){
 
 ### HouseKeeping
 
-  MapSpeciesUse<-reactive({ifelse(input$MapSpecies=="All", NA, input$MapSpecies) })
+  MapSpeciesUse<-reactive({ifelse(input$MapSpecies=="All", NA, input$MapSpecies) }) #put in reactiveValues?
 ### Data to plot on map - always for all parks
 
-  MapData<-reactive({
-    if(is.null(input$MapSpecies) || nchar(input$MapSpecies)==0){
-      return()
+  MapData<-reactive({                                                #change to validate(need())
+    if(is.null(input$MapSpecies) || nchar(input$MapSpecies)==0){ 
+      return() 
     }
     else{
       data.frame(getPlots(NCRN, years=MapYears(), output="dataframe",type="all")[c("Plot_Name","Unit_Code","Latitude","Longitude")],
@@ -156,77 +157,92 @@ shinyServer(function(input,output,session){
       )
     }
   })
+
 #########  Data for Legend
   MapMetaData<-reactive({ MapLegend[[input$MapValues]][[input$MapGroup]] })
 
 
+
 #### Get polygons to display
-  MapLayer<-reactive({
-    switch(input$MapLayer,
-      None=return(),
-      EcoReg=GetPolys(readOGR("./Maps",layer="Ecoregions_Omernick_Level3_WGS84")),
-      ForArea=GetPolys(readOGR("./Maps",layer="Forest_NLCD_2011_Clip_WGS84_Simplified")),
-      #SoilMap=GetPolys(readOGR("./Maps",layer="SOIL_TaxonomySSURGO_NCRN_py_WGS84_SinglePart_Dissolved"))
-    )
-  })
 
-#MapLayer2<-reactive({
-#  switch(input$MapLayer,
-#         None=return(),
-#         EcoReg=GetPolys2(readOGR("./Maps",layer="Ecoregions_Omernick_Level3_SinglePart_WGS84")),
-#         ForArea=GetPolys2(readOGR("./Maps",layer="Forest_NLCD_2011_Clip_WGS84_Simplified")),
-#         SoilMap=GetPolys2(readOGR("./Maps",layer="SOIL_TaxonomySSURGO_NCRN_py_WGS84_SinglePart_Dissolved"))
-#  )
+
+MapLayer<-reactive({
+  switch(input$MapLayer,
+         None=return(),
+         #EcoReg=GetPolys(readOGR("./Maps",layer="Ecoregions_Omernick_Level3_WGS84")),
+         #ForArea=GetPolys(readOGR("./Maps",layer="Forest_NLCD_2011_Clip_WGS84_Simplified"))
+         #SoilMap=GetPolys(readOGR("./Maps",layer="SOIL_TaxonomySSURGO_NCRN_py_WGS84_SinglePart_Dissolved"))
+         EcoReg=readChar("./Maps/Ecoreg", file.info("./Maps/Ecoreg")$size),
+         ForArea=readChar("./Maps/Forest", file.info("./Maps/forest")$size)
+  )
+})
+
+LayerData<-reactive({
+  
+  switch(input$MapLayer,
+         None=return(),
+         #EcoReg=GetPolys(readOGR("./Maps",layer="Ecoregions_Omernick_Level3_WGS84")),
+         #ForArea=GetPolys(readOGR("./Maps",layer="Forest_NLCD_2011_Clip_WGS84_Simplified"))
+         #SoilMap=GetPolys(readOGR("./Maps",layer="SOIL_TaxonomySSURGO_NCRN_py_WGS84_SinglePart_Dissolved"))
+         EcoReg=dget("./Maps/EcoRegData.txt"),
+         ForArea=dget("./Maps/ForestData.txt")
+  )
+})
+  
+  
 #})
 
 
+#session$onFlush(once=FALSE, function(){
 
-############ Add points and Polygons to map
-  PolyOpts<-reactive({
-    lapply(X=MapLayer()$ClassNum, Y=length(unique(MapLayer()$MapClass)), FUN=function(X,Y) {
+ # if( Values$Maplayer!=input$MapLayer) {
+    #Values$MapLayer<-isolate(input$MapLayer)
+    #Values$PolygonId<-isolate(input$MapLayer)
+  #}
+
+#})
+
+
+######### Add points and Polygons to map
+PolyOpts<-reactive({
+  lapply(X=MapLayer()$ClassNum, Y=length(unique(MapLayer()$MapClass)), FUN=function(X,Y) {
     list(color=AquaYel(Y)[X])
-    })
   })
-
-#PolyOpts2<-reactive({
-#  Temp<-as.numeric(factor(unlist (lapply(MapLayer2(),"[[", "MapClass"))))
-#  lapply(X=Temp, Y=length(unique(Temp)), FUN=function(X,Y) {
-#    list(color=AquaYel(Y)[X])
-#  })
-#})
+})
 
 
 
+output$IdTest<-renderText(Values$PolygonId)
+
+                           
 session$onFlushed(once=TRUE, function() {   ##onFlushed comes superzip - makes map draw befrore circles
-    MapObs<-observe({ 
-      map$clearShapes()
+  
+  MapPolys<-observe({ 
+     # input$MapLayer
+    #map$removeShape(Values$PolygonId)
+    #if(input$MapLayer!="None"){   
+   #  try(
+    #    map$addPolygon(lng=MapLayer()$lng, 
+     #                lat=MapLayer()$lat,  
+    #                 layerId=MapLayer()$layerId, 
+     #                options=PolyOpts(),
+    #                 defaultOptions=list(weight=0, fillOpacity=.75)
+    #    )
+    #  )
+    #}  
+    
+    
+    switch(input$MapLayer,
+           None=return(),
+           EcoReg=map$addGeoJSON(MapLayer()),
+           ForArea=map$addGeoJSON(MapLayer())
+           )
+})
 
-      if(input$MapLayer!="None"){   
-        try(
-          map$addPolygon(lng=MapLayer()$lng, 
-                       lat=MapLayer()$lat,  
-                       layerId=MapLayer()$layerId, 
-                       options=PolyOpts(),
-                       defaultOptions=list(weight=0, fillOpacity=.75)
-          )
-        )
-      }  
-
-#      if(input$MapLayer!="None"){   
-#         for (i in seq_along( MapLayer2() ) ) {
-#            try(
-#              map$addPolygon(lng=MapLayer2()[[i]]$lng, 
-#                          lat=MapLayer2()[[i]]$lat,  
-#                          layerId=list(MapLayer2()[[i]]$layerId), 
-#                          options=PolyOpts2()[i],
-#                          defaultOptions=list(weight=0, fillOpacity=.75)
-#              )
-#            )
-#          }
-#       
-#      }  
       
-      
+    MapCircles<-observe({
+      input$MapLayer #make sure Circles are always on top
+     # sapply(X=getPlotNames(object=NCRN,type="all"), FUN=function(ID){ map$removeShape(ID)} )
       try(silent=TRUE,      #try deals with issue where the group has changed but species has not yet caught up.
         if(is.null(MapData()$Values )) {
           return()
@@ -244,7 +260,8 @@ session$onFlushed(once=TRUE, function() {   ##onFlushed comes superzip - makes m
   
   # TIL this is necessary in order to prevent the observer from
   # attempting to write to the websocket after the session is gone.
-    session$onSessionEnded(MapObs$suspend)
+    session$onSessionEnded(MapPolys$suspend)
+    session$onSessionEnded(MapCircles$suspend)
   })
 
 
@@ -311,7 +328,8 @@ clickObs <- observe({
     return()
   
   isolate({
-    showPlotPopup(event$id, as.character(event$lat), as.character(event$lng))
+   # showPlotPopup(event$id, as.character(event$lat), as.character(event$lng))
+    showPlotPopup(event$properties)
   })
 })
 session$onSessionEnded(clickObs$suspend)
@@ -342,7 +360,8 @@ output$LayerLegend<-renderUI({
           )),
           tags$td(": ",BoxLabel)
           )}, 
-        c(sort(unique(MapLayer()$MapClass))), AquaYel( length( unique(MapLayer()$MapClass))), SIMPLIFY=FALSE ))
+        #c(sort(unique(MapLayer()$MapClass))), AquaYel( length( unique(MapLayer()$MapClass))), SIMPLIFY=FALSE ))
+        c(sort(unique(as.character(LayerData()$MapClass)))), AquaYel( length( unique(LayerData()$MapClass))), SIMPLIFY=FALSE ))
   }
   
 })
