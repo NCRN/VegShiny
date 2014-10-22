@@ -66,7 +66,8 @@ shinyUI(
             tags$div(title="Filter the species list so only species found in a particular park are listed",
                      uiOutput("MapParkControl")),
             bsButton(inputId="AboutMapButton",label="About the map...",style="primary"),
-            bsButton(inputId="VideoButton", label='"How To" video', style="primary")
+            bsButton(inputId="VideoButton", label='"How To" video', style="primary"),
+            textOutput("IdTest")
           )
        ),
 
@@ -81,7 +82,7 @@ shinyUI(
             h4("Map Layers"),
             selectizeInput(inputId="MapLayer", label="Add a map layer:", 
                         choices=c(None="None", "EcoRegions"="EcoReg","Forested Areas"="ForArea"
-                                  #,"Soil Map (slow)"="SoilMap"
+                                  ,"Soil Map "="Soil"
                                   )))
           )
         ),

@@ -2,59 +2,33 @@ library(shiny)
 library(NPSForVeg)
 library(leaflet)
 library(lattice)
-library(rgdal)
 
-#################### Temp storage for function to create polygons
-GetPolys<-function(MapIn){
-  lat<-lng<-MapClass<-NULL
-  for(i in seq_along (MapIn@polygons)){
-    #for(j in seq_along(Map@polygons[[i]]@Polygons)){
-        lng<-c(lng,MapIn@polygons[[i]]@Polygons[[1]]@coords[,1],NA)
-        lat<-c(lat,MapIn@polygons[[i]]@Polygons[[1]]@coords[,2],NA)
-        MapClass<-c(MapClass,if(!is.na(MapIn@data[i,"MapClass"])){as.character(MapIn@data[i,"MapClass"])} else("Not classified")  )
-        #}
-  }
-  CentLng<-coordinates(MapIn)[,1]
-  CentLat<-coordinates(MapIn)[,2]
-  ClassNum<-as.numeric(factor(MapClass))
-  layerId<-as.character(seq_along(MapClass))
-  MapData<-list(lat=lat, lng=lng, CentLng=CentLng, CentLat=CentLat, MapClass=MapClass,layerId=layerId, ClassNum=ClassNum)
-}
 
-GetPolys2<-function(MapIn){
-  Temp<-vector(mode="list",length=length(MapIn@polygons))
-  for(i in seq_along (MapIn@polygons)){
-    Temp[[i]]<-c(list(lng=NA), list(lat=NA),list(MapClass=NA), list(layerID=NA))
-    Temp[[i]][["lng"]]<-MapIn@polygons[[i]]@Polygons[[1]]@coords[,1]
-    Temp[[i]][["lat"]]<-MapIn@polygons[[i]]@Polygons[[1]]@coords[,2]
-    Temp[[i]][["MapClass"]]<-if(!is.na(MapIn@data[i,"MapClass"])){as.character(MapIn@data[i,"MapClass"])} else("Not classified")
-    Temp[[i]][["layerId"]]<-as.character(i)
-  
-  }
-  return(Temp)
-}
 ##################### Housekeeping prior to start of the server function
 
 
 NCRN<-importNCRN("./Data/NCRN")
+
 names(NCRN)<-getNames(NCRN, name.class="code")
 ParkList<-getNames(NCRN,name.class="code")
 names(ParkList)<-getNames(NCRN)
 
 ParkBounds<-read.csv("boundboxes.csv", as.is=TRUE)
 
-
+######## geoJson layer with nothing used when "None" is selected for layer
+FakeLayer<-c('{"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-77.6, 39.9], [-77.61,39.9], [-77.61,39.91], [-77.6, 39.9]]]}, "properties": {"style": {"fillOpacity": 0.001, "weight": 0}}}') 
 
 #################### Begin Server Function
 
 shinyServer(function(input,output,session){
 
+  Values<-reactiveValues(MapLayer="Start", PolygonId="Start",SelectedFeature="Test") #reactive values for app
 ################################## Code For Map Panel  ######################################################
 
 ### Create Map  
   map<-createLeafletMap(session,"map")
 
-  MapYears<-reactive({(input$MapYear-3):input$MapYear  })
+  MapYears<-reactive({(input$MapYear-3):input$MapYear  })  #put in reactiveValues?
 #########################################################################################################
 
 ######## Zoom control for map
@@ -63,7 +37,6 @@ shinyServer(function(input,output,session){
     selectInput(inputId="ParkZoom",label=NULL,
               choices=c("All Parks"="All",ParkList) )
   })
-
 
 ############Zoom the map
   observe({
@@ -128,12 +101,12 @@ shinyServer(function(input,output,session){
 
 ### HouseKeeping
 
-  MapSpeciesUse<-reactive({ifelse(input$MapSpecies=="All", NA, input$MapSpecies) })
-### Data to plot on map - always for all parks
+  MapSpeciesUse<-reactive({ifelse(input$MapSpecies=="All", NA, input$MapSpecies) }) #put in reactiveValues?
 
-  MapData<-reactive({
-    if(is.null(input$MapSpecies) || nchar(input$MapSpecies)==0){
-      return()
+### Data to plot on map - always for all parks
+  MapData<-reactive({                                                #change to validate(need())
+    if(is.null(input$MapSpecies) || nchar(input$MapSpecies)==0){ 
+      return() 
     }
     else{
       data.frame(getPlots(NCRN, years=MapYears(), output="dataframe",type="all")[c("Plot_Name","Unit_Code","Latitude","Longitude")],
@@ -156,96 +129,66 @@ shinyServer(function(input,output,session){
       )
     }
   })
+
 #########  Data for Legend
   MapMetaData<-reactive({ MapLegend[[input$MapValues]][[input$MapGroup]] })
 
 
-#### Get polygons to display
-  MapLayer<-reactive({
-    switch(input$MapLayer,
-      None=return(),
-      EcoReg=GetPolys(readOGR("./Maps",layer="Ecoregions_Omernick_Level3_WGS84")),
-      ForArea=GetPolys(readOGR("./Maps",layer="Forest_NLCD_2011_Clip_WGS84_Simplified")),
-      #SoilMap=GetPolys(readOGR("./Maps",layer="SOIL_TaxonomySSURGO_NCRN_py_WGS84_SinglePart_Dissolved"))
-    )
-  })
 
-#MapLayer2<-reactive({
-#  switch(input$MapLayer,
-#         None=return(),
-#         EcoReg=GetPolys2(readOGR("./Maps",layer="Ecoregions_Omernick_Level3_SinglePart_WGS84")),
-#         ForArea=GetPolys2(readOGR("./Maps",layer="Forest_NLCD_2011_Clip_WGS84_Simplified")),
-#         SoilMap=GetPolys2(readOGR("./Maps",layer="SOIL_TaxonomySSURGO_NCRN_py_WGS84_SinglePart_Dissolved"))
-#  )
-#})
+#### Get MapLayer and corresponding data to display
 
 
+MapLayer<-reactive({
+  switch(input$MapLayer,
+         None=FakeLayer,
+         EcoReg=readChar("./Maps/EcoReg", file.info("./Maps/EcoReg")$size),
+         ForArea=readChar("./Maps/Forest", file.info("./Maps/Forest")$size),
+         Soil=readChar("./Maps/Soil", file.info("./Maps/Soil")$size)
+  )
+})
 
-############ Add points and Polygons to map
-  PolyOpts<-reactive({
-    lapply(X=MapLayer()$ClassNum, Y=length(unique(MapLayer()$MapClass)), FUN=function(X,Y) {
-    list(color=AquaYel(Y)[X])
-    })
-  })
+LayerData<-reactive({     
+  switch(input$MapLayer,
+         None=return(),
+         EcoReg=dget("./Maps/EcoRegData.txt"),
+         ForArea=dget("./Maps/ForestData.txt"),
+         Soil=dget("./Maps/SoilData.txt")
+  )
+})
+  
 
-#PolyOpts2<-reactive({
-#  Temp<-as.numeric(factor(unlist (lapply(MapLayer2(),"[[", "MapClass"))))
-#  lapply(X=Temp, Y=length(unique(Temp)), FUN=function(X,Y) {
-#    list(color=AquaYel(Y)[X])
-#  })
-#})
-
-
-
+######### Add points and Polygons to map
+ 
 session$onFlushed(once=TRUE, function() {   ##onFlushed comes superzip - makes map draw befrore circles
-    MapObs<-observe({ 
-      map$clearShapes()
+  
+  #### Add GeoJSON polygon layer
+  MapPolys<-observe({ 
+    map$addGeoJSON(MapLayer(),layerId="Layer")
+  })
 
-      if(input$MapLayer!="None"){   
-        try(
-          map$addPolygon(lng=MapLayer()$lng, 
-                       lat=MapLayer()$lat,  
-                       layerId=MapLayer()$layerId, 
-                       options=PolyOpts(),
-                       defaultOptions=list(weight=0, fillOpacity=.75)
-          )
+  ### add Monitoring plot data as a circle
+  MapCircles<-observe({
+    input$MapLayer #make sure Circles are always on top
+    map$clearShapes()
+    try(silent=TRUE,      #try deals with issue where the group has changed but species has not yet caught up.
+      if(is.null(MapData()$Values )) {
+        return()
+      } else {
+        map$addCircle(MapData()$Latitude, MapData()$Longitude, 15*as.numeric(input$PlotSize),
+          layerId=MapData()$Plot_Name,   #This is the ID of the circle to match to other data
+          options=list(color=BlueOr(8)[cut(MapData()$Values,breaks=c(MapMetaData()$Cuts), labels = FALSE)],
+          fillOpacity=.7, 
+          weight=5)
         )
-      }  
-
-#      if(input$MapLayer!="None"){   
-#         for (i in seq_along( MapLayer2() ) ) {
-#            try(
-#              map$addPolygon(lng=MapLayer2()[[i]]$lng, 
-#                          lat=MapLayer2()[[i]]$lat,  
-#                          layerId=list(MapLayer2()[[i]]$layerId), 
-#                          options=PolyOpts2()[i],
-#                          defaultOptions=list(weight=0, fillOpacity=.75)
-#              )
-#            )
-#          }
-#       
-#      }  
-      
-      
-      try(silent=TRUE,      #try deals with issue where the group has changed but species has not yet caught up.
-        if(is.null(MapData()$Values )) {
-          return()
-        }
-        else {
-          map$addCircle(MapData()$Latitude, MapData()$Longitude, 15*as.numeric(input$PlotSize),
-            layerId=MapData()$Plot_Name,   #This is the ID of the circle to match to other data
-            options=list(color=BlueOr(8)[cut(MapData()$Values,breaks=c(MapMetaData()$Cuts), labels = FALSE)],
-            fillOpacity=.7, 
-            weight=5)
-          )
-        }
-      ) 
-    })
+      }
+    ) 
+  })
   
   # TIL this is necessary in order to prevent the observer from
   # attempting to write to the websocket after the session is gone.
-    session$onSessionEnded(MapObs$suspend)
-  })
+  session$onSessionEnded(MapPolys$suspend)
+  session$onSessionEnded(MapCircles$suspend)
+})
 
 
 
@@ -283,9 +226,8 @@ output$MapLegendTitle<-renderText({
 
 
 ### Function for adding information to, and displaying, popup.
-showPlotPopup <- function(layerId, lat, lng) {
-  selectedPlot <- MapData()[MapData()$Plot_Name == layerId,]
-  if(class(try(getNames(NCRN[[selectedPlot$Unit_Code]],"long"), silent=TRUE    ))!="try-error") {
+showPlotPopup <- function(PlotId, lat, lng) {
+  selectedPlot <- MapData()[MapData()$Plot_Name == PlotId,]
     content<- as.character(tagList(
       tags$h5(getNames(NCRN[[selectedPlot$Unit_Code]],"long")),
       tags$h6("Monitoring Plot:",selectedPlot$Plot_Name),
@@ -293,28 +235,36 @@ showPlotPopup <- function(layerId, lat, lng) {
       tags$h6(names(MapSpecList()[MapSpecList()==input$MapSpecies]),":",format(signif(selectedPlot$Values,2), 
                                                                     big.mark=","), " ", MapMetaData()$Title))
     )
-  }
-  else{ 
-    lat<-as.character(MapLayer()$CentLat[as.numeric(layerId)])
-    lng<-as.character(MapLayer()$CentLng[as.numeric(layerId)])
-    content<-MapLayer()$MapClass[as.numeric(layerId)]
-  }
-  map$showPopup(lat, lng, content, layerId)
+  map$showPopup(lat, lng, content)
   
 }
+output$IdTest<-renderText(unlist(Values$SelectedFeature))
 
-###  When a plot or polygon is clicked, show the popup with plot info
-clickObs <- observe({
+###  When a plot is clicked, show the popup with plot info
+ClickObs1<-observe({
   map$clearPopups()
   event <- input$map_shape_click
-  if (is.null(event))
-    return()
-  
+  if (is.null(event)){   return() }
   isolate({
     showPlotPopup(event$id, as.character(event$lat), as.character(event$lng))
   })
 })
-session$onSessionEnded(clickObs$suspend)
+
+###  When a GeoJSON polygon is clicked, show the popup with plot info
+ClickObs2<-observe({
+  event2<-input$map_geojson_click   #a geojson feature was clicked
+  if(is.null(event2)) { return() }
+  isolate({
+    map$clearPopups()
+    Values$SelectedFeature<-event2$properties
+    map$showPopup(lat=event2$properties$CentLat,lng=event2$properties$CentLng, content=event2$properties$MapClass)
+  })
+  
+})
+
+session$onSessionEnded(ClickObs1$suspend)
+session$onSessionEnded(ClickObs2$suspend)
+
 
 ############## Legend for Map Layers
 output$LayerLegendTitle<-renderText({
@@ -342,7 +292,8 @@ output$LayerLegend<-renderUI({
           )),
           tags$td(": ",BoxLabel)
           )}, 
-        c(sort(unique(MapLayer()$MapClass))), AquaYel( length( unique(MapLayer()$MapClass))), SIMPLIFY=FALSE ))
+        #c(sort(unique(MapLayer()$MapClass))), AquaYel( length( unique(MapLayer()$MapClass))), SIMPLIFY=FALSE ))
+        c(sort(unique(as.character(LayerData()$MapClass)))), AquaYel( length( unique(LayerData()$MapClass))), SIMPLIFY=FALSE ))
   }
   
 })
