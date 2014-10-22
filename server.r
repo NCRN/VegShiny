@@ -238,7 +238,7 @@ showPlotPopup <- function(PlotId, lat, lng) {
   map$showPopup(lat, lng, content)
   
 }
-output$IdTest<-renderText(unlist(Values$SelectedFeature))
+
 
 ###  When a plot is clicked, show the popup with plot info
 ClickObs1<-observe({
