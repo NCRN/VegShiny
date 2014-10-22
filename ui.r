@@ -82,7 +82,7 @@ shinyUI(
             h4("Map Layers"),
             selectizeInput(inputId="MapLayer", label="Add a map layer:", 
                         choices=c(None="None", "EcoRegions"="EcoReg","Forested Areas"="ForArea"
-                                  #,"Soil Map (slow)"="SoilMap"
+                                  ,"Soil Map "="Soil"
                                   )))
           )
         ),

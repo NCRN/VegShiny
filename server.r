@@ -50,7 +50,7 @@ ParkBounds<-read.csv("boundboxes.csv", as.is=TRUE)
 
 shinyServer(function(input,output,session){
 
-  Values<-reactiveValues(MapLayer="Start", PolygonId="Start")
+  Values<-reactiveValues(MapLayer="Start", PolygonId="Start",SelectedFeature="Test")
 ################################## Code For Map Panel  ######################################################
 
 ### Create Map  
@@ -167,25 +167,24 @@ shinyServer(function(input,output,session){
 
 
 MapLayer<-reactive({
-  switch(input$MapLayer,
+  
+  TempMap<-switch(input$MapLayer,
          None=return(),
-         #EcoReg=GetPolys(readOGR("./Maps",layer="Ecoregions_Omernick_Level3_WGS84")),
-         #ForArea=GetPolys(readOGR("./Maps",layer="Forest_NLCD_2011_Clip_WGS84_Simplified"))
-         #SoilMap=GetPolys(readOGR("./Maps",layer="SOIL_TaxonomySSURGO_NCRN_py_WGS84_SinglePart_Dissolved"))
-         EcoReg=readChar("./Maps/Ecoreg", file.info("./Maps/Ecoreg")$size),
-         ForArea=readChar("./Maps/Forest", file.info("./Maps/forest")$size)
+         EcoReg=readChar("./Maps/EcoReg", file.info("./Maps/EcoReg")$size),
+         ForArea=readChar("./Maps/Forest", file.info("./Maps/Forest")$size),
+         Soil=readChar("./Maps/Soil", file.info("./Maps/Soil")$size)
   )
+  TempMap<-gsub(pattern="([0123456789], \"properties\": \\{ )", replacement='\\1"style": {"weight": 0} , ', x=TempMap)
+  
 })
 
-LayerData<-reactive({
+LayerData<-reactive({   #### put in reactive values?
   
   switch(input$MapLayer,
          None=return(),
-         #EcoReg=GetPolys(readOGR("./Maps",layer="Ecoregions_Omernick_Level3_WGS84")),
-         #ForArea=GetPolys(readOGR("./Maps",layer="Forest_NLCD_2011_Clip_WGS84_Simplified"))
-         #SoilMap=GetPolys(readOGR("./Maps",layer="SOIL_TaxonomySSURGO_NCRN_py_WGS84_SinglePart_Dissolved"))
          EcoReg=dget("./Maps/EcoRegData.txt"),
-         ForArea=dget("./Maps/ForestData.txt")
+         ForArea=dget("./Maps/ForestData.txt"),
+         Soil=dget("./Maps/SoilData.txt")
   )
 })
   
@@ -212,7 +211,7 @@ PolyOpts<-reactive({
 
 
 
-output$IdTest<-renderText(Values$PolygonId)
+output$IdTest<-renderText(unlist(Values$SelectedFeature))
 
                            
 session$onFlushed(once=TRUE, function() {   ##onFlushed comes superzip - makes map draw befrore circles
@@ -233,9 +232,10 @@ session$onFlushed(once=TRUE, function() {   ##onFlushed comes superzip - makes m
     
     
     switch(input$MapLayer,
-           None=return(),
-           EcoReg=map$addGeoJSON(MapLayer()),
-           ForArea=map$addGeoJSON(MapLayer())
+           None=map$removeShape("Layer"),
+           EcoReg=map$addGeoJSON(MapLayer(),layerId="Layer"),
+           ForArea=map$addGeoJSON(MapLayer(),layerId="Layer"),
+           Soil=map$addGeoJSON(MapLayer(),layerId="Layer")
            )
 })
 
@@ -300,7 +300,7 @@ output$MapLegendTitle<-renderText({
 
 
 ### Function for adding information to, and displaying, popup.
-showPlotPopup <- function(layerId, lat, lng) {
+showPlotPopup <- function(featureId, lat, lng) {
   selectedPlot <- MapData()[MapData()$Plot_Name == layerId,]
   if(class(try(getNames(NCRN[[selectedPlot$Unit_Code]],"long"), silent=TRUE    ))!="try-error") {
     content<- as.character(tagList(
@@ -312,28 +312,68 @@ showPlotPopup <- function(layerId, lat, lng) {
     )
   }
   else{ 
-    lat<-as.character(MapLayer()$CentLat[as.numeric(layerId)])
-    lng<-as.character(MapLayer()$CentLng[as.numeric(layerId)])
-    content<-MapLayer()$MapClass[as.numeric(layerId)]
+    #lat<-as.character(MapLayer()$CentLat[as.numeric(featureId)])
+    #lng<-as.character(MapLayer()$CentLng[as.numeric(featureId)])
+    #content<-MapLayer()$MapClass[as.numeric(layerId)]
+    lat<-Values$SelectedFeature$CentLat
+    lng<-Values$SelectedFeature$CentLat
+    content<-Values$SelectedFeature$MapClass
   }
-  map$showPopup(lat, lng, content, layerId)
+  map$showPopup(lat, lng, content, featureId)
   
 }
 
+
+showLayerPopup <- function(lat, lng, MapClass) {
+  selectedPlot <- MapData()[MapData()$Plot_Name == layerId,]
+  if(class(try(getNames(NCRN[[selectedPlot$Unit_Code]],"long"), silent=TRUE    ))!="try-error") {
+    content<- as.character(tagList(
+      tags$h5(getNames(NCRN[[selectedPlot$Unit_Code]],"long")),
+      tags$h6("Monitoring Plot:",selectedPlot$Plot_Name),
+      tags$h6("Year Monitored:",selectedPlot$Year),
+      tags$h6(names(MapSpecList()[MapSpecList()==input$MapSpecies]),":",format(signif(selectedPlot$Values,2), 
+                                                                               big.mark=","), " ", MapMetaData()$Title))
+    )
+  }
+  else{ 
+    #lat<-as.character(MapLayer()$CentLat[as.numeric(featureId)])
+    #lng<-as.character(MapLayer()$CentLng[as.numeric(featureId)])
+    #content<-MapLayer()$MapClass[as.numeric(layerId)]
+    lat<-Values$SelectedFeature$CentLat
+    lng<-Values$SelectedFeature$CentLat
+    content<-Values$SelectedFeature$MapClass
+  }
+  map$showPopup(lat, lng, content, featureId)
+  
+}
 ###  When a plot or polygon is clicked, show the popup with plot info
-clickObs <- observe({
+ClickObs1<-observe({
   map$clearPopups()
   event <- input$map_shape_click
   if (is.null(event))
     return()
   
   isolate({
+    Values$SelectedFeateure<-NULL  #Not a geojson feature
    # showPlotPopup(event$id, as.character(event$lat), as.character(event$lng))
     showPlotPopup(event$properties)
   })
 })
-session$onSessionEnded(clickObs$suspend)
 
+ClickObs2<-observe({
+  event2<-input$map_geojson_click   #a geojson feature was clicked
+  if(is.null(event2))
+    return()
+  
+  isolate({
+    map$clearPopups()
+    Values$SelectedFeature<-event2$properties
+    map$showPopup(lat=event2$properties$CentLat,lng=event2$properties$CentLng, content=event2$properties$MapClass)
+  })
+  
+})
+session$onSessionEnded(ClickObs1$suspend)
+session$onSessionEnded(ClickObs2$suspend)
 ############## Legend for Map Layers
 output$LayerLegendTitle<-renderText({
   switch(input$MapLayer,
