@@ -22,7 +22,7 @@ FakeLayer<-c('{"type": "Feature", "geometry": {"type": "Polygon", "coordinates":
 
 shinyServer(function(input,output,session){
 
-  Values<-reactiveValues(MapLayer="Start", PolygonId="Start",SelectedFeature="Test") #reactive values for app
+  Values<-reactiveValues(ShapeMouse=NULL) #reactive values for app
 ################################## Code For Map Panel  ######################################################
 
 ### Create Map  
@@ -241,23 +241,23 @@ showPlotPopup <- function(PlotId, lat, lng) {
 
 
 ###  When a plot is clicked, show the popup with plot info
+
+
 ClickObs1<-observe({
   map$clearPopups()
-  event <- input$map_shape_click
-  if (is.null(event)){   return() }
-  isolate({
-    showPlotPopup(event$id, as.character(event$lat), as.character(event$lng))
-  })
+  eventClick1<-input$map_shape_click
+  if(is.null(eventClick1)){return()}
+  isolate(
+    showPlotPopup(eventClick1$id, as.character(eventClick1$lat), as.character(eventClick1$lng))
+  )
 })
-
 ###  When a GeoJSON polygon is clicked, show the popup with plot info
 ClickObs2<-observe({
-  event2<-input$map_geojson_click   #a geojson feature was clicked
-  if(is.null(event2)) { return() }
+  eventClick2<-input$map_geojson_click   #a geojson feature was clicked
+  if(is.null(eventClick2)) { return() }
   isolate({
     map$clearPopups()
-    Values$SelectedFeature<-event2$properties
-    map$showPopup(lat=event2$properties$CentLat,lng=event2$properties$CentLng, content=event2$properties$MapClass)
+    map$showPopup(lat=eventClick2$properties$LabelLat,lng=eventClick2$properties$LabelLng, content=eventClick2$properties$MapClass)
   })
   
 })
