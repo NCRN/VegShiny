@@ -192,7 +192,7 @@ session$onFlushed(once=TRUE, function() {   ##onFlushed comes superzip - makes m
 
 
 
-######################  UIoutput for Legend
+######################  UIoutput for Cicrle Legend
 
 output$MapLegend<-renderUI({
 
@@ -238,17 +238,52 @@ showPlotPopup <- function(PlotId, lat, lng) {
   map$showPopup(lat, lng, content)
   
 }
+showPlotPopup2 <- function(PlotId, lat, lng) {
+ selectedPlot <- MapData()[MapData()$Plot_Name == PlotId,]
+ if(
+    class(try(SiteXSpec(object=NCRN[[selectedPlot$Unit_Code]], group=input$MapGroup, years=selectedPlot$Year, plots=PlotId, common=input$mapCommon), silent=TRUE))=="try-error") {content<-as.character(tagList(tags$h6("None found on this plot")))} else {
+ tempData<-SiteXSpec(object=NCRN[[selectedPlot$Unit_Code]], group=input$MapGroup, years=selectedPlot$Year, plots=PlotId, common=input$mapCommon)
+ content<- as.character(tagList(
+    tags$h5(getNames(NCRN[[selectedPlot$Unit_Code]],"long")),
+    tags$h6("Monitoring Plot:",selectedPlot$Plot_Name),
+    tags$h6("Year Monitored:",selectedPlot$Year),
+    tags$h6(MapMetaData()$Title),
+    tags$table(
+      mapply(FUN=function(Name,Value){
+        tags$tr(
+          tags$td(sprintf("%s: %s", Name, format(signif(Value,2), big.mark=",")))
+        )
+      },
+      names(tempData[-1]), (unlist(tempData[-1])*10000)/getArea(object=NCRN[[selectedPlot$Unit_Code]], group=input$MapGroup,"all"), SIMPLIFY=FALSE
+      )
+    )
+  ))}
+ map$showPopup(lat, lng, content)
+}
 
 
 ###  When a plot is clicked, show the popup with plot info
 
+MouseOver1<-observe({
+  eventOver1<-input$map_shape_mouseover
+  if(is.null(eventOver1)){return()}
+  isolate(
+    showPlotPopup(eventOver1$id, as.character(eventOver1$lat+.001), as.character(eventOver1$lng))
+  )
+})
+
+MouseOut1<-observe({
+  eventOut1<-input$map_shape_mouseout
+  map$clearPopups()
+  
+})
 
 ClickObs1<-observe({
   map$clearPopups()
   eventClick1<-input$map_shape_click
   if(is.null(eventClick1)){return()}
   isolate(
-    showPlotPopup(eventClick1$id, as.character(eventClick1$lat), as.character(eventClick1$lng))
+    showPlotPopup2(eventClick1$id, as.character(eventClick1$lat+.001), as.character(eventClick1$lng))
   )
 })
 ###  When a GeoJSON polygon is clicked, show the popup with plot info
@@ -292,7 +327,6 @@ output$LayerLegend<-renderUI({
           )),
           tags$td(": ",BoxLabel)
           )}, 
-        #c(sort(unique(MapLayer()$MapClass))), AquaYel( length( unique(MapLayer()$MapClass))), SIMPLIFY=FALSE ))
         c(sort(unique(as.character(LayerData()$MapClass)))), AquaYel( length( unique(LayerData()$MapClass))), SIMPLIFY=FALSE ))
   }
   
@@ -784,6 +818,9 @@ output$SpeciesTable<- renderDataTable({
   if (is.null(input$SpListPark) || nchar(input$SpListPark)==0) {return()}
   else{data.frame(Latin=LatinList(),Common=CommonList())[order(LatinList()),] }
 })
+
+#> X<-getURL(url="http://irmaservices.nps.gov/v3/rest/npspecies/checklist/CATO/Vascular Plant") needs XML
+
 
 })# end of shinyServer() function
 
