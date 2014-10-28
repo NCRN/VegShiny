@@ -337,15 +337,22 @@ shinyUI(
         tags$head(tags$style(HTML("#SpeciesControls{height:400px}"))),
         wellPanel(
           tags$div(
-            title="Choose a park to work with.",uiOutput("SpListParkControl")
+            title="Choose the type of species list", 
+            radioButtons(inputId="SpListType", label="Choose a species list:", choices=c("Vascular Plant Species Found on the Monitorng Plots"=
+                                                                            "Monitoring", "All Vascualar Plants Known from the Park"="NPSpecies"))
           ),
           tags$div(
-            title="Choose one or more plots, select and backspace to delete.", uiOutput("SpListPlotControl")
+            title="Choose a park to work with.",uiOutput("SpListParkControl")
+          ),
+          conditionalPanel(condition="input.SpListType=='Monitoring'",
+            tags$div(
+              title="Choose one or more plots, select and backspace to delete.", uiOutput("SpListPlotControl")
+            )
           )
         )
       ),
       column(9,
-        h3("Species Found in the Monitoring Plots"),
+        h3(textOutput("SpeciesTableTitle")),
         dataTableOutput("SpeciesTable")
       )
     ),

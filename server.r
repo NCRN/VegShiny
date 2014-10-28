@@ -2,6 +2,7 @@ library(shiny)
 library(NPSForVeg)
 library(leaflet)
 library(lattice)
+library(jsonlite,pos=100)
 
 
 ##################### Housekeeping prior to start of the server function
@@ -233,8 +234,9 @@ showPlotPopup <- function(PlotId, lat, lng) {
       tags$h6("Monitoring Plot:",selectedPlot$Plot_Name),
       tags$h6("Year Monitored:",selectedPlot$Year),
       tags$h6(names(MapSpecList()[MapSpecList()==input$MapSpecies]),":",format(signif(selectedPlot$Values,2), 
-                                                                    big.mark=","), " ", MapMetaData()$Title))
-    )
+                                                                    big.mark=","), " ", MapMetaData()$Title),
+      tags$h6("Click on plot to see full list")
+    ))
   map$showPopup(lat, lng, content)
   
 }
@@ -770,22 +772,26 @@ output$IVTableDownload<-downloadHandler(
 ####################################### Species list
 ## Species list park control
 output$SpListParkControl<-renderUI({
-  if(length(ParkList)==0) return() else{
-    selectizeInput(inputId="SpListPark",choices=ParkList, label="Park:",
-                 options = list(placeholder='Choose a park',
-                                onInitialize = I('function() { this.setValue(""); }') )) 
-  }
+  validate(
+    need(ParkList, message=FALSE )
+  )
+  selectizeInput(inputId="SpListPark", choices=ParkList, label="Park:",
+    options = list(placeholder='Choose a park', onInitialize = I('function() { this.setValue(""); }'))
+  ) 
 })
 
 
 #### Species list plot control
 
 output$SpListPlotControl <-renderUI({
-  validate(need(input$SpListPark!="", "Please select a Park"))
+  validate(
+    need(input$SpListPark!="", message="Please select a Park")
+  )
   selectizeInput(inputId="SpListPlot", choices=c("All Plots"="All", getPlotNames(NCRN[[input$SpListPark]],type="all")),
         label="Plots (optional)", multiple=TRUE, selected="All"
     )
 })
+
 
 SpListPlotUse<-reactive({
   if(length(input$SpListPlot)==0 || "All" %in%  input$SpListPlot ) return(NA) else return(input$SpListPlot)
@@ -793,6 +799,9 @@ SpListPlotUse<-reactive({
 })
 
 LatinList<-reactive({
+  validate(
+  need(input$SpListPark, message=FALSE)  
+  )
   unique(c(
     getPlants(object=NCRN[[input$SpListPark]], group="trees", plots=SpListPlotUse())$Latin_Name,
     getPlants(object=NCRN[[input$SpListPark]], group="saplings",plots=SpListPlotUse())$Latin_Name,
@@ -814,12 +823,34 @@ CommonList<-reactive(decapitalize(getPlantNames(object=NCRN[[input$SpListPark]],
 
 
 
-output$SpeciesTable<- renderDataTable({
-  if (is.null(input$SpListPark) || nchar(input$SpListPark)==0) {return()}
-  else{data.frame(Latin=LatinList(),Common=CommonList())[order(LatinList()),] }
-})
+###Make URL for and get data from NPSpecies
+NPSpeciesURL<-reactive({paste0("http://irmaservices.nps.gov/v3/rest/npspecies/checklist/",input$SpListPark,"/Vascular%20Plant?format=Json")})
 
-#> X<-getURL(url="http://irmaservices.nps.gov/v3/rest/npspecies/checklist/CATO/Vascular Plant") needs XML
+NPSpeciesList<-reactive({ fromJSON(NPSpeciesURL()) })
+
+
+##Create Title for Table
+
+output$SpeciesTableTitle<- renderText({
+  switch(input$SpListType,
+               Monitoring= "Species Found in the Monitoring Plots",
+               NPSpecies="All Species Known from the Park")
+}) 
+
+
+
+##Create Table 
+output$SpeciesTable<- renderDataTable({
+ validate(
+  need(input$SpListPark!="", message="Please choose a park")
+  )
+
+expr= switch(input$SpListType,
+        Monitoring= data.frame(Latin=LatinList(),Common=CommonList())[order(LatinList()),],
+        NPSpecies=data.frame("Latin" = NPSpeciesList()$ScientificNameFormatted, "Common"= NPSpeciesList()$CommonNames)
+)}, 
+options=list(order=c(0,"asc"))
+)
 
 
 })# end of shinyServer() function
