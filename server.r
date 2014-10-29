@@ -3,7 +3,7 @@ library(NPSForVeg)
 library(leaflet)
 library(lattice)
 library(jsonlite,pos=100)
-
+library(httr)
 
 ##################### Housekeeping prior to start of the server function
 
