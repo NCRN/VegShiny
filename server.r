@@ -240,24 +240,25 @@ showPlotPopup <- function(PlotId, lat, lng) {
 }
 showPlotPopup2 <- function(PlotId, lat, lng) {
  selectedPlot <- MapData()[MapData()$Plot_Name == PlotId,]
- tempData<-if(
+ if(
     class(try(SiteXSpec(object=NCRN[[selectedPlot$Unit_Code]], group=input$MapGroup, years=selectedPlot$Year,
           plots=PlotId, common=input$mapCommon), silent=TRUE))=="try-error") {
               content<-as.character(tagList(tags$h6("None found on this plot")))} else {
-    if(input$MapGroup != "herbs"){
+    tempData<-if(input$MapGroup != "herbs"){
       if(input$MapValues!="size"){
         (10000/getArea(NCRN[[selectedPlot$Unit_Code]],group=input$MapGroup,type="all")) *
-          SiteXSpec(object=NCRN,group=input$MapGroup, years=selectedPlot$Year, plots=PlotId, values=input$MapValues)[-1]
+          SiteXSpec(object=NCRN[[selectedPlot$Unit_Code]],group=input$MapGroup, years=selectedPlot$Year, plots=PlotId, values=input$MapValues, common=input$mapCommon)[-1]
       }
       else{
         (10000/getArea(NCRN[[selectedPlot$Unit_Code]],group=input$MapGroup,type="all")) * (    #need to convert to m^2/ha from cm^2/ha
-          SiteXSpec(object=NCRN,group=input$MapGroup, years=selectedPlot$Year,plots=PlotId,values=input$MapValues)[-1])/10000
+          SiteXSpec(object=NCRN[[selectedPlot$Unit_Code]],group=input$MapGroup, years=selectedPlot$Year,plots=PlotId,values=input$MapValues,common=input$mapCommon)[-1])/10000
       }
     }
     else{
-     SiteXSpec(object=NCRN[[selectedPlot$Unit_Code]], group=input$MapGroup, years=selectedPlot$Year, plots=PlotId,values=input$MapValues)[-1]/12
+     SiteXSpec(object=NCRN[[selectedPlot$Unit_Code]], group=input$MapGroup, years=selectedPlot$Year, plots=PlotId,values=input$MapValues,
+               common=input$mapCommon)[-1]/12
     }
-    }
+    
   content<- as.character(tagList(
     tags$h5(getNames(NCRN[[selectedPlot$Unit_Code]],"long")),
     tags$h6("Monitoring Plot:",selectedPlot$Plot_Name),
@@ -272,7 +273,7 @@ showPlotPopup2 <- function(PlotId, lat, lng) {
     Name=names(tempData),
     Value=unlist(tempData), SIMPLIFY=FALSE
       ))
-  ))
+  ))}
  map$showPopup(lat, lng, content)
 }
 
