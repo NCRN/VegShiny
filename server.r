@@ -263,11 +263,12 @@ showPlotPopup2 <- function(PlotId, lat, lng) {
     tags$h5(getNames(NCRN[[selectedPlot$Unit_Code]],"long")),
     tags$h6("Monitoring Plot:",selectedPlot$Plot_Name),
     tags$h6("Year Monitored:",selectedPlot$Year),
-    tags$h6(MapMetaData()$Title),
+    tags$h6("Species: ",MapMetaData()$Title),
     tags$table(
       mapply(FUN=function(Name,Value){
         tags$tr(
-          tags$td(sprintf("%s: %s", Name, format(signif(Value,2), big.mark=",")))
+          tags$td(sprintf("%s:  ", Name)),
+          tags$td(align="right",sprintf("%s", format(signif(Value,2), big.mark=",")))
         )
       },
     Name=names(tempData),

@@ -34,6 +34,7 @@ h1, h2, h3, h4 { font-weight: 400; }
 /* zoom 0.9;  Removed as it messes up sliders */
 }                                    
 
+
 /* Fade in while hovering */
 #controls:hover {
   opacity: 0.95;

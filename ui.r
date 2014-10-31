@@ -12,7 +12,7 @@ shinyUI(
 
     windowTitle="Forest Vegetation",
     #icon="AH_small_flat_4C_12x16.png", #this does not work on Shiny 10.1
-    title=HTML("<div> <img src='ah_small_black.gif', alt='Forest Vegetation Visualizer'> Forest Vegetation Visualizer</div>"),
+    title=HTML("<div> <a href='http://science.nature.nps.gov/im/units/ncrn/'> <img src='ah_small_black.gif', alt='Forest Vegetation Visualizer'> </a> Forest Vegetation Visualizer</div>"),
     inverse=T,
 
    
