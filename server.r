@@ -139,15 +139,7 @@ shinyServer(function(input,output,session){
 #### Get MapLayer and corresponding data to display
 
 
-MapLayer<-reactive({
-  switch(input$MapLayer,
-         None=FakeLayer,
-         EcoReg=readChar("./Maps/EcoReg", file.info("./Maps/EcoReg")$size),
-         ForArea=readChar("./Maps/Forest", file.info("./Maps/Forest")$size),
-         Soil=readChar("./Maps/Soil", file.info("./Maps/Soil")$size)
-  )
-})
-
+###  MOVETO the MapPolys observe
 LayerData<-reactive({     
   switch(input$MapLayer,
          None=return(),
@@ -164,7 +156,11 @@ session$onFlushed(once=TRUE, function() {   ##onFlushed comes superzip - makes m
   
   #### Add GeoJSON polygon layer
   MapPolys<-observe({ 
-    map$addGeoJSON(MapLayer(),layerId="Layer")
+    map$addGeoJSON(switch(input$MapLayer,
+                    None=FakeLayer,
+                    EcoReg=readChar("./Maps/EcoReg", file.info("./Maps/EcoReg")$size),
+                    ForArea=readChar("./Maps/Forest", file.info("./Maps/Forest")$size),
+                    Soil=readChar("./Maps/Soil", file.info("./Maps/Soil")$size)),layerId="Layer")
   })
 
   ### add Monitoring plot data as a circle
@@ -195,6 +191,8 @@ session$onFlushed(once=TRUE, function() {   ##onFlushed comes superzip - makes m
 
 ######################  UIoutput for Cicrle Legend
 
+
+### MoveTo Mappolys observe
 output$MapLegend<-renderUI({
 
   if(is.null(input$MapSpecies) || nchar(input$MapSpecies)==0 || is.null(MapMetaData()) ){
@@ -214,7 +212,7 @@ output$MapLegend<-renderUI({
  
 })
 
-
+### MOVEto map polys observe
 output$MapLegendTitle<-renderText({ 
   if(is.null(input$MapSpecies) || nchar(input$MapSpecies)==0){
     return()
@@ -242,10 +240,25 @@ showPlotPopup <- function(PlotId, lat, lng) {
 }
 showPlotPopup2 <- function(PlotId, lat, lng) {
  selectedPlot <- MapData()[MapData()$Plot_Name == PlotId,]
- if(
-    class(try(SiteXSpec(object=NCRN[[selectedPlot$Unit_Code]], group=input$MapGroup, years=selectedPlot$Year, plots=PlotId, common=input$mapCommon), silent=TRUE))=="try-error") {content<-as.character(tagList(tags$h6("None found on this plot")))} else {
- tempData<-SiteXSpec(object=NCRN[[selectedPlot$Unit_Code]], group=input$MapGroup, years=selectedPlot$Year, plots=PlotId, common=input$mapCommon)
- content<- as.character(tagList(
+ tempData<-if(
+    class(try(SiteXSpec(object=NCRN[[selectedPlot$Unit_Code]], group=input$MapGroup, years=selectedPlot$Year,
+          plots=PlotId, common=input$mapCommon), silent=TRUE))=="try-error") {
+              content<-as.character(tagList(tags$h6("None found on this plot")))} else {
+    if(input$MapGroup != "herbs"){
+      if(input$MapValues!="size"){
+        (10000/getArea(NCRN[[selectedPlot$Unit_Code]],group=input$MapGroup,type="all")) *
+          SiteXSpec(object=NCRN,group=input$MapGroup, years=selectedPlot$Year, plots=PlotId, values=input$MapValues)[-1]
+      }
+      else{
+        (10000/getArea(NCRN[[selectedPlot$Unit_Code]],group=input$MapGroup,type="all")) * (    #need to convert to m^2/ha from cm^2/ha
+          SiteXSpec(object=NCRN,group=input$MapGroup, years=selectedPlot$Year,plots=PlotId,values=input$MapValues)[-1])/10000
+      }
+    }
+    else{
+     SiteXSpec(object=NCRN[[selectedPlot$Unit_Code]], group=input$MapGroup, years=selectedPlot$Year, plots=PlotId,values=input$MapValues)[-1]/12
+    }
+    }
+  content<- as.character(tagList(
     tags$h5(getNames(NCRN[[selectedPlot$Unit_Code]],"long")),
     tags$h6("Monitoring Plot:",selectedPlot$Plot_Name),
     tags$h6("Year Monitored:",selectedPlot$Year),
@@ -256,10 +269,10 @@ showPlotPopup2 <- function(PlotId, lat, lng) {
           tags$td(sprintf("%s: %s", Name, format(signif(Value,2), big.mark=",")))
         )
       },
-      names(tempData[-1]), (unlist(tempData[-1])*10000)/getArea(object=NCRN[[selectedPlot$Unit_Code]], group=input$MapGroup,"all"), SIMPLIFY=FALSE
-      )
-    )
-  ))}
+    Name=names(tempData),
+    Value=unlist(tempData), SIMPLIFY=FALSE
+      ))
+  ))
  map$showPopup(lat, lng, content)
 }
 
@@ -301,7 +314,8 @@ ClickObs2<-observe({
 
 session$onSessionEnded(ClickObs1$suspend)
 session$onSessionEnded(ClickObs2$suspend)
-
+session$onSessionEnded(MouseOut1$suspend)
+session$onSessionEnded(MouseOver1$suspend)
 
 ############## Legend for Map Layers
 output$LayerLegendTitle<-renderText({
@@ -847,7 +861,7 @@ output$SpeciesTable<- renderDataTable({
 
 expr= switch(input$SpListType,
         Monitoring= data.frame(Latin=LatinList(),Common=CommonList())[order(LatinList()),],
-        NPSpecies=data.frame("Latin" = NPSpeciesList()$ScientificNameFormatted, "Common"= NPSpeciesList()$CommonNames)
+        NPSpecies=data.frame("Latin" = NPSpeciesList()$ScientificNameFormatted, "Common"= decapitalize(NPSpeciesList()$CommonNames))
 )}, 
 options=list(order=c(0,"asc"))
 )
