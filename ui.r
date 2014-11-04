@@ -333,13 +333,13 @@ shinyUI(
       tags$div(
         title="Lists of plants found in the parks", "Species Lists"
       ),
-      column(3,id="SpeciesControls",
+      column(4,id="SpeciesControls",
         tags$head(tags$style(HTML("#SpeciesControls{height:400px}"))),
         wellPanel(
           tags$div(
             title="Choose the type of species list", 
-            radioButtons(inputId="SpListType", label="Choose a species list:", choices=c("Vascular Plant Species Found on the Monitorng Plots"=
-                                                                            "Monitoring", "All Vascualar Plants Known from the Park"="NPSpecies"))
+            radioButtons(inputId="SpListType", label="Choose a species list:", choices=c("Vascular plants in the monitorng plots"= 
+                                                                            "Monitoring", "All vascular plants known from the park"="NPSpecies"))
           ),
           tags$div(
             title="Choose a park to work with.",uiOutput("SpListParkControl")
@@ -351,9 +351,16 @@ shinyUI(
           )
         )
       ),
-      column(9,
-        h3(textOutput("SpeciesTableTitle")),
-        dataTableOutput("SpeciesTable")
+      column(8,
+        tabsetPanel(id="SpeciesListPanel", type="pills",
+          tabPanel("Species Lists",
+            h3(textOutput("SpeciesTableTitle")),
+            dataTableOutput("SpeciesTable")
+          ),
+          tabPanel("About these lists...",
+            includeHTML("./www/AboutLists.html")
+          )
+        )
       )
     ),
 
