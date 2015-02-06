@@ -155,13 +155,46 @@ LayerData<-reactive({
 session$onFlushed(once=TRUE, function() {   ##onFlushed comes superzip - makes map draw befrore circles
   
   #### Add GeoJSON polygon layer
-  MapPolys<-observe({ 
-    map$addGeoJSON(switch(input$MapLayer,
-                    None=FakeLayer,
+MapPolys<-observe({    
+    #### Add polygons to map
+  map$addGeoJSON(switch(input$MapLayer,
+                   None=FakeLayer,
                     EcoReg=readChar("./Maps/EcoReg", file.info("./Maps/EcoReg")$size),
                     ForArea=readChar("./Maps/Forest", file.info("./Maps/Forest")$size),
-                    Soil=readChar("./Maps/Soil", file.info("./Maps/Soil")$size)),layerId="Layer")
+                    Soil=readChar("./Maps/Soil", file.info("./Maps/Soil")$size)),layerId="Layer"
+  )
+})  
+  ### Change the Layer Legend
+      # Add layer legend to layer legend box
+
+output$LayerLegendTitle<-renderText({
+    switch(input$MapLayer,
+           None=return(),
+           ForArea=return("Forested Area"),
+           EcoReg=return("Omernik Ecoregions"),
+           SoilMap=return("Soil Type")
+    )
   })
+
+      # Add boxes and labels to layer legend box
+  output$LayerLegend<-renderUI({
+    if(input$MapLayer=="None"){
+      return()
+    }
+    else{
+      LayerDat<-reactive(unique(as.character(LayerData()$MapClass)))
+      tags$table(
+        mapply(
+          function(BoxLabel,color){
+            tags$tr(tags$td(tags$div(
+              style=sprintf("width: 16px; height: 16px; background-color: %s;", color)
+            )),
+            tags$td(": ",BoxLabel)
+          )}, 
+          c(sort(LayerDat())), AquaYel(length(LayerDat())), SIMPLIFY=FALSE))
+            #c ( sort(unique(as.character(LayerData()$MapClass)))), AquaYel( length( unique(LayerData()$MapClass))), SIMPLIFY=FALSE ))
+    }
+  })     
 
   ### add Monitoring plot data as a circle
   MapCircles<-observe({
@@ -189,10 +222,10 @@ session$onFlushed(once=TRUE, function() {   ##onFlushed comes superzip - makes m
 
 
 
-######################  UIoutput for Cicrle Legend
+######################  UIoutput for Circle Legend
 
 
-### MoveTo Mappolys observe
+
 output$MapLegend<-renderUI({
 
   if(is.null(input$MapSpecies) || nchar(input$MapSpecies)==0 || is.null(MapMetaData()) ){
@@ -212,7 +245,7 @@ output$MapLegend<-renderUI({
  
 })
 
-### MOVEto map polys observe
+
 output$MapLegendTitle<-renderText({ 
   if(is.null(input$MapSpecies) || nchar(input$MapSpecies)==0){
     return()
@@ -319,36 +352,6 @@ session$onSessionEnded(ClickObs2$suspend)
 session$onSessionEnded(MouseOut1$suspend)
 session$onSessionEnded(MouseOver1$suspend)
 
-############## Legend for Map Layers
-output$LayerLegendTitle<-renderText({
-  switch(input$MapLayer,
-         None=return(),
-         ForArea=return("Forested Area"),
-         EcoReg=return("Omernik Ecoregions"),
-         SoilMap=return("Soil Type")
-         
-  )
-})
-
-
-output$LayerLegend<-renderUI({
-  
-  if(input$MapLayer=="None"){
-    return()
-  }
-  else{
-    tags$table(
-      mapply(
-        function(BoxLabel,color){
-          tags$tr(tags$td(tags$div(
-            style=sprintf("width: 16px; height: 16px; background-color: %s;", color)
-          )),
-          tags$td(": ",BoxLabel)
-          )}, 
-        c(sort(unique(as.character(LayerData()$MapClass)))), AquaYel( length( unique(LayerData()$MapClass))), SIMPLIFY=FALSE ))
-  }
-  
-})
 
 
 ############################## Plots Tab ###############################################################################
@@ -426,8 +429,8 @@ output$CompareSelect<-renderUI({
                     )
                   ),
     Time=tags$div(title= "Choose a second range of years",
-                sliderInput(inputId="CompareYear", label="Display data from the 4 years ending:", min=2009, max=2013, 
-                            value=2013, format="####"))
+                sliderInput(inputId="CompareYear", label="Display data from the 4 years ending:", min=2009, max=2014, 
+                            value=2014, format="####"))
   )
 })
 ############## Need Compare species to keep the number of species to display to accepted number

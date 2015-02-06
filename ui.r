@@ -59,7 +59,7 @@ shinyUI(
                 Shrubs="shrubs", "Shrub seedlings"="shseedlings","Understory plants"="herbs","Vines on Trees"="vines"))),
             tags$div(title="Type of data to map",uiOutput("PlantValueControl")),
             tags$div(title="Choose the four year period you want to work with.", sliderInput(inputId="MapYear", 
-              label="Display data from the 4 years ending:", min=2009, max=2013,value=2013, format="####",width="150px")),
+              label="Display data from the 4 years ending:", min=2009, max=2014,value=2014, format="####",width="150px")),
             tags$div(title="Toggle between common and scientific names",
                      checkboxInput(inputId="mapCommon", label="Show common names?", value=TRUE )),
             tags$div(title="Choose a species of plants to map", uiOutput("MapSpeciesControl")),  
@@ -110,6 +110,8 @@ shinyUI(
             uiOutput("MapLegend")
           )
         ),
+
+
 ################Layer Legend
 
       conditionalPanel(
@@ -117,7 +119,7 @@ shinyUI(
         fixedPanel( id="controls", class="modal", draggable=TRUE, cursor="auto", top=325, bottom="auto", height="auto",
                     right="auto", left=350, width="auto",
                     h4("Layer Legend"),
-                    strong(uiOutput("LayerLegendTitle")),
+                    strong(textOutput("LayerLegendTitle")),
                     uiOutput("LayerLegend")
       )),
 ############## Show hide Panel
@@ -152,7 +154,7 @@ shinyUI(
               ),
               tags$div(title="Pick the four year period you want to graph",
                        sliderInput(inputId="densYear", label="Display data from the 4 years ending:", 
-                          min=2009, max=2013, value=2013, format="####")
+                          min=2009, max=2014, value=2014, format="####")
               ),
               hr(),
               tags$div(title="Choose the type of plant you want to work with", 
@@ -257,8 +259,8 @@ shinyUI(
               br(),
               tags$div(
                 title="Pick the four year period you want to graph",
-                sliderInput(inputId="IVYear", label="Display data from the 4 years ending:", min=2009, max=2013,
-                          value=2013, format="####")
+                sliderInput(inputId="IVYear", label="Display data from the 4 years ending:", min=2009, max=2014,
+                          value=2014, format="####")
               ),
               br(),
               tags$div(
