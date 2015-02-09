@@ -47,6 +47,7 @@ shinyUI(
             zoom = 9,
             maxBounds = list(list(37.70,-79.5), list(40.36,-76.1)), # Show NCRN only
             minZoom=8
+            #maxZoom=15
           )
         ),
 ################### Main Map Controls 
