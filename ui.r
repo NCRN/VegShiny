@@ -19,7 +19,8 @@ shinyUI(
   ######################################### Map Panel ####################################################################
     tabPanel(title="Map",
       tags$head(HTML('<link rel="icon", href="AH_small_flat_4C_12x16.png", type="image/png" />')), #puts up icon on tab
-      tags$head(includeScript("./www/forveg-analytics.js")),  
+      #tags$head(includeScript("./www/forveg-analytics.js")), 
+      tags$head(includeScript("http://www.nps.gov/common/commonspot/templates/js/federated-analytics.js")),
   
       
       
@@ -47,7 +48,6 @@ shinyUI(
             zoom = 9,
             maxBounds = list(list(37.70,-79.5), list(40.36,-76.1)), # Show NCRN only
             minZoom=8
-            #maxZoom=15
           )
         ),
 ################### Main Map Controls 
