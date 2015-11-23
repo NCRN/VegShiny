@@ -4,56 +4,48 @@ library(leaflet)
 library(shinyBS)
 
 shinyUI(
-
-  
-  
-  navbarPage(
-    
-
-    windowTitle="Forest Vegetation",
+  navbarPage(title=HTML("<div> <a href='http://science.nature.nps.gov/im/units/ncrn/'> <img src='ah_small_black.gif',
+                      alt='Forest Vegetation Visualizer'> </a> Forest Vegetation Visualizer</div>"),
+    #windowTitle="Forest Vegetation",
     #icon="AH_small_flat_4C_12x16.png", #this does not work on Shiny 10.1
-    title=HTML("<div> <a href='http://science.nature.nps.gov/im/units/ncrn/'> <img src='ah_small_black.gif', alt='Forest Vegetation Visualizer'> </a> Forest Vegetation Visualizer</div>"),
-    inverse=T,
-
-   
+    position = "static-top",inverse=TRUE, collapsible = FALSE, fluid=TRUE, windowTitle = "NCRN Forest Vegetation",
+    theme="http://www.nps.gov/lib/bootstrap/3.3.2/css/nps-bootstrap.min.css", id="MainNavBar",
+    #inverse=T,
   ######################################### Map Panel ####################################################################
     tabPanel(title="Map",
       tags$head(HTML('<link rel="icon", href="AH_small_flat_4C_12x16.png", type="image/png" />')), #puts up icon on tab
-      #tags$head(includeScript("./www/forveg-analytics.js")), 
       tags$head(includeScript("http://www.nps.gov/common/commonspot/templates/js/federated-analytics.js")),
   
-      
-      
-      
-  
 ##### About the Map modal goes here so it does not get caught in the "outer" div below here it has css problems
-      bsModal(id="MapInfoModal", title="About the Map", trigger="AboutMapButton", href="AboutMap.html" ),
+   #   bsModal(id="MapInfoModal", title="About the Map", trigger="AboutMapButton", href="AboutMap.html" ),
      
 #####  How to video modal
-      bsModal(id="VideoModal", title='How to Use This Website', trigger = "VideoButton", HTML('<iframe width="560" height="315" src="//www.youtube.com/embed/Kg9FvgPa6Lc" frameborder="0" allowfullscreen></iframe>'), tags$head(tags$style(HTML("#VideoModal{width:580px;}"))) ),
+  #    bsModal(id="VideoModal", title='How to Use This Website', trigger = "VideoButton", HTML('<iframe width="560" height="315" src="//www.youtube.com/embed/Kg9FvgPa6Lc" frameborder="0" allowfullscreen></iframe>'), tags$head(tags$style(HTML("#VideoModal{width:580px;}"))) ),
 
 
 
   div(class="outer",
-        tags$head(includeCSS("./www/mapstyles.css") ), # defines css file
+    tags$head(includeCSS("./www/mapstyles.css") ), # defines css file
         
-        leafletMap("map", width="100%", height="100%",
-          initialTileLayer="//{s}.tiles.mapbox.com/v3/nps.2yxv8n84/{z}/{x}/{y}.png",
-          initialTileLayerAttribution = HTML("&copy; <a href='http://mapbox.com/about/maps' target='_blank'>Mapbox</a> 
-          &copy; <a href='http://openstreetmap.org/copyright' target='_blank'>OpenStreetMap</a> contributors | 
-          <a class='improve-park-tiles' href='http://www.nps.gov/npmap/park-tiles/improve/' 
-                                             target='_blank'>Improve Park Tiles</a>"),
-          options=list(
-            center = c(39.03, -77.80),
-            zoom = 9,
-            maxBounds = list(list(37.70,-79.5), list(40.36,-76.1)), # Show NCRN only
-            minZoom=8
-          )
-        ),
+#         leafletMap("map", width="100%", height="100%",
+#           initialTileLayer="//{s}.tiles.mapbox.com/v3/nps.2yxv8n84/{z}/{x}/{y}.png",
+#           initialTileLayerAttribution = HTML("&copy; <a href='http://mapbox.com/about/maps' target='_blank'>Mapbox</a> 
+#           &copy; <a href='http://openstreetmap.org/copyright' target='_blank'>OpenStreetMap</a> contributors | 
+#           <a class='improve-park-tiles' href='http://www.nps.gov/npmap/park-tiles/improve/' 
+#                                              target='_blank'>Improve Park Tiles</a>"),
+#           options=list(
+#             center = c(39.03, -77.80),
+#             zoom = 9,
+#             maxBounds = list(list(37.70,-79.5), list(40.36,-76.1)), # Show NCRN only
+#             minZoom=8
+#           )
+#         ),
+    leafletOutput("VegMap", width="100%", height="100%")),
+
 ################### Main Map Controls 
-        conditionalPanel(condition="input.ShowControls",
-          fixedPanel(id="controls",class="modal",draggable=TRUE,cursor="auto",top=70,bottom="auto",height="auto",right=20, 
-                     left="auto", width=200,
+    conditionalPanel(condition="input.ShowControls",
+      fixedPanel(id="controls",class="panel panel-default controls",draggable=TRUE,cursor="auto",top="90px",bottom="auto",height="auto",right=20, 
+                     left="auto", width="225px",
             h4("Map Controls"),
             tags$div(title="Choose the type of plant you want to work with", selectInput(inputId="MapGroup", 
               label="Type of plant:", choices=c(Trees="trees",Saplings="saplings","Tree seedlings"="seedlings",
@@ -77,8 +69,8 @@ shinyUI(
 ############### Add a layer control
         tags$div(title="Overlay additional data onto the parks",
           conditionalPanel(condition="input.ShowLayers",
-            fixedPanel(id="controls",class="modal",draggable=TRUE,cursor="auto",top="60%",bottom="auto"
-                     ,height="auto",right="auto",left=350,width=200,
+            fixedPanel(id="controls",class="panel panel-default controls",draggable=TRUE,cursor="auto",top="60%",bottom="auto"
+                     ,height="auto",right="auto",left=20,width=200,
             h4("Map Layers"),
             selectizeInput(inputId="MapLayer", label="Add a map layer:", 
                         choices=c(None="None", "EcoRegions"="EcoReg","Forested Areas"="ForArea"
@@ -89,8 +81,8 @@ shinyUI(
 
 ########################## Zoom  Control
         conditionalPanel(condition="input.ShowZoom",
-          fixedPanel(id="controls",class="modal",draggable=TRUE,cursor="auto",top=70,bottom="auto",height="auto",
-                     left=350,width=210,
+          fixedPanel(id="controls",class="panel panel-default controls",draggable=TRUE,cursor="auto",top=90,bottom="auto",height="auto",
+                     left=20,width=250,
             h4("Zoom to:"),
             tags$div(title="Choose a park and click 'Go'", uiOutput("ParkZoomControl"),
             actionButton(inputId="MapZoom", label="Go")),
@@ -137,7 +129,7 @@ shinyUI(
           )
         )
       )
-    ) ## end of map div
+    #) ## end of map div
   ),  ## end of map page
 
 

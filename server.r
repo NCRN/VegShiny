@@ -27,9 +27,48 @@ shinyServer(function(input,output,session){
 ################################## Code For Map Panel  ######################################################
 
 ### Create Map  
-  map<-createLeafletMap(session,"map")
+  # map<-createLeafletMap(session,"map")
 
-  MapYears<-reactive({(input$MapYear-3):input$MapYear  })  #put in reactiveValues?
+  output$VegMap<-renderLeaflet({leaflet() %>%
+      setView(lng=-77.8,lat=39.03,zoom=9) %>% 
+      setMaxBounds(lng1=-79.5,lng2=-76.1, lat1=37.7, lat2=40.36)
+  })
+  
+  
+  
+  
+  
+  MapYears<-reactive({(input$MapYear-3):input$MapYear  })  
+  
+  
+#### Make map with Base Layer and Layer Controls
+NPSAttrib<-HTML("&copy; <a href='http://mapbox.com/about/maps' target='_blank'>Mapbox</a> 
+                  &copy; <a href='http://openstreetmap.org/copyright' target='_blank'>OpenStreetMap</a> contributors | 
+                  <a class='improve-park-tiles' href='http://www.nps.gov/npmap/park-tiles/improve/' 
+                  target='_blank'>Improve Park Tiles</a>")
+  
+  observe({
+    leafletProxy("VegMap") %>% 
+      
+      clearTiles() %>% 
+      
+      addTiles(group="Map", urlTemplate="//{s}.tiles.mapbox.com/v4/nps.2yxv8n84,nps.jhd2e8lb/{z}/{x}/{y}.png?access_token=pk.eyJ1IjoibnBzIiwiYSI6IkdfeS1OY1UifQ.K8Qn5ojTw4RV1GwBlsci-Q",
+               attribution=NPSAttrib, options=tileOptions(minZoom=8))
+#     %>% 
+#       addTiles(group="Imagery", urlTemplate="//{s}.tiles.mapbox.com/v4/mapbox.satellite,nps.gdipreks,nps.08c8af87/{z}/{x}/{y}.png?access_token=pk.eyJ1IjoibnBzIiwiYSI6IkdfeS1OY1UifQ.K8Qn5ojTw4RV1GwBlsci-Q",
+#                attribution=NPSAttrib, options=tileOptions(minZoom=8)) %>% 
+#       addTiles(group="Slate", urlTemplate="//{s}.tiles.mapbox.com/v4/nps.68926899,nps.502a840b/{z}/{x}/{y}.png?access_token=pk.eyJ1IjoibnBzIiwiYSI6IkdfeS1OY1UifQ.K8Qn5ojTw4RV1GwBlsci-Q",
+#                attribution=NPSAttrib, options=tileOptions(minZoom=8) ) %>% 
+#                {if("BaseLayers" %in% input$MapHide) 
+#             addLayersControl(map=., baseGroups=c("Map","Imagery","Slate"),
+#                               options=layersControlOptions(collapsed=F))}
+  })
+  
+  ### Hide Layers Control
+#   observe({
+#     if(!"BaseLayers" %in% input$MapHide ) leafletProxy("BirdMap") %>% removeLayersControl()
+#   })
+#   
 #########################################################################################################
 
 ######## Zoom control for map
@@ -40,13 +79,15 @@ shinyServer(function(input,output,session){
   })
 
 ############Zoom the map
-  observe({
-    input$MapZoom
-    isolate({
-      BoundsUse<-reactive({ as.numeric(ParkBounds[ParkBounds$ParkCode==input$ParkZoom,2:5]) })
-      map$fitBounds(BoundsUse()[1],BoundsUse()[2],BoundsUse()[3],BoundsUse()[4])
-    }) 
-  })
+
+  
+  #   observe({
+#     input$MapZoom
+#     isolate({
+#       BoundsUse<-reactive({ as.numeric(ParkBounds[ParkBounds$ParkCode==input$ParkZoom,2:5]) })
+#       map$fitBounds(BoundsUse()[1],BoundsUse()[2],BoundsUse()[3],BoundsUse()[4])
+#     }) 
+#   })
 
 ###########################################################################################################
 
@@ -152,73 +193,73 @@ LayerData<-reactive({
 
 ######### Add points and Polygons to map
  
-session$onFlushed(once=TRUE, function() {   ##onFlushed comes superzip - makes map draw befrore circles
-  
-  #### Add GeoJSON polygon layer
-MapPolys<-observe({    
-    #### Add polygons to map
-  map$addGeoJSON(switch(input$MapLayer,
-                   None=FakeLayer,
-                    EcoReg=readChar("./Maps/EcoReg", file.info("./Maps/EcoReg")$size),
-                    ForArea=readChar("./Maps/Forest", file.info("./Maps/Forest")$size),
-                    Soil=readChar("./Maps/Soil", file.info("./Maps/Soil")$size)),layerId="Layer"
-  )
-})  
-  ### Change the Layer Legend
-      # Add layer legend to layer legend box
-
-output$LayerLegendTitle<-renderText({
-    switch(input$MapLayer,
-           None=return(),
-           ForArea=return("Forested Area"),
-           EcoReg=return("Omernik Ecoregions"),
-           SoilMap=return("Soil Type")
-    )
-  })
-
-      # Add boxes and labels to layer legend box
-  output$LayerLegend<-renderUI({
-    if(input$MapLayer=="None"){
-      return()
-    }
-    else{
-      LayerDat<-reactive(unique(as.character(LayerData()$MapClass)))
-      tags$table(
-        mapply(
-          function(BoxLabel,color){
-            tags$tr(tags$td(tags$div(
-              style=sprintf("width: 16px; height: 16px; background-color: %s;", color)
-            )),
-            tags$td(": ",BoxLabel)
-          )}, 
-          c(sort(LayerDat())), AquaYel(length(LayerDat())), SIMPLIFY=FALSE))
-            #c ( sort(unique(as.character(LayerData()$MapClass)))), AquaYel( length( unique(LayerData()$MapClass))), SIMPLIFY=FALSE ))
-    }
-  })     
-
-  ### add Monitoring plot data as a circle
-  MapCircles<-observe({
-    input$MapLayer #make sure Circles are always on top
-    map$clearShapes()
-    try(silent=TRUE,      #try deals with issue where the group has changed but species has not yet caught up.
-      if(is.null(MapData()$Values )) {
-        return()
-      } else {
-        map$addCircle(MapData()$Latitude, MapData()$Longitude, 15*as.numeric(input$PlotSize),
-          layerId=MapData()$Plot_Name,   #This is the ID of the circle to match to other data
-          options=list(color=BlueOr(8)[cut(MapData()$Values,breaks=c(MapMetaData()$Cuts), labels = FALSE)],
-          fillOpacity=.7, 
-          weight=5)
-        )
-      }
-    ) 
-  })
-  
-  # TIL this is necessary in order to prevent the observer from
-  # attempting to write to the websocket after the session is gone.
-  session$onSessionEnded(MapPolys$suspend)
-  session$onSessionEnded(MapCircles$suspend)
-})
+# session$onFlushed(once=TRUE, function() {   ##onFlushed comes superzip - makes map draw befrore circles
+#   
+#   #### Add GeoJSON polygon layer
+# MapPolys<-observe({    
+#     #### Add polygons to map
+#   map$addGeoJSON(switch(input$MapLayer,
+#                    None=FakeLayer,
+#                     EcoReg=readChar("./Maps/EcoReg", file.info("./Maps/EcoReg")$size),
+#                     ForArea=readChar("./Maps/Forest", file.info("./Maps/Forest")$size),
+#                     Soil=readChar("./Maps/Soil", file.info("./Maps/Soil")$size)),layerId="Layer"
+#   )
+# })  
+#   ### Change the Layer Legend
+#       # Add layer legend to layer legend box
+# 
+# output$LayerLegendTitle<-renderText({
+#     switch(input$MapLayer,
+#            None=return(),
+#            ForArea=return("Forested Area"),
+#            EcoReg=return("Omernik Ecoregions"),
+#            SoilMap=return("Soil Type")
+#     )
+#   })
+# 
+#       # Add boxes and labels to layer legend box
+#   output$LayerLegend<-renderUI({
+#     if(input$MapLayer=="None"){
+#       return()
+#     }
+#     else{
+#       LayerDat<-reactive(unique(as.character(LayerData()$MapClass)))
+#       tags$table(
+#         mapply(
+#           function(BoxLabel,color){
+#             tags$tr(tags$td(tags$div(
+#               style=sprintf("width: 16px; height: 16px; background-color: %s;", color)
+#             )),
+#             tags$td(": ",BoxLabel)
+#           )}, 
+#           c(sort(LayerDat())), AquaYel(length(LayerDat())), SIMPLIFY=FALSE))
+#             #c ( sort(unique(as.character(LayerData()$MapClass)))), AquaYel( length( unique(LayerData()$MapClass))), SIMPLIFY=FALSE ))
+#     }
+#   })     
+# 
+#   ### add Monitoring plot data as a circle
+#   MapCircles<-observe({
+#     input$MapLayer #make sure Circles are always on top
+#     map$clearShapes()
+#     try(silent=TRUE,      #try deals with issue where the group has changed but species has not yet caught up.
+#       if(is.null(MapData()$Values )) {
+#         return()
+#       } else {
+#         map$addCircle(MapData()$Latitude, MapData()$Longitude, 15*as.numeric(input$PlotSize),
+#           layerId=MapData()$Plot_Name,   #This is the ID of the circle to match to other data
+#           options=list(color=BlueOr(8)[cut(MapData()$Values,breaks=c(MapMetaData()$Cuts), labels = FALSE)],
+#           fillOpacity=.7, 
+#           weight=5)
+#         )
+#       }
+#     ) 
+#   })
+#   
+#   # TIL this is necessary in order to prevent the observer from
+#   # attempting to write to the websocket after the session is gone.
+#   session$onSessionEnded(MapPolys$suspend)
+#   session$onSessionEnded(MapCircles$suspend)
+# })
 
 
 
@@ -258,100 +299,100 @@ output$MapLegendTitle<-renderText({
 
 
 ### Function for adding information to, and displaying, popup.
-showPlotPopup <- function(PlotId, lat, lng) {
-  selectedPlot <- MapData()[MapData()$Plot_Name == PlotId,]
-    content<- as.character(tagList(
-      tags$h5(getNames(NCRN[[selectedPlot$Unit_Code]],"long")),
-      tags$h6("Monitoring Plot:",selectedPlot$Plot_Name),
-      tags$h6("Year Monitored:",selectedPlot$Year),
-      tags$h6(names(MapSpecList()[MapSpecList()==input$MapSpecies]),":",format(signif(selectedPlot$Values,2), 
-                                                                    big.mark=","), " ", MapMetaData()$Title),
-      tags$h6("Click on plot to see full list")
-    ))
-  map$showPopup(lat, lng, content)
-  
-}
-showPlotPopup2 <- function(PlotId, lat, lng) {
- selectedPlot <- MapData()[MapData()$Plot_Name == PlotId,]
- if(
-    class(try(SiteXSpec(object=NCRN[[selectedPlot$Unit_Code]], group=input$MapGroup, years=selectedPlot$Year,
-          plots=PlotId, common=input$mapCommon), silent=TRUE))=="try-error") {
-              content<-as.character(tagList(tags$h6("None found on this plot")))} else {
-    tempData<-if(input$MapGroup != "herbs"){
-      if(input$MapValues!="size"){
-        (10000/getArea(NCRN[[selectedPlot$Unit_Code]],group=input$MapGroup,type="all")) *
-          SiteXSpec(object=NCRN[[selectedPlot$Unit_Code]],group=input$MapGroup, years=selectedPlot$Year, plots=PlotId, values=input$MapValues, common=input$mapCommon)[-1]
-      }
-      else{
-        (10000/getArea(NCRN[[selectedPlot$Unit_Code]],group=input$MapGroup,type="all")) * (    #need to convert to m^2/ha from cm^2/ha
-          SiteXSpec(object=NCRN[[selectedPlot$Unit_Code]],group=input$MapGroup, years=selectedPlot$Year,plots=PlotId,values=input$MapValues,common=input$mapCommon)[-1])/10000
-      }
-    }
-    else{
-     SiteXSpec(object=NCRN[[selectedPlot$Unit_Code]], group=input$MapGroup, years=selectedPlot$Year, plots=PlotId,values=input$MapValues,
-               common=input$mapCommon)[-1]/12
-    }
-    
-  content<- as.character(tagList(
-    tags$h5(getNames(NCRN[[selectedPlot$Unit_Code]],"long")),
-    tags$h6("Monitoring Plot:",selectedPlot$Plot_Name),
-    tags$h6("Year Monitored:",selectedPlot$Year),
-    tags$h6("Species: ",MapMetaData()$Title),
-    tags$table(
-      mapply(FUN=function(Name,Value){
-        tags$tr(
-          tags$td(sprintf("%s:  ", Name)),
-          tags$td(align="right",sprintf("%s", format(signif(Value,2), big.mark=",")))
-        )
-      },
-    Name=names(tempData),
-    Value=unlist(tempData), SIMPLIFY=FALSE
-      ))
-  ))}
- map$showPopup(lat, lng, content)
-}
+# showPlotPopup <- function(PlotId, lat, lng) {
+#   selectedPlot <- MapData()[MapData()$Plot_Name == PlotId,]
+#     content<- as.character(tagList(
+#       tags$h5(getNames(NCRN[[selectedPlot$Unit_Code]],"long")),
+#       tags$h6("Monitoring Plot:",selectedPlot$Plot_Name),
+#       tags$h6("Year Monitored:",selectedPlot$Year),
+#       tags$h6(names(MapSpecList()[MapSpecList()==input$MapSpecies]),":",format(signif(selectedPlot$Values,2), 
+#                                                                     big.mark=","), " ", MapMetaData()$Title),
+#       tags$h6("Click on plot to see full list")
+#     ))
+#   map$showPopup(lat, lng, content)
+#   
+# }
+# showPlotPopup2 <- function(PlotId, lat, lng) {
+#  selectedPlot <- MapData()[MapData()$Plot_Name == PlotId,]
+#  if(
+#     class(try(SiteXSpec(object=NCRN[[selectedPlot$Unit_Code]], group=input$MapGroup, years=selectedPlot$Year,
+#           plots=PlotId, common=input$mapCommon), silent=TRUE))=="try-error") {
+#               content<-as.character(tagList(tags$h6("None found on this plot")))} else {
+#     tempData<-if(input$MapGroup != "herbs"){
+#       if(input$MapValues!="size"){
+#         (10000/getArea(NCRN[[selectedPlot$Unit_Code]],group=input$MapGroup,type="all")) *
+#           SiteXSpec(object=NCRN[[selectedPlot$Unit_Code]],group=input$MapGroup, years=selectedPlot$Year, plots=PlotId, values=input$MapValues, common=input$mapCommon)[-1]
+#       }
+#       else{
+#         (10000/getArea(NCRN[[selectedPlot$Unit_Code]],group=input$MapGroup,type="all")) * (    #need to convert to m^2/ha from cm^2/ha
+#           SiteXSpec(object=NCRN[[selectedPlot$Unit_Code]],group=input$MapGroup, years=selectedPlot$Year,plots=PlotId,values=input$MapValues,common=input$mapCommon)[-1])/10000
+#       }
+#     }
+#     else{
+#      SiteXSpec(object=NCRN[[selectedPlot$Unit_Code]], group=input$MapGroup, years=selectedPlot$Year, plots=PlotId,values=input$MapValues,
+#                common=input$mapCommon)[-1]/12
+#     }
+#     
+#   content<- as.character(tagList(
+#     tags$h5(getNames(NCRN[[selectedPlot$Unit_Code]],"long")),
+#     tags$h6("Monitoring Plot:",selectedPlot$Plot_Name),
+#     tags$h6("Year Monitored:",selectedPlot$Year),
+#     tags$h6("Species: ",MapMetaData()$Title),
+#     tags$table(
+#       mapply(FUN=function(Name,Value){
+#         tags$tr(
+#           tags$td(sprintf("%s:  ", Name)),
+#           tags$td(align="right",sprintf("%s", format(signif(Value,2), big.mark=",")))
+#         )
+#       },
+#     Name=names(tempData),
+#     Value=unlist(tempData), SIMPLIFY=FALSE
+#       ))
+#   ))}
+#  map$showPopup(lat, lng, content)
+# }
 
 
 ###  When a plot is clicked, show the popup with plot info
 
-MouseOver1<-observe({
-  eventOver1<-input$map_shape_mouseover
-  if(is.null(eventOver1)){return()}
-  isolate(
-    showPlotPopup(eventOver1$id, as.character(eventOver1$lat+.001), as.character(eventOver1$lng))
-  )
-})
-
-MouseOut1<-observe({
-  eventOut1<-input$map_shape_mouseout
-  map$clearPopups()
-  
-})
-
-ClickObs1<-observe({
-  map$clearPopups()
-  eventClick1<-input$map_shape_click
-  if(is.null(eventClick1)){return()}
-  isolate(
-    showPlotPopup2(eventClick1$id, as.character(eventClick1$lat+.001), as.character(eventClick1$lng))
-  )
-})
-###  When a GeoJSON polygon is clicked, show the popup with plot info
-ClickObs2<-observe({
-  eventClick2<-input$map_geojson_click   #a geojson feature was clicked
-  if(is.null(eventClick2)) { return() }
-  isolate({
-    map$clearPopups()
-    map$showPopup(lat=eventClick2$properties$LabelLat,lng=eventClick2$properties$LabelLng, content=eventClick2$properties$MapClass)
-  })
-  
-})
-
-session$onSessionEnded(ClickObs1$suspend)
-session$onSessionEnded(ClickObs2$suspend)
-session$onSessionEnded(MouseOut1$suspend)
-session$onSessionEnded(MouseOver1$suspend)
-
+# MouseOver1<-observe({
+#   eventOver1<-input$map_shape_mouseover
+#   if(is.null(eventOver1)){return()}
+#   isolate(
+#     showPlotPopup(eventOver1$id, as.character(eventOver1$lat+.001), as.character(eventOver1$lng))
+#   )
+# })
+# 
+# MouseOut1<-observe({
+#   eventOut1<-input$map_shape_mouseout
+#   map$clearPopups()
+#   
+# })
+# 
+# ClickObs1<-observe({
+#   map$clearPopups()
+#   eventClick1<-input$map_shape_click
+#   if(is.null(eventClick1)){return()}
+#   isolate(
+#     showPlotPopup2(eventClick1$id, as.character(eventClick1$lat+.001), as.character(eventClick1$lng))
+#   )
+# })
+# ###  When a GeoJSON polygon is clicked, show the popup with plot info
+# ClickObs2<-observe({
+#   eventClick2<-input$map_geojson_click   #a geojson feature was clicked
+#   if(is.null(eventClick2)) { return() }
+#   isolate({
+#     map$clearPopups()
+#     map$showPopup(lat=eventClick2$properties$LabelLat,lng=eventClick2$properties$LabelLng, content=eventClick2$properties$MapClass)
+#   })
+#   
+# })
+# 
+# session$onSessionEnded(ClickObs1$suspend)
+# session$onSessionEnded(ClickObs2$suspend)
+# session$onSessionEnded(MouseOut1$suspend)
+# session$onSessionEnded(MouseOver1$suspend)
+# 
 
 
 ############################## Plots Tab ###############################################################################
