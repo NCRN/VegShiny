@@ -1,52 +1,35 @@
 library(shiny)
 library(NPSForVeg)
 library(leaflet)
-library(shinyBS)
+library(shinyjs)
 
-shinyUI(
-  navbarPage(title=HTML("<div> <a href='http://science.nature.nps.gov/im/units/ncrn/'> <img src='ah_small_black.gif',
-                      alt='Forest Vegetation Visualizer'> </a> Forest Vegetation Visualizer</div>"),
-    #windowTitle="Forest Vegetation",
-    #icon="AH_small_flat_4C_12x16.png", #this does not work on Shiny 10.1
-    position = "static-top",inverse=TRUE, collapsible = FALSE, fluid=TRUE, windowTitle = "NCRN Forest Vegetation",
+
+navbarPage(title=HTML("<div> <a href='http://science.nature.nps.gov/im/units/ncrn/'> <img src='ah_small_black.gif',
+          alt='Forest Vegetation Visualizer'> </a> Forest Vegetation Visualizer</div>"),
+    position = "static-top", inverse=TRUE, collapsible = FALSE, fluid=TRUE, windowTitle = "NCRN Forest Vegetation",
     theme="http://www.nps.gov/lib/bootstrap/3.3.2/css/nps-bootstrap.min.css", id="MainNavBar",
-    #inverse=T,
   ######################################### Map Panel ####################################################################
-    tabPanel(title="Map",
-      tags$head(HTML('<link rel="icon", href="AH_small_flat_4C_12x16.png", type="image/png" />')), #puts up icon on tab
-      tags$head(includeScript("http://www.nps.gov/common/commonspot/templates/js/federated-analytics.js")),
   
+  
+  tabPanel(title="Map",
+    useShinyjs(),
 ##### About the Map modal goes here so it does not get caught in the "outer" div below here it has css problems
    #   bsModal(id="MapInfoModal", title="About the Map", trigger="AboutMapButton", href="AboutMap.html" ),
      
 #####  How to video modal
-  #    bsModal(id="VideoModal", title='How to Use This Website', trigger = "VideoButton", HTML('<iframe width="560" height="315" src="//www.youtube.com/embed/Kg9FvgPa6Lc" frameborder="0" allowfullscreen></iframe>'), tags$head(tags$style(HTML("#VideoModal{width:580px;}"))) ),
-
-
-
-  div(class="outer",
-    tags$head(includeCSS("./www/mapstyles.css") ), # defines css file
-        
-#         leafletMap("map", width="100%", height="100%",
-#           initialTileLayer="//{s}.tiles.mapbox.com/v3/nps.2yxv8n84/{z}/{x}/{y}.png",
-#           initialTileLayerAttribution = HTML("&copy; <a href='http://mapbox.com/about/maps' target='_blank'>Mapbox</a> 
-#           &copy; <a href='http://openstreetmap.org/copyright' target='_blank'>OpenStreetMap</a> contributors | 
-#           <a class='improve-park-tiles' href='http://www.nps.gov/npmap/park-tiles/improve/' 
-#                                              target='_blank'>Improve Park Tiles</a>"),
-#           options=list(
-#             center = c(39.03, -77.80),
-#             zoom = 9,
-#             maxBounds = list(list(37.70,-79.5), list(40.36,-76.1)), # Show NCRN only
-#             minZoom=8
-#           )
-#         ),
-    leafletOutput("VegMap", width="100%", height="100%")),
+  #    bsModal(id="VideoModal", title='How to Use This Website', trigger = "VideoButton", HTML('<iframe width="560" height="315" src="//www.youtube.com/embed/Kg9FvgPa6Lc" frameborder="0" allowfullscreen></iframe>'), tags$head(tags$style(HTML("#VideoModal{width:580px;}"))) )
+    div(class="outer",
+      tags$head(includeCSS("./www/mapstyles.css") ), # defines css file
+      tags$head(HTML('<link rel="icon", href="AH_small_flat_4C_12x16.png", type="image/png" />')), #puts up icon on tab
+      tags$head(includeScript("http://www.nps.gov/common/commonspot/templates/js/federated-analytics.js")),
+      leafletOutput("VegMap", width="100%", height="100%")
+    ),
 
 ################### Main Map Controls 
-    conditionalPanel(condition="input.ShowControls",
-      fixedPanel(id="controls",class="panel panel-default controls",draggable=TRUE,cursor="auto",top="90px",bottom="auto",height="auto",right=20, 
-                     left="auto", width="225px",
-            h4("Map Controls"),
+    #conditionalPanel(condition="input.ShowControls",
+      fixedPanel(id="MapControlPanel",class="panel panel-default controls",draggable=TRUE,cursor="auto",top="90px",bottom="auto",
+                 height="auto",right=20, left="auto", width="225px",
+            h4("Map Controls", class="panel-heading"),
             tags$div(title="Choose the type of plant you want to work with", selectInput(inputId="MapGroup", 
               label="Type of plant:", choices=c(Trees="trees",Saplings="saplings","Tree seedlings"="seedlings",
                 Shrubs="shrubs", "Shrub seedlings"="shseedlings","Understory plants"="herbs","Vines on Trees"="vines"))),
@@ -60,8 +43,8 @@ shinyUI(
                      uiOutput("MapParkControl")),
             bsButton(inputId="AboutMapButton",label="About the map...",style="primary"),
             bsButton(inputId="VideoButton", label='"How To" video', style="primary")
-          )
-       ),
+          ),
+      # ),
 
 ############### Map Modal 
 
@@ -71,7 +54,7 @@ shinyUI(
           conditionalPanel(condition="input.ShowLayers",
             fixedPanel(id="controls",class="panel panel-default controls",draggable=TRUE,cursor="auto",top="60%",bottom="auto"
                      ,height="auto",right="auto",left=20,width=200,
-            h4("Map Layers"),
+            h4("Map Layers", class="panel-heading"),
             selectizeInput(inputId="MapLayer", label="Add a map layer:", 
                         choices=c(None="None", "EcoRegions"="EcoReg","Forested Areas"="ForArea"
                                   ,"Soil Map "="Soil"
@@ -82,10 +65,10 @@ shinyUI(
 ########################## Zoom  Control
         conditionalPanel(condition="input.ShowZoom",
           fixedPanel(id="controls",class="panel panel-default controls",draggable=TRUE,cursor="auto",top=90,bottom="auto",height="auto",
-                     left=20,width=250,
-            h4("Zoom to:"),
+                     left=50,width=250,
+            h4("Zoom to:", class="panel-heading"),
             tags$div(title="Choose a park and click 'Go'", uiOutput("ParkZoomControl"),
-            actionButton(inputId="MapZoom", label="Go")),
+            actionButton(inputId="MapZoom", label="Go", class="btn btn-primary")),
             hr(),
             tags$div(title="Increases size of plots for easier viewing",
                  radioButtons(inputId="PlotSize", label="Enlarge plots: 1X = to scale", 
@@ -96,9 +79,9 @@ shinyUI(
 
 ##################### Map Legend
         conditionalPanel(condition="input.ShowPlots",
-          fixedPanel( id="controls", class="modal", draggable=TRUE, cursor="auto", top=70, bottom="auto", height="auto",
+          fixedPanel( id="controls", class="panel panel-default controls", draggable=TRUE, cursor="auto", top=70, bottom="auto", height="auto",
               right=300, left="auto", width=130,
-            h4("Legend"),
+            h4("Legend", class="panel-heading"),
             uiOutput("MapLegendTitle"),
             uiOutput("MapLegend")
           )
@@ -109,19 +92,22 @@ shinyUI(
 
       conditionalPanel(
         condition="input.MapLayer!='None' & input.ShowLayerLegend",
-        fixedPanel( id="controls", class="modal", draggable=TRUE, cursor="auto", top=325, bottom="auto", height="auto",
+        fixedPanel( id="controls", class="panel panel-default controls", draggable=TRUE, cursor="auto", top=325, bottom="auto", height="auto",
                     right="auto", left=350, width="auto",
-                    h4("Layer Legend"),
+                    h4("Layer Legend", class="panel-heading"),
                     strong(textOutput("LayerLegendTitle")),
                     uiOutput("LayerLegend")
       )),
 ############## Show hide Panel
       tags$div(title="Choose to show or hide panels",
-        absolutePanel(id="controls", class="modal", draggable=TRUE, cursor="auto",top="95%", height=15, 
-                      left=350, width=600,
+        absolutePanel(id="controls", class="panel panel-default controls", draggable=TRUE, cursor="auto",top="95%", height=50, 
+                      left=20, width=600,
+        checkboxGroupInput(inputId="MapHide", label=strong("Show:"), inline=TRUE,
+            choices=c("Layer Legend"="LayerLegend", "Legend","Map Controls"="MapControls", "Map Layers"="MapLayers", "Zoom"),
+            selected=c("LayerLegend", "Legend", "MapControls", "MapLayers","Zoom")),
           flowLayout(
             strong("Show:"),
-            checkboxInput(inputId="ShowControls", label="Map Controls", value=TRUE),
+            #checkboxInput(inputId="ShowControls", label="Map Controls", value=TRUE),
             checkboxInput(inputId="ShowPlots", label="Legend", value=TRUE),
             checkboxInput(inputId="ShowZoom", label="Zoom", value=TRUE),
             checkboxInput(inputId="ShowLayers", label="Map Layers", value=TRUE),
@@ -196,22 +182,23 @@ shinyUI(
           column(9,
             tabsetPanel(id="densPanel",type="pills",
                 tabPanel(title=tags$div(title="Graph the data", "Graph"),value="Graph",
-                  tags$div(title="Mean and 95% Confidence interval",plotOutput(outputId="DensPlot", height="600px")),
-                  bsModal(id="DensModal", title="Display Options", trigger="densGraphButton",
-                    tags$head(tags$style(HTML("#DensModal{ width:350px; background-color:rgba(255,255,255, 0.8)} 
-                                              #DensModal:hover {background-color:rgba(255,255,255, 1)}
-                                              #DensModal .modal-body{height:150px; overflow:visible}
-                                              #DensModal .modal-footer{background-color:rgba(245,245,245,0.5)} "))),
-                    flowLayout(
-                      selectizeInput("densBaseColor","Base Data Color:",choices=ColorNames, selected="blue",width="125px"),
-                      selectizeInput("densCompareColor","Comparison Data Color:",choices=ColorNames, selected="red",width="125px")
-                    ),
-                    br(),
-                    flowLayout(
-                      sliderInput("densPointSize", "Change Point Size", min=4, max=24, value=8, step=2,width="125px"),
-                      sliderInput("densFontSize", "Change Font Size", min=12, max=32, value=20, step=2,width="125px")
-                    )
-                  )
+                  tags$div(title="Mean and 95% Confidence interval",plotOutput(outputId="DensPlot", height="600px"))#,
+                  
+#                   bsModal(id="DensModal", title="Display Options", trigger="densGraphButton",
+#                     tags$head(tags$style(HTML("#DensModal{ width:350px; background-color:rgba(255,255,255, 0.8)} 
+#                                               #DensModal:hover {background-color:rgba(255,255,255, 1)}
+#                                               #DensModal .modal-body{height:150px; overflow:visible}
+#                                               #DensModal .modal-footer{background-color:rgba(245,245,245,0.5)} "))),
+#                     flowLayout(
+#                       selectizeInput("densBaseColor","Base Data Color:",choices=ColorNames, selected="blue",width="125px"),
+#                       selectizeInput("densCompareColor","Comparison Data Color:",choices=ColorNames, selected="red",width="125px")
+#                     ),
+#                     br(),
+#                     flowLayout(
+#                       sliderInput("densPointSize", "Change Point Size", min=4, max=24, value=8, step=2,width="125px"),
+#                       sliderInput("densFontSize", "Change Font Size", min=12, max=32, value=20, step=2,width="125px")
+#                     )
+#                   )
                 ),
               tabPanel(
                 tags$div(title="See all data in a table","Data table"),
@@ -286,24 +273,25 @@ shinyUI(
             tabsetPanel(id="IVPanel",type="pills",
               tabPanel(value="Graph",
                 tags$div(title="Graph the data","Graph"),
-                tags$div(title="Graph of IV",plotOutput("IVPlot",height="600px")),
-                bsModal(id="IVModal", title="Display Options", trigger="IVGraphButton",
-                        tags$head(tags$style(HTML("#IVModal {width:475px; background-color:rgba(255,255,255, 0.8)} 
-                                                  #IVModal:hover {background-color:rgba(255,255,255, 1)}
-                                                  #IVModal .modal-body {height:200px; overflow:visible}
-                                                  #IVModal .modal-footer{background-color:rgba(245,245,245,0.5)}"))),
-                        flowLayout(
-                          selectizeInput("IVBaseColor","Base Color:",choices=ColorNames, selected="green4",width="125px"),
-                          sliderInput("IVFontSize", "Change Font Size", min=10, max=24, value=14, step=2,width="175px")
-                        ),
-                        h5("Component Colors:"),
-                        flowLayout(
-                          selectizeInput("IVDensityColor","Density Color:",choices=ColorNames, selected="green4", width="125px"),
-                          selectizeInput("IVSizeColor","Size Color:",choices=ColorNames, selected="chartreuse",width="125px"),
-                          selectizeInput("IVDistributionColor","Distribution Color:",choices=ColorNames, selected="yellow",
-                                       width="125px")
-                        )
-                )
+                tags$div(title="Graph of IV",plotOutput("IVPlot",height="600px")) #,
+               
+#                  bsModal(id="IVModal", title="Display Options", trigger="IVGraphButton",
+#                         tags$head(tags$style(HTML("#IVModal {width:475px; background-color:rgba(255,255,255, 0.8)} 
+#                                                   #IVModal:hover {background-color:rgba(255,255,255, 1)}
+#                                                   #IVModal .modal-body {height:200px; overflow:visible}
+#                                                   #IVModal .modal-footer{background-color:rgba(245,245,245,0.5)}"))),
+#                         flowLayout(
+#                           selectizeInput("IVBaseColor","Base Color:",choices=ColorNames, selected="green4",width="125px"),
+#                           sliderInput("IVFontSize", "Change Font Size", min=10, max=24, value=14, step=2,width="175px")
+#                         ),
+#                         h5("Component Colors:"),
+#                         flowLayout(
+#                           selectizeInput("IVDensityColor","Density Color:",choices=ColorNames, selected="green4", width="125px"),
+#                           selectizeInput("IVSizeColor","Size Color:",choices=ColorNames, selected="chartreuse",width="125px"),
+#                           selectizeInput("IVDistributionColor","Distribution Color:",choices=ColorNames, selected="yellow",
+#                                        width="125px")
+#                         )
+#                 )
               ),
               tabPanel(value="Table",
                 tags$div(title="See all data in a table","Data table"),
@@ -382,4 +370,3 @@ shinyUI(
     )
 ) #end About menu
 )#end navbarPage()
-)#end  shinyUI()

@@ -22,6 +22,16 @@ FakeLayer<-c('{"type": "Feature", "geometry": {"type": "Polygon", "coordinates":
 #################### Begin Server Function
 
 shinyServer(function(input,output,session){
+  
+### toggles
+observe ({
+### Maps  
+  toggle(id="MapControlPanel", condition = ("MapControls" %in% input$MapHide))
+})
+  
+  
+  
+  
 
   Values<-reactiveValues(ShapeMouse=NULL) #reactive values for app
 ################################## Code For Map Panel  ######################################################
