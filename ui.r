@@ -22,8 +22,8 @@ navbarPage(title=HTML("<div> <a href='http://science.nature.nps.gov/im/units/ncr
     ),
 
 ################### Main Map Controls 
-    fixedPanel(id="MapControlPanel",class="panel panel-default controls",draggable=TRUE,cursor="auto",top="90px",bottom="auto",
-                 height="auto",right=20, left="auto", width="225px",
+    fixedPanel(id="MapControlPanel",class="panel panel-default controls",draggable=TRUE,cursor="auto",top=175,bottom="auto",
+                 height="auto",right=10, left="auto", width="225px",
       h4("Map Controls", class="panel-heading"),
       tags$div(title="Choose the type of plant you want to work with", selectInput(inputId="MapGroup", 
               label="Type of plant:", choices=c(Trees="trees",Saplings="saplings","Tree seedlings"="seedlings",
@@ -44,9 +44,9 @@ navbarPage(title=HTML("<div> <a href='http://science.nature.nps.gov/im/units/ncr
 
 ############### Add a layer control
  
-    fixedPanel(id="LayerPanel",class="panel panel-default controls",draggable=TRUE,cursor="auto",top="60%",bottom="auto",
+    fixedPanel(id="ExtraLayerPanel",class="panel panel-default controls",draggable=TRUE,cursor="auto",top="60%",bottom="auto",
                       height="auto",right="auto",left=20,width=200,
-      h4("Map Layers", class="panel-heading"),
+      h4("Additional Layers", class="panel-heading"),
       tags$div(title="Overlay additional data onto the parks",
        selectizeInput(inputId="MapLayer", label="Add a map layer:", 
                 choices=c(None="None", "EcoRegions"="EcoReg","Forested Areas"="ForArea","Soil Map "="Soil")))
@@ -85,11 +85,12 @@ navbarPage(title=HTML("<div> <a href='http://science.nature.nps.gov/im/units/ncr
     ),
 ############## Show hide Panel
     fixedPanel(id="controls", class="panel panel-default controls", draggable=TRUE, cursor="auto",top="93%", height=50, 
-                      left=20, width=500,
+                      left=20, width="auto",
       tags$div(title="You can hide controls that you are not using.",
         checkboxGroupInput(inputId="MapHide", label=strong("Show:"), inline=TRUE,
-            choices=c("Layer Legend"="LayerLegend", "Legend","Map Controls"="MapControls", "Map Layers"="ExtraLayers", "Zoom"),
-            selected=c("LayerLegend", "Legend", "MapControls", "ExtraLayers","Zoom")
+            choices=c("Base Layer"="BaseLayers","Layer Legend"="LayerLegend", "Legend","Map Controls"="MapControls", 
+                      "Map Layers"="ExtraLayers", "Zoom"),
+            selected=c("BaseLayers","LayerLegend", "Legend", "MapControls", "ExtraLayers","Zoom")
         )
       )
     ),
