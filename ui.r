@@ -13,11 +13,7 @@ navbarPage(title=HTML("<div> <a href='http://science.nature.nps.gov/im/units/ncr
   
   tabPanel(title="Map",
     useShinyjs(),
-##### About the Map modal goes here so it does not get caught in the "outer" div below here it has css problems
-   #   bsModal(id="MapInfoModal", title="About the Map", trigger="AboutMapButton", href="AboutMap.html" ),
-     
-#####  How to video modal
-  #    bsModal(id="VideoModal", title='How to Use This Website', trigger = "VideoButton", HTML('<iframe width="560" height="315" src="//www.youtube.com/embed/Kg9FvgPa6Lc" frameborder="0" allowfullscreen></iframe>'), tags$head(tags$style(HTML("#VideoModal{width:580px;}"))) )
+
     div(class="outer",
       tags$head(includeCSS("./www/mapstyles.css") ), # defines css file
       tags$head(HTML('<link rel="icon", href="AH_small_flat_4C_12x16.png", type="image/png" />')), #puts up icon on tab
@@ -26,96 +22,101 @@ navbarPage(title=HTML("<div> <a href='http://science.nature.nps.gov/im/units/ncr
     ),
 
 ################### Main Map Controls 
-    #conditionalPanel(condition="input.ShowControls",
-      fixedPanel(id="MapControlPanel",class="panel panel-default controls",draggable=TRUE,cursor="auto",top="90px",bottom="auto",
+    fixedPanel(id="MapControlPanel",class="panel panel-default controls",draggable=TRUE,cursor="auto",top="90px",bottom="auto",
                  height="auto",right=20, left="auto", width="225px",
-            h4("Map Controls", class="panel-heading"),
-            tags$div(title="Choose the type of plant you want to work with", selectInput(inputId="MapGroup", 
+      h4("Map Controls", class="panel-heading"),
+      tags$div(title="Choose the type of plant you want to work with", selectInput(inputId="MapGroup", 
               label="Type of plant:", choices=c(Trees="trees",Saplings="saplings","Tree seedlings"="seedlings",
                 Shrubs="shrubs", "Shrub seedlings"="shseedlings","Understory plants"="herbs","Vines on Trees"="vines"))),
-            tags$div(title="Type of data to map",uiOutput("PlantValueControl")),
-            tags$div(title="Choose the four year period you want to work with.", sliderInput(inputId="MapYear", 
-              label="Display data from the 4 years ending:", min=2009, max=2014,value=2014, format="####",width="150px")),
-            tags$div(title="Toggle between common and scientific names",
+      tags$div(title="Type of data to map",uiOutput("PlantValueControl")),
+      tags$div(title="Choose the four year period you want to work with.", sliderInput(inputId="MapYear", 
+              label="Display data from the 4 years ending:", min=2009, max=2014,value=2014, sep="", step=1,ticks=T)),
+      tags$div(title="Toggle between common and scientific names",
                      checkboxInput(inputId="mapCommon", label="Show common names?", value=TRUE )),
-            tags$div(title="Choose a species of plants to map", uiOutput("MapSpeciesControl")),  
-            tags$div(title="Filter the species list so only species found in a particular park are listed",
+      tags$div(title="Choose a species of plants to map", uiOutput("MapSpeciesControl")),  
+      tags$div(title="Filter the species list so only species found in a particular park are listed",
                      uiOutput("MapParkControl")),
-            bsButton(inputId="AboutMapButton",label="About the map...",style="primary"),
-            bsButton(inputId="VideoButton", label='"How To" video', style="primary")
-          ),
-      # ),
+      actionButton(inputId="AboutMapButton",label="About the map...",class="btn btn-primary"),
+      actionButton(inputId="VideoButton", label='"How To" video', class="btn btn-primary")
+    ),
 
-############### Map Modal 
 
 
 ############### Add a layer control
-        tags$div(title="Overlay additional data onto the parks",
-          conditionalPanel(condition="input.ShowLayers",
-            fixedPanel(id="controls",class="panel panel-default controls",draggable=TRUE,cursor="auto",top="60%",bottom="auto"
-                     ,height="auto",right="auto",left=20,width=200,
-            h4("Map Layers", class="panel-heading"),
-            selectizeInput(inputId="MapLayer", label="Add a map layer:", 
-                        choices=c(None="None", "EcoRegions"="EcoReg","Forested Areas"="ForArea"
-                                  ,"Soil Map "="Soil"
-                                  )))
-          )
-        ),
+ 
+    fixedPanel(id="LayerPanel",class="panel panel-default controls",draggable=TRUE,cursor="auto",top="60%",bottom="auto",
+                      height="auto",right="auto",left=20,width=200,
+      h4("Map Layers", class="panel-heading"),
+      tags$div(title="Overlay additional data onto the parks",
+       selectizeInput(inputId="MapLayer", label="Add a map layer:", 
+                choices=c(None="None", "EcoRegions"="EcoReg","Forested Areas"="ForArea","Soil Map "="Soil")))
+    ),
 
-########################## Zoom  Control
-        conditionalPanel(condition="input.ShowZoom",
-          fixedPanel(id="controls",class="panel panel-default controls",draggable=TRUE,cursor="auto",top=90,bottom="auto",height="auto",
+########################## Zoom  Panel
+    fixedPanel(id="ZoomPanel",class="panel panel-default controls",draggable=TRUE,cursor="auto",top=90,bottom="auto",height="auto",
                      left=50,width=250,
-            h4("Zoom to:", class="panel-heading"),
-            tags$div(title="Choose a park and click 'Go'", uiOutput("ParkZoomControl"),
-            actionButton(inputId="MapZoom", label="Go", class="btn btn-primary")),
-            hr(),
-            tags$div(title="Increases size of plots for easier viewing",
-                 radioButtons(inputId="PlotSize", label="Enlarge plots: 1X = to scale", 
-                              choices=c("1X"=1, "5X"=sqrt(5), "10X"=sqrt(10), "25X"=5), selected="1", inline=TRUE)
-            )
-          )
-        ),
+      h4("Zoom to:", class="panel-heading"),
+      fluidRow(
+        column(9, tags$div(title="Choose a park and click 'Go'", uiOutput("ParkZoomControl"))),
+        column(3, actionButton(inputId="MapZoom", label="Go", class="btn btn-primary btn-sm"))
+      ),
+      hr(),
+      tags$div(title="Increases size of plots for easier viewing",
+         radioButtons(inputId="PlotSize", label="Enlarge plots: 1X = to scale", 
+                choices=c("1X"=1, "5X"=sqrt(5), "10X"=sqrt(10), "25X"=5), selected="1", inline=TRUE)
+      )
+     ),
 
 ##################### Map Legend
-        conditionalPanel(condition="input.ShowPlots",
-          fixedPanel( id="controls", class="panel panel-default controls", draggable=TRUE, cursor="auto", top=70, bottom="auto", height="auto",
+    fixedPanel( id="MapLegendPanel", class="panel panel-default controls", draggable=TRUE, cursor="auto", top=70, bottom="auto", height="auto",
               right=300, left="auto", width=130,
-            h4("Legend", class="panel-heading"),
-            uiOutput("MapLegendTitle"),
-            uiOutput("MapLegend")
-          )
-        ),
+      h4("Legend", class="panel-heading"),
+      uiOutput("MapLegendTitle"),
+      uiOutput("MapLegend")
+    ),
 
 
 ################Layer Legend
-
-      conditionalPanel(
-        condition="input.MapLayer!='None' & input.ShowLayerLegend",
-        fixedPanel( id="controls", class="panel panel-default controls", draggable=TRUE, cursor="auto", top=325, bottom="auto", height="auto",
-                    right="auto", left=350, width="auto",
-                    h4("Layer Legend", class="panel-heading"),
-                    strong(textOutput("LayerLegendTitle")),
-                    uiOutput("LayerLegend")
-      )),
+    fixedPanel( id="LayerLegendPanel", class="panel panel-default controls", draggable=TRUE, cursor="auto", top=325, bottom="auto", height="auto",
+                    right="auto", left=20, width="auto",
+      h4("Layer Legend", class="panel-heading"),
+      strong(textOutput("LayerLegendTitle")),
+      uiOutput("LayerLegend")
+    ),
 ############## Show hide Panel
-      tags$div(title="Choose to show or hide panels",
-        absolutePanel(id="controls", class="panel panel-default controls", draggable=TRUE, cursor="auto",top="95%", height=50, 
-                      left=20, width=600,
+    fixedPanel(id="controls", class="panel panel-default controls", draggable=TRUE, cursor="auto",top="93%", height=50, 
+                      left=20, width=500,
+      tags$div(title="You can hide controls that you are not using.",
         checkboxGroupInput(inputId="MapHide", label=strong("Show:"), inline=TRUE,
-            choices=c("Layer Legend"="LayerLegend", "Legend","Map Controls"="MapControls", "Map Layers"="MapLayers", "Zoom"),
-            selected=c("LayerLegend", "Legend", "MapControls", "MapLayers","Zoom")),
-          flowLayout(
-            strong("Show:"),
-            #checkboxInput(inputId="ShowControls", label="Map Controls", value=TRUE),
-            checkboxInput(inputId="ShowPlots", label="Legend", value=TRUE),
-            checkboxInput(inputId="ShowZoom", label="Zoom", value=TRUE),
-            checkboxInput(inputId="ShowLayers", label="Map Layers", value=TRUE),
-            checkboxInput(inputId="ShowLayerLegend", label="Layer legend", value=TRUE)
-          )
+            choices=c("Layer Legend"="LayerLegend", "Legend","Map Controls"="MapControls", "Map Layers"="ExtraLayers", "Zoom"),
+            selected=c("LayerLegend", "Legend", "MapControls", "ExtraLayers","Zoom")
         )
       )
-    #) ## end of map div
+    ),
+
+##### About the map panel
+    hidden(
+      fixedPanel(class="panel panel-primary controls",draggable=TRUE,cursor="auto",top=80,bottom="auto",height="520",
+                 left=450,width="500",id="AboutMapPanel",style="padding: 0px",
+                 div(class="panel-heading", h4("About the Map" )),
+                 div(class="panel-body",style="height: 400px;  overflow-y: scroll",
+                     includeHTML("./www/AboutMap.html")),
+                 div(class="panel-footer", 
+                     actionButton(inputId="CloseAboutMap",class="btn btn-primary",label="Close"))  )
+    ),
+
+##### Video Panel
+    hidden(
+      fixedPanel(class="panel panel-primary controls",draggable=TRUE,cursor="auto",top=80,bottom="auto",height="auto",
+           left=450,width="auto",id="VideoPanel",style="padding: 0px; margin: 0px", 
+      div(class="panel-heading", h4('How to Use This Website')), 
+      div(class="panel-body", 
+          HTML('<iframe width="580" height="315" src="//www.youtube.com/embed/Kg9FvgPa6Lc" frameborder="0" allowfullscreen></iframe>')
+      ),
+      div(class="panel-footer", 
+               actionButton(inputId="CloseVideo",class="btn btn-primary",label="Close"))  )
+    )
+
   ),  ## end of map page
 
 
@@ -159,7 +160,7 @@ navbarPage(title=HTML("<div> <a href='http://science.nature.nps.gov/im/units/ncr
               conditionalPanel(
                 condition="input.densPanel=='Graph'",
                 hr(),
-                bsButton(inputId="densGraphButton", label="Display Options",style="primary"),
+                actionButton(inputId="densGraphButton", label="Display Options",style="primary"),
                 br(),
                 downloadButton(outputId="densGraphDownload", label="Save Graph (.jpg)", class="btn btn-primary"),
                 downloadButton(outputId="densWmfDownload", label="Save Graph (.wmf)", class="btn  btn-primary"),
@@ -255,7 +256,7 @@ navbarPage(title=HTML("<div> <a href='http://science.nature.nps.gov/im/units/ncr
                 conditionalPanel(
                   condition="input.IVPanel=='Graph'",
                   hr(),
-                  bsButton(inputId="IVGraphButton", label="Display Options", style="primary"),
+                  actionButton(inputId="IVGraphButton", label="Display Options", style="primary"),
                   br(),
                   downloadButton(outputId="IVGraphDownload", label="Save Graph (.jpg)", class="btn btn-primary"),
                   downloadButton(outputId="IVWmfDownload", label="Save Graph (.wmf)", class="btn  btn-primary")

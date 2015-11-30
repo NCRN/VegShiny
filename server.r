@@ -27,6 +27,15 @@ shinyServer(function(input,output,session){
 observe ({
 ### Maps  
   toggle(id="MapControlPanel", condition = ("MapControls" %in% input$MapHide))
+  toggle(id="LayerPanel", condition= ("ExtraLayers" %in% input$MapHide))
+  toggle(id="ZoomPanel", condition= ("Zoom" %in% input$MapHide))
+  toggle(id="MapLegendPanel", condition= ("Legend" %in% input$MapHide))
+  toggle(id="LayerLegendPanel", condition= ("LayerLegend" %in% input$MapHide))
+  onclick(id="AboutMapButton", expr= toggle(id="AboutMapPanel"))
+  onclick(id="CloseAboutMap", expr= toggle(id="AboutMapPanel")) 
+  onclick(id="VideoButton", expr= toggle(id="VideoPanel"))
+  onclick(id="CloseVideo", expr= toggle(id="VideoPanel")) 
+  
 })
   
   
