@@ -76,13 +76,6 @@ navbarPage(title=HTML("<div> <a href='http://science.nature.nps.gov/im/units/ncr
     ),
 
 
-################Layer Legend
-    fixedPanel( id="LayerLegendPanel", class="panel panel-default controls", draggable=TRUE, cursor="auto", top=325, bottom="auto", height="auto",
-                    right="auto", left=20, width="auto",
-      h4("Layer Legend", class="panel-heading"),
-      strong(textOutput("LayerLegendTitle")),
-      uiOutput("LayerLegend")
-    ),
 ############## Show hide Panel
     fixedPanel(id="controls", class="panel panel-default controls", draggable=TRUE, cursor="auto",top="93%", height=50, 
                       left=20, width="auto",

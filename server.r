@@ -2,12 +2,11 @@ library(shiny)
 library(NPSForVeg)
 library(leaflet)
 library(lattice)
+library(rgdal)
 library(jsonlite,pos=100)
 library(httr)
 
 ##################### Housekeeping prior to start of the server function
-
-
 NCRN<-importNCRN("./Data/NCRN")
 
 names(NCRN)<-getNames(NCRN, name.class="code")
@@ -15,9 +14,6 @@ ParkList<-getNames(NCRN,name.class="code")
 names(ParkList)<-getNames(NCRN)
 
 ParkBounds<-read.csv("boundboxes.csv", as.is=TRUE)
-
-######## geoJson layer with nothing used when "None" is selected for layer
-FakeLayer<-c('{"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-77.6, 39.9], [-77.61,39.9], [-77.61,39.91], [-77.6, 39.9]]]}, "properties": {"style": {"fillOpacity": 0.001, "weight": 0}}}') 
 
 #################### Begin Server Function
 
@@ -46,7 +42,6 @@ shinyServer(function(input,output,session){
   ################################## Code For Map Panel  ######################################################
 
 ### Create Map  
-  # map<-createLeafletMap(session,"map")
 
   output$VegMap<-renderLeaflet({leaflet() %>%
       setView(lng=-77.8,lat=39.03,zoom=9) %>% 
@@ -80,7 +75,7 @@ shinyServer(function(input,output,session){
   
   ### Hide Layers Control
   observe({
-   if(!"BaseLayers" %in% input$MapHide ) leafletProxy("BirdMap") %>% removeLayersControl()
+   if(!"BaseLayers" %in% input$MapHide ) leafletProxy("VegMap") %>% removeLayersControl()
   })
    
 #########################################################################################################
@@ -95,13 +90,13 @@ shinyServer(function(input,output,session){
 ############Zoom the map
 
   
-  #   observe({
-#     input$MapZoom
-#     isolate({
-#       BoundsUse<-reactive({ as.numeric(ParkBounds[ParkBounds$ParkCode==input$ParkZoom,2:5]) })
-#       map$fitBounds(BoundsUse()[1],BoundsUse()[2],BoundsUse()[3],BoundsUse()[4])
-#     }) 
-#   })
+ observe({
+    input$MapZoom
+    isolate({
+      BoundsUse<-reactive({ as.numeric(ParkBounds[ParkBounds$ParkCode==input$ParkZoom,2:5]) })
+      leafletProxy("VegMap") %>% fitBounds(lat1=BoundsUse()[1], lng1=BoundsUse()[2], lat2=BoundsUse()[3], lng2=BoundsUse()[4])
+    }) 
+  })
 
 ###########################################################################################################
 
@@ -188,28 +183,52 @@ shinyServer(function(input,output,session){
 
 #########  Data for Legend
   MapMetaData<-reactive({ MapLegend[[input$MapValues]][[input$MapGroup]] })
-
-
-
-#### Get MapLayer and corresponding data to display
-
-
-###  MOVETO the MapPolys observe
-LayerData<-reactive({     
-  switch(input$MapLayer,
-         None=return(),
-         EcoReg=dget("./Maps/EcoRegData.txt"),
-         ForArea=dget("./Maps/ForestData.txt"),
-         Soil=dget("./Maps/SoilData.txt")
-  )
-})
   
+#### Add GeoJSON polygon layer
 
-######### Add points and Polygons to map
- 
-# session$onFlushed(once=TRUE, function() {   ##onFlushed comes superzip - makes map draw befrore circles
-#   
-#   #### Add GeoJSON polygon layer
+  withProgress(message="Loading...Please Wait", value=1,{
+    Ecoregion<-readOGR(dsn="./Maps/ecoregion.geojson","OGRGeoJSON")
+    Forested<-readOGR(dsn="./Maps/Forests.geojson","OGRGeoJSON")
+    Soil<-readOGR(dsn="./Maps/Soils.geojson","OGRGeoJSON")
+    }
+  )
+
+  
+  observe({
+    leafletProxy("VegMap") %>% {
+      switch(input$MapLayer,
+             None=clearGroup(.,group=c("Ecoregion","Forested","Soil")) %>% removeControl(.,"LayerLegend"),
+             
+              EcoReg=clearGroup(.,group=c("Forested","Soil") )%>% 
+                addPolygons(., data=Ecoregion, group="Ecoregion", layerId=Ecoregion$Level3_Nam, 
+                            stroke=FALSE, 
+                            fillOpacity=.65, color=colorFactor("RdYlBu", levels=Ecoregion$Level3_Nam)(Ecoregion$Level3_Nam)),
+             
+             ForArea=clearGroup(.,group=c("Ecoregion","Soil")) %>% 
+               addPolygons(.,data=Forested, group="Forested", layerId=Forested$MapClass, stroke=FALSE, 
+                           fillOpacity=.65, color=colorFactor("Greens",levels=Forested$MapClass)(Forested$MapClass)),
+             
+             Soil=clearGroup(.,group=c("Ecoregion","Forested")) %>% 
+               addPolygons(.,data=Soil, group="Soil", layerId=Soil$taxorder, stroke=FALSE, 
+                           fillOpacity=.65, color=colorFactor("RdYlBu",levels=Soil$taxorder)(Soil$taxorder)) 
+      )}
+  })
+  
+  ### Add layer legends
+  observe({
+    leafletProxy("VegMap") %>%  removeControl(layerId="LayerLegend") %>%
+    {if("LayerLegend" %in% input$MapHide) 
+      switch(input$MapLayer,
+             None=NA,
+             EcoReg= addLegend(.,title="Layer Legend",pal=colorFactor("RdYlBu", levels=Ecoregion$Level3_Nam), 
+                                   values=Ecoregion$Level3_Nam, layerId="LayerLegend"),
+             
+             ForArea= addLegend(.,title="Layer Legend",pal=colorFactor("Greens",levels=Forested$MapClass), 
+                                values=Forested$MapClass,layerId="LayerLegend"),
+             Soil= addLegend(.,title="Layer Legend",pal=colorFactor("RdYlBu", levels=Soil$taxorder), 
+                               values=Soil$taxorder, layerId="LayerLegend")
+      )}
+  })
 # MapPolys<-observe({    
 #     #### Add polygons to map
 #   map$addGeoJSON(switch(input$MapLayer,
