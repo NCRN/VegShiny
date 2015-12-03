@@ -5,6 +5,7 @@ library(lattice)
 library(rgdal)
 library(jsonlite,pos=100)
 library(httr)
+library(dplyr)
 
 ##################### Housekeeping prior to start of the server function
 NCRN<-importNCRN("./Data/NCRN")
@@ -154,36 +155,115 @@ shinyServer(function(input,output,session){
 
   MapSpeciesUse<-reactive({ifelse(input$MapSpecies=="All", NA, input$MapSpecies) }) #put in reactiveValues?
 
-### Data to plot on map - always for all parks
-  MapData<-reactive({                                                #change to validate(need())
-    if(is.null(input$MapSpecies) || nchar(input$MapSpecies)==0){ 
-      return() 
-    }
-    else{
-      data.frame(getPlots(NCRN, years=MapYears(), output="dataframe",type="all")[c("Plot_Name","Unit_Code","Latitude","Longitude")],
-        Year=getEvents(object=NCRN, years=MapYears())[["Event_Year"]],
-        Values= 
-          if(input$MapGroup != "herbs"){
-            if(input$MapValues!="size"){
-              (10000/getArea(NCRN[[1]],group=input$MapGroup,type="all")) * (
-              SiteXSpec(object=NCRN,group=input$MapGroup, years=MapYears(), species=MapSpeciesUse(), values=input$MapValues)$Total)
-            }
-            else{
-              (10000/getArea(NCRN[[1]],group=input$MapGroup,type="all")) * (    #need to convert to m^2/ha from cm^2/ha
-                SiteXSpec(object=NCRN,group=input$MapGroup, years=MapYears(), species=MapSpeciesUse(), 
-                          values=input$MapValues)$Total)/10000
-            }
-          }
-          else{
-          SiteXSpec(object=NCRN,group=input$MapGroup, years=MapYears(), species=MapSpeciesUse(), values=input$MapValues)$Total/12
-          } 
-      )
-    }
-  })
-
-#########  Data for Legend
+  
+  
+  #########  Data for Legend
   MapMetaData<-reactive({ MapLegend[[input$MapValues]][[input$MapGroup]] })
   
+  
+### Data to plot on map - always for all parks
+  MapData<-reactive({              
+    validate(
+      need(input$MapSpecies, message=FALSE)
+    )
+    
+    P<-data.frame(getPlots(NCRN, years=MapYears(), output="dataframe",type="all")[c("Plot_Name","Unit_Code","Latitude","Longitude")],
+               Year=getEvents(object=NCRN, years=MapYears())[["Event_Year"]]) 
+    
+    if(input$MapGroup != "herbs" && input$MapValues!="size"){
+      return(P %>% 
+        mutate(Values=(10000/getArea(NCRN[[1]],group=input$MapGroup,type="all")) * (
+              SiteXSpec(object=NCRN,group=input$MapGroup, years=MapYears(),
+              species=MapSpeciesUse(),values=input$MapValues)$Total))
+      )
+    } 
+     if(input$MapGroup != "herbs" && input$MapValues=="size"){
+        return(P %>% mutate(Values=
+               (10000/getArea(NCRN[[1]],group=input$MapGroup,type="all")) * (    #need to convert to m^2/ha from cm^2/ha
+                 SiteXSpec(object=NCRN,group=input$MapGroup, years=MapYears(), species=MapSpeciesUse(), 
+                values=input$MapValues)$Total)/10000)
+        )
+      }
+      
+   if(input$MapGroup == "herbs"){
+      return(P %>% 
+        mutate(Values=SiteXSpec(object=NCRN,group=input$MapGroup, years=MapYears(), species=MapSpeciesUse(), values=input$MapValues)$Total/12)
+      )
+    } 
+  })
+  
+  MapColors<-reactive({
+   colorBin(palette=c("cyan","magenta4","orangered3"),domain=MapData()$Values, bins=c(MapMetaData()$Cuts+.001))
+  })  
+  
+  observeEvent(input$VegMap_shape_mouseover, {  
+    
+    ShapeOver<-input$VegMap_shape_mouseover
+    
+    
+    leafletProxy("VegMap") %>% 
+      clearPopups() %>% {
+        switch(ShapeOver$group,
+               Circles= addPopups(map=.,lat=ShapeOver$lat+.001, lng=ShapeOver$lng, layerId="MouseOverPopup",
+                                  popup=paste0(ShapeOver$id , ': ',MapData()[MapData()$Plot_Name==ShapeOver$id,]$Values))
+        )}
+  })
+  
+  
+  #   ### add Monitoring plot data as circles
+  observe({
+   input$MapLayer #make sure Circles are always on top
+   leafletProxy("VegMap") %>% 
+   clearGroup("Circles") %>% 
+    addCircles(data=MapData(), radius=15*as.numeric(input$PlotSize), group="Circles",
+             layerId=MapData()$Plot_Name,  #This is the ID of the circle to match to other data
+             fillColor=MapColors()(MapData()$Values),#palette=c("cyan","magenta4","orangered3","yellow"),
+             color=MapColors()(MapData()$Values),
+             fillOpacity=1
+    )
+  })
+  
+  
+  
+  #    MapCircles<-observe({
+  #      try(silent=TRUE,      #try deals with issue where the group has changed but species has not yet caught up.
+  #        if(is.null(MapData()$Values )) {
+  #          return()
+  #        } else {
+  #          map$addCircle(MapData()$Latitude, MapData()$Longitude, 15*as.numeric(input$PlotSize),
+  #            layerId=MapData()$Plot_Name,   #This is the ID of the circle to match to other data
+  #            options=list(color=BlueOr(8)[cut(MapData()$Values,breaks=c(MapMetaData()$Cuts), labels = FALSE)],
+  #            fillOpacity=.7, 
+  #            weight=5)
+  #          )
+  #        }
+  #      ) 
+  #    })
+  
+  
+  #   # TIL this is necessary in order to prevent the observer from
+  #   # attempting to write to the websocket after the session is gone.
+  #   session$onSessionEnded(MapPolys$suspend)
+  #   session$onSessionEnded(MapCircles$suspend)
+  # })
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+
 #### Add GeoJSON polygon layer
 
   withProgress(message="Loading...Please Wait", value=1,{
@@ -229,71 +309,7 @@ shinyServer(function(input,output,session){
                                values=Soil$taxorder, layerId="LayerLegend")
       )}
   })
-# MapPolys<-observe({    
-#     #### Add polygons to map
-#   map$addGeoJSON(switch(input$MapLayer,
-#                    None=FakeLayer,
-#                     EcoReg=readChar("./Maps/EcoReg", file.info("./Maps/EcoReg")$size),
-#                     ForArea=readChar("./Maps/Forest", file.info("./Maps/Forest")$size),
-#                     Soil=readChar("./Maps/Soil", file.info("./Maps/Soil")$size)),layerId="Layer"
-#   )
-# })  
-#   ### Change the Layer Legend
-#       # Add layer legend to layer legend box
-# 
-# output$LayerLegendTitle<-renderText({
-#     switch(input$MapLayer,
-#            None=return(),
-#            ForArea=return("Forested Area"),
-#            EcoReg=return("Omernik Ecoregions"),
-#            SoilMap=return("Soil Type")
-#     )
-#   })
-# 
-#       # Add boxes and labels to layer legend box
-#   output$LayerLegend<-renderUI({
-#     if(input$MapLayer=="None"){
-#       return()
-#     }
-#     else{
-#       LayerDat<-reactive(unique(as.character(LayerData()$MapClass)))
-#       tags$table(
-#         mapply(
-#           function(BoxLabel,color){
-#             tags$tr(tags$td(tags$div(
-#               style=sprintf("width: 16px; height: 16px; background-color: %s;", color)
-#             )),
-#             tags$td(": ",BoxLabel)
-#           )}, 
-#           c(sort(LayerDat())), AquaYel(length(LayerDat())), SIMPLIFY=FALSE))
-#             #c ( sort(unique(as.character(LayerData()$MapClass)))), AquaYel( length( unique(LayerData()$MapClass))), SIMPLIFY=FALSE ))
-#     }
-#   })     
-# 
-#   ### add Monitoring plot data as a circle
-#   MapCircles<-observe({
-#     input$MapLayer #make sure Circles are always on top
-#     map$clearShapes()
-#     try(silent=TRUE,      #try deals with issue where the group has changed but species has not yet caught up.
-#       if(is.null(MapData()$Values )) {
-#         return()
-#       } else {
-#         map$addCircle(MapData()$Latitude, MapData()$Longitude, 15*as.numeric(input$PlotSize),
-#           layerId=MapData()$Plot_Name,   #This is the ID of the circle to match to other data
-#           options=list(color=BlueOr(8)[cut(MapData()$Values,breaks=c(MapMetaData()$Cuts), labels = FALSE)],
-#           fillOpacity=.7, 
-#           weight=5)
-#         )
-#       }
-#     ) 
-#   })
-#   
-#   # TIL this is necessary in order to prevent the observer from
-#   # attempting to write to the websocket after the session is gone.
-#   session$onSessionEnded(MapPolys$suspend)
-#   session$onSessionEnded(MapCircles$suspend)
-# })
-
+ 
 
 
 ######################  UIoutput for Circle Legend
