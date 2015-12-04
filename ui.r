@@ -22,8 +22,8 @@ navbarPage(title=HTML("<div> <a href='http://science.nature.nps.gov/im/units/ncr
     ),
 
 ################### Main Map Controls 
-    fixedPanel(id="MapControlPanel",class="panel panel-default controls",draggable=TRUE,cursor="auto",top=175,bottom="auto",
-                 height="auto",right=10, left="auto", width="225px",
+    fixedPanel(id="MapControlPanel",class="panel panel-default controls",draggable=TRUE,cursor="auto",top=80,bottom="auto",
+                 height="auto",right=150, left="auto", width="225px",
       h4("Map Controls", class="panel-heading"),
       tags$div(title="Choose the type of plant you want to work with", selectInput(inputId="MapGroup", 
               label="Type of plant:", choices=c(Trees="trees",Saplings="saplings","Tree seedlings"="seedlings",
@@ -53,7 +53,7 @@ navbarPage(title=HTML("<div> <a href='http://science.nature.nps.gov/im/units/ncr
     ),
 
 ########################## Zoom  Panel
-    fixedPanel(id="ZoomPanel",class="panel panel-default controls",draggable=TRUE,cursor="auto",top=90,bottom="auto",height="auto",
+    fixedPanel(id="ZoomPanel",class="panel panel-default controls",draggable=TRUE,cursor="auto",top=80,bottom="auto",height="auto",
                      left=50,width=250,
       h4("Zoom to:", class="panel-heading"),
       fluidRow(
@@ -66,14 +66,6 @@ navbarPage(title=HTML("<div> <a href='http://science.nature.nps.gov/im/units/ncr
                 choices=c("1X"=1, "5X"=sqrt(5), "10X"=sqrt(10), "25X"=5), selected="1", inline=TRUE)
       )
      ),
-
-##################### Map Legend
-    fixedPanel( id="MapLegendPanel", class="panel panel-default controls", draggable=TRUE, cursor="auto", top=70, bottom="auto", height="auto",
-              right=300, left="auto", width=130,
-      h4("Legend", class="panel-heading"),
-      uiOutput("MapLegendTitle"),
-      uiOutput("MapLegend")
-    ),
 
 
 ############## Show hide Panel

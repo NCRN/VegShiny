@@ -27,7 +27,6 @@ shinyServer(function(input,output,session){
     toggle(id="ExtraLayerPanel", condition= ("ExtraLayers" %in% input$MapHide))
     toggle(id="ZoomPanel", condition= ("Zoom" %in% input$MapHide))
     toggle(id="MapLegendPanel", condition= ("Legend" %in% input$MapHide))
-    toggle(id="LayerLegendPanel", condition= ("LayerLegend" %in% input$MapHide))
     onclick(id="AboutMapButton", expr= toggle(id="AboutMapPanel"))
     onclick(id="CloseAboutMap", expr= toggle(id="AboutMapPanel")) 
     onclick(id="VideoButton", expr= toggle(id="VideoPanel"))
@@ -157,14 +156,14 @@ shinyServer(function(input,output,session){
 
   
   
-  #########  Data for Legend
+#########  Data for Legend
   MapMetaData<-reactive({ MapLegend[[input$MapValues]][[input$MapGroup]] })
-  
-  
+
 ### Data to plot on map - always for all parks
   MapData<-reactive({              
     validate(
-      need(input$MapSpecies, message=FALSE)
+      need(input$MapSpecies, message=FALSE),
+      need(input$MapValues, message=FALSE)
     )
     
     P<-data.frame(getPlots(NCRN, years=MapYears(), output="dataframe",type="all")[c("Plot_Name","Unit_Code","Latitude","Longitude")],
@@ -177,13 +176,13 @@ shinyServer(function(input,output,session){
               species=MapSpeciesUse(),values=input$MapValues)$Total))
       )
     } 
-     if(input$MapGroup != "herbs" && input$MapValues=="size"){
+    if(input$MapGroup != "herbs" && input$MapValues=="size"){
         return(P %>% mutate(Values=
                (10000/getArea(NCRN[[1]],group=input$MapGroup,type="all")) * (    #need to convert to m^2/ha from cm^2/ha
                  SiteXSpec(object=NCRN,group=input$MapGroup, years=MapYears(), species=MapSpeciesUse(), 
                 values=input$MapValues)$Total)/10000)
         )
-      }
+    }
       
    if(input$MapGroup == "herbs"){
       return(P %>% 
@@ -191,78 +190,33 @@ shinyServer(function(input,output,session){
       )
     } 
   })
-  
-  MapColors<-reactive({
-   colorBin(palette=c("cyan","magenta4","orangered3"),domain=MapData()$Values, bins=c(MapMetaData()$Cuts+.001))
+
+  #### Map Colors
+  CircleColors<-reactive({
+    validate(
+      need(MapMetaData()$Cuts,message = FALSE)
+    )
+    colorBin(palette=c("cyan","magenta4","orangered3"),domain=MapData()$Values, bins=c(MapMetaData()$Cuts+.001)) # colors for circles
   })  
   
-  observeEvent(input$VegMap_shape_mouseover, {  
-    
-    ShapeOver<-input$VegMap_shape_mouseover
-    
-    
-    leafletProxy("VegMap") %>% 
-      clearPopups() %>% {
-        switch(ShapeOver$group,
-               Circles= addPopups(map=.,lat=ShapeOver$lat+.001, lng=ShapeOver$lng, layerId="MouseOverPopup",
-                                  popup=paste0(ShapeOver$id , ': ',MapData()[MapData()$Plot_Name==ShapeOver$id,]$Values))
-        )}
-  })
+  PolyColors<-colorRamp(c("aquamarine4","green","yellow","goldenrod4")) #colors for polygons
   
   
-  #   ### add Monitoring plot data as circles
+##### add Monitoring plot data as circles
   observe({
+    validate(
+      need(input$MapValues, message = FALSE)
+    )
    input$MapLayer #make sure Circles are always on top
    leafletProxy("VegMap") %>% 
    clearGroup("Circles") %>% 
     addCircles(data=MapData(), radius=15*as.numeric(input$PlotSize), group="Circles",
              layerId=MapData()$Plot_Name,  #This is the ID of the circle to match to other data
-             fillColor=MapColors()(MapData()$Values),#palette=c("cyan","magenta4","orangered3","yellow"),
-             color=MapColors()(MapData()$Values),
+             fillColor=CircleColors()(MapData()$Values),
+             color=CircleColors()(MapData()$Values),
              fillOpacity=1
     )
   })
-  
-  
-  
-  #    MapCircles<-observe({
-  #      try(silent=TRUE,      #try deals with issue where the group has changed but species has not yet caught up.
-  #        if(is.null(MapData()$Values )) {
-  #          return()
-  #        } else {
-  #          map$addCircle(MapData()$Latitude, MapData()$Longitude, 15*as.numeric(input$PlotSize),
-  #            layerId=MapData()$Plot_Name,   #This is the ID of the circle to match to other data
-  #            options=list(color=BlueOr(8)[cut(MapData()$Values,breaks=c(MapMetaData()$Cuts), labels = FALSE)],
-  #            fillOpacity=.7, 
-  #            weight=5)
-  #          )
-  #        }
-  #      ) 
-  #    })
-  
-  
-  #   # TIL this is necessary in order to prevent the observer from
-  #   # attempting to write to the websocket after the session is gone.
-  #   session$onSessionEnded(MapPolys$suspend)
-  #   session$onSessionEnded(MapCircles$suspend)
-  # })
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
 
 #### Add GeoJSON polygon layer
 
@@ -282,7 +236,7 @@ shinyServer(function(input,output,session){
               EcoReg=clearGroup(.,group=c("Forested","Soil") )%>% 
                 addPolygons(., data=Ecoregion, group="Ecoregion", layerId=Ecoregion$Level3_Nam, 
                             stroke=FALSE, 
-                            fillOpacity=.65, color=colorFactor("RdYlBu", levels=Ecoregion$Level3_Nam)(Ecoregion$Level3_Nam)),
+                            fillOpacity=.65, color=colorFactor(palette=PolyColors, levels=Ecoregion$Level3_Nam)(Ecoregion$Level3_Nam)),
              
              ForArea=clearGroup(.,group=c("Ecoregion","Soil")) %>% 
                addPolygons(.,data=Forested, group="Forested", layerId=Forested$MapClass, stroke=FALSE, 
@@ -290,63 +244,57 @@ shinyServer(function(input,output,session){
              
              Soil=clearGroup(.,group=c("Ecoregion","Forested")) %>% 
                addPolygons(.,data=Soil, group="Soil", layerId=Soil$taxorder, stroke=FALSE, 
-                           fillOpacity=.65, color=colorFactor("RdYlBu",levels=Soil$taxorder)(Soil$taxorder)) 
+                           fillOpacity=.65, color=colorFactor(PolyColors,levels=Soil$taxorder)(Soil$taxorder)) 
       )}
   })
+
+##### Add Circle legends
+  observe({
+    validate(
+      need(input$MapValues,message=FALSE)
+    )
+    leafletProxy("VegMap") %>%  
+      removeControl(layerId="CircleLegend") %>%
+      {if("Legend" %in% input$MapHide) 
+       addLegend(.,title=MapMetaData()$Title,
+                colors=CircleColors()(MapMetaData()$Cuts[-1]-.001),
+                labels=MapMetaData()$Labels,
+                layerId="CircleLegend",
+                opacity=1)
+    }
+  })
   
+  
+    
   ### Add layer legends
   observe({
     leafletProxy("VegMap") %>%  removeControl(layerId="LayerLegend") %>%
     {if("LayerLegend" %in% input$MapHide) 
       switch(input$MapLayer,
              None=NA,
-             EcoReg= addLegend(.,title="Layer Legend",pal=colorFactor("RdYlBu", levels=Ecoregion$Level3_Nam), 
+             EcoReg= addLegend(.,title="Layer Legend",pal=colorFactor(PolyColors, levels=Ecoregion$Level3_Nam), 
                                    values=Ecoregion$Level3_Nam, layerId="LayerLegend"),
              
              ForArea= addLegend(.,title="Layer Legend",pal=colorFactor("Greens",levels=Forested$MapClass), 
                                 values=Forested$MapClass,layerId="LayerLegend"),
-             Soil= addLegend(.,title="Layer Legend",pal=colorFactor("RdYlBu", levels=Soil$taxorder), 
+             Soil= addLegend(.,title="Layer Legend",pal=colorFactor(PolyColors, levels=Soil$taxorder), 
                                values=Soil$taxorder, layerId="LayerLegend")
       )}
   })
  
-
-
-######################  UIoutput for Circle Legend
-
-
-
-output$MapLegend<-renderUI({
-
-  if(is.null(input$MapSpecies) || nchar(input$MapSpecies)==0 || is.null(MapMetaData()) ){
-    return()
-  }
-  else{
-    tags$table(
-    mapply(
-      function(BoxLabel,color){
-        tags$tr(tags$td(tags$div(
-          style=sprintf("width: 16px; height: 16px; background-color: %s;", color)
-        )),
-        tags$td(": ",BoxLabel)
-        )}, 
-      c(MapMetaData()$Labels),BlueOr(8),SIMPLIFY=FALSE ))
-  }
- 
-})
-
-
-output$MapLegendTitle<-renderText({ 
-  if(is.null(input$MapSpecies) || nchar(input$MapSpecies)==0){
-    return()
-  }
-  else{
-    MapMetaData()$Title
-  }
-})
-
-
-
+  #### Mouse Hover
+  observeEvent(input$VegMap_shape_mouseover, {  
+    
+    ShapeOver<-input$VegMap_shape_mouseover
+    
+    
+    leafletProxy("VegMap") %>% 
+      clearPopups() %>% {
+        switch(ShapeOver$group,
+               Circles= addPopups(map=.,lat=ShapeOver$lat+.001, lng=ShapeOver$lng, layerId="MouseOverPopup",
+                                  popup=paste0(ShapeOver$id , ': ',MapData()[MapData()$Plot_Name==ShapeOver$id,]$Values))
+        )}
+  })
 ### Function for adding information to, and displaying, popup.
 # showPlotPopup <- function(PlotId, lat, lng) {
 #   selectedPlot <- MapData()[MapData()$Plot_Name == PlotId,]
