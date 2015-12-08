@@ -31,13 +31,13 @@ shinyServer(function(input,output,session){
     onclick(id="CloseAboutMap", expr= toggle(id="AboutMapPanel")) 
     onclick(id="VideoButton", expr= toggle(id="VideoPanel"))
     onclick(id="CloseVideo", expr= toggle(id="VideoPanel")) 
-  })
-  
-  
-  
+### Grpahs
+    onclick(id="densGraphButton", expr=toggle(id="GraphOptionsPanel"))
+    onclick(id="CloseDisplayOptions", expr= toggle(id="GraphOptionsPanel")) 
+      })
   
 ### Reactive values for app
-  Values<-reactiveValues(ShapeMouse=NULL) 
+#  Values<-reactiveValues(ShapeMouse=NULL) 
 
   ################################## Code For Map Panel  ######################################################
 
@@ -286,111 +286,87 @@ shinyServer(function(input,output,session){
   observeEvent(input$VegMap_shape_mouseover, {  
     
     ShapeOver<-input$VegMap_shape_mouseover
+    selectedPlot <- MapData()[MapData()$Plot_Name == ShapeOver$id,]
     
     
     leafletProxy("VegMap") %>% 
       clearPopups() %>% {
         switch(ShapeOver$group,
                Circles= addPopups(map=.,lat=ShapeOver$lat+.001, lng=ShapeOver$lng, layerId="MouseOverPopup",
-                                  popup=paste0(ShapeOver$id , ': ',MapData()[MapData()$Plot_Name==ShapeOver$id,]$Values))
+                                  popup=paste0(
+                                    h5(getNames(NCRN[[selectedPlot$Unit_Code]], "long")),
+                                    h6("Monitoring Plot:",selectedPlot$Plot_Name),
+                                    h6("Year Monitored:", selectedPlot$Year), 
+                                    h6(names(MapSpecList()[MapSpecList()==input$MapSpecies]),":",format(signif(selectedPlot$Values,2), 
+                                                                                            big.mark=","), " ", MapMetaData()$Title),
+                                    tags$h6("Click on plot to see full list")
+                                    )
+                                  
+               )
         )}
   })
-### Function for adding information to, and displaying, popup.
-# showPlotPopup <- function(PlotId, lat, lng) {
-#   selectedPlot <- MapData()[MapData()$Plot_Name == PlotId,]
-#     content<- as.character(tagList(
-#       tags$h5(getNames(NCRN[[selectedPlot$Unit_Code]],"long")),
-#       tags$h6("Monitoring Plot:",selectedPlot$Plot_Name),
-#       tags$h6("Year Monitored:",selectedPlot$Year),
-#       tags$h6(names(MapSpecList()[MapSpecList()==input$MapSpecies]),":",format(signif(selectedPlot$Values,2), 
-#                                                                     big.mark=","), " ", MapMetaData()$Title),
-#       tags$h6("Click on plot to see full list")
-#     ))
-#   map$showPopup(lat, lng, content)
-#   
-# }
-# showPlotPopup2 <- function(PlotId, lat, lng) {
-#  selectedPlot <- MapData()[MapData()$Plot_Name == PlotId,]
-#  if(
-#     class(try(SiteXSpec(object=NCRN[[selectedPlot$Unit_Code]], group=input$MapGroup, years=selectedPlot$Year,
-#           plots=PlotId, common=input$mapCommon), silent=TRUE))=="try-error") {
-#               content<-as.character(tagList(tags$h6("None found on this plot")))} else {
-#     tempData<-if(input$MapGroup != "herbs"){
-#       if(input$MapValues!="size"){
-#         (10000/getArea(NCRN[[selectedPlot$Unit_Code]],group=input$MapGroup,type="all")) *
-#           SiteXSpec(object=NCRN[[selectedPlot$Unit_Code]],group=input$MapGroup, years=selectedPlot$Year, plots=PlotId, values=input$MapValues, common=input$mapCommon)[-1]
-#       }
-#       else{
-#         (10000/getArea(NCRN[[selectedPlot$Unit_Code]],group=input$MapGroup,type="all")) * (    #need to convert to m^2/ha from cm^2/ha
-#           SiteXSpec(object=NCRN[[selectedPlot$Unit_Code]],group=input$MapGroup, years=selectedPlot$Year,plots=PlotId,values=input$MapValues,common=input$mapCommon)[-1])/10000
-#       }
-#     }
-#     else{
-#      SiteXSpec(object=NCRN[[selectedPlot$Unit_Code]], group=input$MapGroup, years=selectedPlot$Year, plots=PlotId,values=input$MapValues,
-#                common=input$mapCommon)[-1]/12
-#     }
-#     
-#   content<- as.character(tagList(
-#     tags$h5(getNames(NCRN[[selectedPlot$Unit_Code]],"long")),
-#     tags$h6("Monitoring Plot:",selectedPlot$Plot_Name),
-#     tags$h6("Year Monitored:",selectedPlot$Year),
-#     tags$h6("Species: ",MapMetaData()$Title),
-#     tags$table(
-#       mapply(FUN=function(Name,Value){
-#         tags$tr(
-#           tags$td(sprintf("%s:  ", Name)),
-#           tags$td(align="right",sprintf("%s", format(signif(Value,2), big.mark=",")))
-#         )
-#       },
-#     Name=names(tempData),
-#     Value=unlist(tempData), SIMPLIFY=FALSE
-#       ))
-#   ))}
-#  map$showPopup(lat, lng, content)
-# }
 
-
-###  When a plot is clicked, show the popup with plot info
-
-# MouseOver1<-observe({
-#   eventOver1<-input$map_shape_mouseover
-#   if(is.null(eventOver1)){return()}
-#   isolate(
-#     showPlotPopup(eventOver1$id, as.character(eventOver1$lat+.001), as.character(eventOver1$lng))
-#   )
-# })
-# 
-# MouseOut1<-observe({
-#   eventOut1<-input$map_shape_mouseout
-#   map$clearPopups()
-#   
-# })
-# 
-# ClickObs1<-observe({
-#   map$clearPopups()
-#   eventClick1<-input$map_shape_click
-#   if(is.null(eventClick1)){return()}
-#   isolate(
-#     showPlotPopup2(eventClick1$id, as.character(eventClick1$lat+.001), as.character(eventClick1$lng))
-#   )
-# })
-# ###  When a GeoJSON polygon is clicked, show the popup with plot info
-# ClickObs2<-observe({
-#   eventClick2<-input$map_geojson_click   #a geojson feature was clicked
-#   if(is.null(eventClick2)) { return() }
-#   isolate({
-#     map$clearPopups()
-#     map$showPopup(lat=eventClick2$properties$LabelLat,lng=eventClick2$properties$LabelLng, content=eventClick2$properties$MapClass)
-#   })
-#   
-# })
-# 
-# session$onSessionEnded(ClickObs1$suspend)
-# session$onSessionEnded(ClickObs2$suspend)
-# session$onSessionEnded(MouseOut1$suspend)
-# session$onSessionEnded(MouseOver1$suspend)
-# 
-
+  observeEvent(input$VegMap_shape_mouseout,{    #clear popup when mouse leaves circle
+               leafletProxy("VegMap") %>% 
+                 clearPopups()
+  })
+  
+  observeEvent(input$VegMap_shape_click, {          # user clicked on a shape
+    ShapeClick<-input$VegMap_shape_click
+    selectedPlot <- MapData()[MapData()$Plot_Name == ShapeClick$id,]
+    
+    if(
+      class(try(SiteXSpec(object=NCRN[[selectedPlot$Unit_Code]], group=input$MapGroup, years=selectedPlot$Year,
+            plots=ShapeClick$id, common=input$mapCommon), silent=TRUE))=="try-error") {
+      content<-as.character(tagList(tags$h6("None found on this plot")))
+    } else {
+                      
+      tempData<- if(input$MapGroup != "herbs" && input$MapValues != "size"){
+        (10000/getArea(NCRN[[selectedPlot$Unit_Code]],group=input$MapGroup,type="all")) *
+        SiteXSpec(object=NCRN[[selectedPlot$Unit_Code]],group=input$MapGroup, years=selectedPlot$Year, 
+        plots=ShapeClick$id, values=input$MapValues, common=input$mapCommon)[-1]
+      
+        } else {
+                       
+        if(input$MapGroup != "herbs" && input$MapValues == "size"){ 
+          (10000/getArea(NCRN[[selectedPlot$Unit_Code]],group=input$MapGroup,type="all")) * (    #need to convert to m^2/ha from cm^2/ha
+            SiteXSpec(object=NCRN[[selectedPlot$Unit_Code]],group=input$MapGroup, years=selectedPlot$Year,
+            plots=ShapeClick$id,values=input$MapValues,common=input$mapCommon)[-1])/10000
+        } else {                
+      
+          if(input$MapGroup == "herbs"){ 
+            SiteXSpec(object=NCRN[[selectedPlot$Unit_Code]], group=input$MapGroup, years=selectedPlot$Year, 
+            plots=ShapeClick$id,values=input$MapValues,common=input$mapCommon)[-1]/12
+          }
+        }
+        }
+    
+      content<-paste0( h5(getNames(NCRN[[selectedPlot$Unit_Code]],"long")),
+                    h6("Monitoring Plot:",selectedPlot$Plot_Name),
+                    h6("Year Monitored:",selectedPlot$Year),
+                    h6("Species: ",MapMetaData()$Title),
+                    tagList(tags$table(
+                      mapply(FUN=function(Name,Value){
+                        tags$tr(
+                          tags$td(sprintf("%s:  ", Name)),
+                          tags$td(align="right",sprintf("%s", format(signif(Value,2), big.mark=",")))
+                        )
+                      },
+                      Name=names(tempData),
+                      Value=unlist(tempData), SIMPLIFY=FALSE
+                      )))
+                    
+      )
+    }
+    
+    leafletProxy("VegMap") %>% 
+      clearPopups() %>% {
+      switch(ShapeClick$group,
+             Circles= addPopups(map=.,lat=ShapeClick$lat+.001, lng=ShapeClick$lng, layerId="CircleClickPopup",popup=content),
+             Ecoregion=, Forested=, Soil= addPopups(map=.,lat=ShapeClick$lat, lng=ShapeClick$lng, popup=ShapeClick$id)
+      )}
+      
+  })  
 
 ############################## Plots Tab ###############################################################################
 
@@ -432,7 +408,7 @@ output$densSpeciesControl<-renderUI({
   switch(input$densSpeciesType,
          Common= tags$div(title="# of species to display", 
             sliderInput(inputId="densTop",label="Number of species to display (in order of mean value):",
-                min=1, max=10,value=5, format="##")
+                min=1, max=10,value=5, sep="", step=1, ticks=TRUE)
           ),
          Pick= if(is.null(input$densPark) || nchar(input$densPark)==0) {  return()  }
           else{

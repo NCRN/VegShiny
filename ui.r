@@ -23,7 +23,7 @@ navbarPage(title=HTML("<div> <a href='http://science.nature.nps.gov/im/units/ncr
 
 ################### Main Map Controls 
     fixedPanel(id="MapControlPanel",class="panel panel-default controls",draggable=TRUE,cursor="auto",top=80,bottom="auto",
-                 height="auto",right=150, left="auto", width="225px",
+                 height="auto",right=200, left="auto", width="225px",
       h4("Map Controls", class="panel-heading"),
       tags$div(title="Choose the type of plant you want to work with", selectInput(inputId="MapGroup", 
               label="Type of plant:", choices=c(Trees="trees",Saplings="saplings","Tree seedlings"="seedlings",
@@ -113,16 +113,15 @@ navbarPage(title=HTML("<div> <a href='http://science.nature.nps.gov/im/units/ncr
       tabPanel(tags$div(title="Graph abundance, basal area, percent cover, etc.","Data by Park and Species"),   
         fluidRow(
           column(3,
-            wellPanel(
-              h4("Base Data:"),
+            wellPanel(class="panel panel-default",
+              h4("Base Data:", class="panel-heading"),
               tags$div(title="Choose a park to work with.",
                        uiOutput(outputId="densParkControl")
               ),
               tags$div(title="Pick the four year period you want to graph",
                        sliderInput(inputId="densYear", label="Display data from the 4 years ending:", 
-                          min=2009, max=2014, value=2014, format="####")
+                          min=2009, max=2014, value=2014, sep="",step=1, ticks=TRUE)
               ),
-              hr(),
               tags$div(title="Choose the type of plant you want to work with", 
                 selectizeInput(inputId="densGroup", label="Type of plant:",   choices=c(Trees="trees",
                     Saplings="saplings","Tree seedlings"="seedlings",Shrubs="shrubs",
@@ -131,27 +130,24 @@ navbarPage(title=HTML("<div> <a href='http://science.nature.nps.gov/im/units/ncr
               tags$div(title="Toggle between common and scientific names",
                        checkboxInput(inputId="densCommon", label="Show common names?", value=TRUE )
               ),
-              br(),
               tags$div(title="Graph the most common species, species you choose, or all species combined.",
                 radioButtons(inputId="densSpeciesType", label="Which species?", 
                 choices=c("Most common species"="Common","Pick individual species"="Pick",
-                          "All species combined"="All"),inline=TRUE)
+                          "All species combined"="All"),inline=FALSE)
               ),
-              hr(),
               uiOutput(outputId="densSpeciesControl"),
-              hr(),
               tags$div(title="Type of data to graph",
                 uiOutput(outputId="densValControl")
               ),
               conditionalPanel(
                 condition="input.densPanel=='Graph'",
                 hr(),
-                actionButton(inputId="densGraphButton", label="Display Options",style="primary"),
+                actionButton(inputId="densGraphButton", label="Display Options", class="btn btn-primary"),
                 br(),
                 downloadButton(outputId="densGraphDownload", label="Save Graph (.jpg)", class="btn btn-primary"),
-                downloadButton(outputId="densWmfDownload", label="Save Graph (.wmf)", class="btn  btn-primary"),
+                downloadButton(outputId="densWmfDownload", label="Save Graph (.wmf)", class="btn btn-primary"),
                 hr(),
-                h4("Comparison Data:"),
+                h4("Comparison Data:", class="panel-heading"),
                 tags$div(title="Compare the base data with a differnet park, growth stage, or time period",
                   radioButtons(inputId="CompareType", label ="Compare to another:",
                   choices=c("None","Park","Growth Stage","Time"),selected="None",inline=TRUE)
@@ -169,23 +165,29 @@ navbarPage(title=HTML("<div> <a href='http://science.nature.nps.gov/im/units/ncr
           column(9,
             tabsetPanel(id="densPanel",type="pills",
                 tabPanel(title=tags$div(title="Graph the data", "Graph"),value="Graph",
-                  tags$div(title="Mean and 95% Confidence interval",plotOutput(outputId="DensPlot", height="600px"))#,
+                  tags$div(title="Mean and 95% Confidence interval",plotOutput(outputId="DensPlot", height="600px")),
                   
-#                   bsModal(id="DensModal", title="Display Options", trigger="densGraphButton",
-#                     tags$head(tags$style(HTML("#DensModal{ width:350px; background-color:rgba(255,255,255, 0.8)} 
-#                                               #DensModal:hover {background-color:rgba(255,255,255, 1)}
-#                                               #DensModal .modal-body{height:150px; overflow:visible}
-#                                               #DensModal .modal-footer{background-color:rgba(245,245,245,0.5)} "))),
-#                     flowLayout(
-#                       selectizeInput("densBaseColor","Base Data Color:",choices=ColorNames, selected="blue",width="125px"),
-#                       selectizeInput("densCompareColor","Comparison Data Color:",choices=ColorNames, selected="red",width="125px")
-#                     ),
-#                     br(),
-#                     flowLayout(
-#                       sliderInput("densPointSize", "Change Point Size", min=4, max=24, value=8, step=2,width="125px"),
-#                       sliderInput("densFontSize", "Change Font Size", min=12, max=32, value=20, step=2,width="125px")
-#                     )
-#                   )
+                  
+                  hidden(
+                    fixedPanel(class="panel panel-primary controls",draggable=TRUE,cursor="auto",top=125,bottom="auto",height=350,
+                               left=550,width=425,id="GraphOptionsPanel",style="padding: 0px",
+                      title="Display Options",
+                    div(class="panel-heading", h4("Display Options")),
+                    div(class="panel-body",
+                    flowLayout(
+                      selectizeInput("densBaseColor","Base Data Color:",choices=ColorNames, selected="blue",width="125px"),
+                      selectizeInput("densCompareColor","Comparison Data Color:",choices=ColorNames, selected="red",width="125px")
+                    ),
+                    br(),
+                    flowLayout(
+                      sliderInput("densPointSize", "Change Point Size", min=4, max=24, value=8, step=2,width="125px"),
+                      sliderInput("densFontSize", "Change Font Size", min=12, max=32, value=20, step=2,width="125px")
+                    )),
+                  div(class="panel-footer", 
+                        actionButton(inputId="CloseDisplayOptions",class="btn btn-primary",label="Close"))
+                  ))
+                  
+                  
                 ),
               tabPanel(
                 tags$div(title="See all data in a table","Data table"),
