@@ -169,19 +169,19 @@ navbarPage(title=HTML("<div> <a href='http://science.nature.nps.gov/im/units/ncr
                   
                   
                   hidden(
-                    fixedPanel(class="panel panel-primary controls",draggable=TRUE,cursor="auto",top=125,bottom="auto",height=350,
-                               left=550,width=425,id="GraphOptionsPanel",style="padding: 0px",
+                    fixedPanel(class="panel panel-primary controls",draggable=TRUE,cursor="auto",top=160,bottom="auto",height="auto",
+                               left=575,width="auto",id="GraphOptionsPanel",style="padding: 0px",
                       title="Display Options",
                     div(class="panel-heading", h4("Display Options")),
                     div(class="panel-body",
-                    flowLayout(
-                      selectizeInput("densBaseColor","Base Data Color:",choices=ColorNames, selected="blue",width="125px"),
-                      selectizeInput("densCompareColor","Comparison Data Color:",choices=ColorNames, selected="red",width="125px")
+                    flowLayout(cellArgs=list(style="width: 160px"),
+                      selectizeInput("densBaseColor","Base Data Color:",choices=ColorNames, selected="blue",width=150),
+                      selectizeInput("densCompareColor","Comparison Data Color:",choices=ColorNames, selected="red",width=150)
                     ),
                     br(),
-                    flowLayout(
-                      sliderInput("densPointSize", "Change Point Size", min=4, max=24, value=8, step=2,width="125px"),
-                      sliderInput("densFontSize", "Change Font Size", min=12, max=32, value=20, step=2,width="125px")
+                    flowLayout(cellArgs=list(style="width: 160px"),
+                      sliderInput("densPointSize", "Change Point Size", min=4, max=24, value=8, step=2,width=150),
+                      sliderInput("densFontSize", "Change Font Size", min=12, max=32, value=20, step=2,width=150)
                     )),
                   div(class="panel-footer", 
                         actionButton(inputId="CloseDisplayOptions",class="btn btn-primary",label="Close"))

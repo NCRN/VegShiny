@@ -444,7 +444,7 @@ output$CompareSelect<-renderUI({
                   ),
     Time=tags$div(title= "Choose a second range of years",
                 sliderInput(inputId="CompareYear", label="Display data from the 4 years ending:", min=2009, max=2014, 
-                            value=2014, format="####"))
+                            value=2014, sep="", step=1, ticks = TRUE ))
   )
 })
 ############## Need Compare species to keep the number of species to display to accepted number
