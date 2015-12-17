@@ -114,7 +114,7 @@ navbarPage(title=HTML("<div> <a href='http://science.nature.nps.gov/im/units/ncr
         fluidRow(
           column(3,
             wellPanel(class="panel panel-default",
-              h4("Base Data:", class="panel-heading"),
+              h4("Data:", class="panel-heading"),
               tags$div(title="Choose a park to work with.",
                        uiOutput(outputId="densParkControl")
               ),
@@ -141,33 +141,33 @@ navbarPage(title=HTML("<div> <a href='http://science.nature.nps.gov/im/units/ncr
               ),
               conditionalPanel(
                 condition="input.densPanel=='Graph'",
-                hr(),
                 actionButton(inputId="densGraphButton", label="Display Options", class="btn btn-primary"),
-                br(),
                 downloadButton(outputId="densGraphDownload", label="Save Graph (.jpg)", class="btn btn-primary"),
-                downloadButton(outputId="densWmfDownload", label="Save Graph (.wmf)", class="btn btn-primary"),
-                hr(),
-                h4("Comparison Data:", class="panel-heading"),
-                tags$div(title="Compare the base data with a differnet park, growth stage, or time period",
-                  radioButtons(inputId="CompareType", label ="Compare to another:",
-                  choices=c("None","Park","Growth Stage","Time"),selected="None",inline=TRUE)
-                ),
-                uiOutput(outputId="CompareSelect"),
-                h1(br(),br(),br(),br(),br())
+                downloadButton(outputId="densWmfDownload", label="Save Graph (.wmf)", class="btn btn-primary")
               ),
               conditionalPanel(
                 condition="input.densPanel=='Table'",
                 hr(),
                 downloadButton(outputId="densTableDownload", label="Save Table (.csv)", class="btn btn-primary")
               )
+            ),
+            conditionalPanel(
+              condition="input.densPanel=='Graph'",
+              wellPanel(class="panel panel-default",
+                h4("Comaprison Data:", class="panel-heading"),
+                  tags$div(title="Compare the base data with a differnet park, growth stage, or time period",
+                  radioButtons(inputId="CompareType", label ="Compare to another:",
+                          choices=c("None","Park","Growth Stage","Time"),selected="None",inline=TRUE)
+                  ),
+                  uiOutput(outputId="CompareSelect")
+              )
             )
           ),
           column(9,
             tabsetPanel(id="densPanel",type="pills",
                 tabPanel(title=tags$div(title="Graph the data", "Graph"),value="Graph",
-                  tags$div(title="Mean and 95% Confidence interval",plotOutput(outputId="DensPlot", height="600px")),
-                  
-                  
+                  tags$div(title="Mean and 95% Confidence interval",
+                  plotOutput(outputId="DensPlot", height="600px")),
                   hidden(
                     fixedPanel(class="panel panel-primary controls",draggable=TRUE,cursor="auto",top=160,bottom="auto",height="auto",
                                left=575,width="auto",id="GraphOptionsPanel",style="padding: 0px",
@@ -209,7 +209,8 @@ navbarPage(title=HTML("<div> <a href='http://science.nature.nps.gov/im/units/ncr
       tabPanel(tags$div(title="Graph Importance Values", "Forestry Importance Values (IV)"),
         fluidRow(
           column(3,
-            wellPanel(
+            wellPanel(class="panel panel-default",
+              h4("Data:", class="panel-heading"),
               tags$div(
                 title="Choose a park to work with.",
                 uiOutput("IVParkControl")
@@ -229,7 +230,7 @@ navbarPage(title=HTML("<div> <a href='http://science.nature.nps.gov/im/units/ncr
               tags$div(
                 title="Pick the four year period you want to graph",
                 sliderInput(inputId="IVYear", label="Display data from the 4 years ending:", min=2009, max=2014,
-                          value=2014, format="####")
+                          value=2014, sep="", step=1, ticks=TRUE)
               ),
               br(),
               tags$div(
@@ -240,14 +241,14 @@ navbarPage(title=HTML("<div> <a href='http://science.nature.nps.gov/im/units/ncr
               tags$div(
                 title="Chose the maximum number of species to display.",
                 sliderInput(inputId="IVTop",label="Number of species to plot (in order of IV):",min=1, max=20,
-                  value=10, format="##",ticks=FALSE)),
+                  value=10, sep="", step=1, ticks=FALSE)),
                 conditionalPanel(
                   condition="input.IVPanel=='Graph'",
                   hr(),
-                  actionButton(inputId="IVGraphButton", label="Display Options", style="primary"),
+                  actionButton(inputId="IVGraphButton", label="Display Options", class="btn btn-primary"),
                   br(),
                   downloadButton(outputId="IVGraphDownload", label="Save Graph (.jpg)", class="btn btn-primary"),
-                  downloadButton(outputId="IVWmfDownload", label="Save Graph (.wmf)", class="btn  btn-primary")
+                  downloadButton(outputId="IVWmfDownload", label="Save Graph (.wmf)", class="btn btn-primary")
                 ),  
                   conditionalPanel(
                     condition="input.IVPanel=='Table'",
@@ -262,25 +263,26 @@ navbarPage(title=HTML("<div> <a href='http://science.nature.nps.gov/im/units/ncr
             tabsetPanel(id="IVPanel",type="pills",
               tabPanel(value="Graph",
                 tags$div(title="Graph the data","Graph"),
-                tags$div(title="Graph of IV",plotOutput("IVPlot",height="600px")) #,
-               
-#                  bsModal(id="IVModal", title="Display Options", trigger="IVGraphButton",
-#                         tags$head(tags$style(HTML("#IVModal {width:475px; background-color:rgba(255,255,255, 0.8)} 
-#                                                   #IVModal:hover {background-color:rgba(255,255,255, 1)}
-#                                                   #IVModal .modal-body {height:200px; overflow:visible}
-#                                                   #IVModal .modal-footer{background-color:rgba(245,245,245,0.5)}"))),
-#                         flowLayout(
-#                           selectizeInput("IVBaseColor","Base Color:",choices=ColorNames, selected="green4",width="125px"),
-#                           sliderInput("IVFontSize", "Change Font Size", min=10, max=24, value=14, step=2,width="175px")
-#                         ),
-#                         h5("Component Colors:"),
-#                         flowLayout(
-#                           selectizeInput("IVDensityColor","Density Color:",choices=ColorNames, selected="green4", width="125px"),
-#                           selectizeInput("IVSizeColor","Size Color:",choices=ColorNames, selected="chartreuse",width="125px"),
-#                           selectizeInput("IVDistributionColor","Distribution Color:",choices=ColorNames, selected="yellow",
-#                                        width="125px")
-#                         )
-#                 )
+                tags$div(title="Graph of IV",plotOutput("IVPlot",height="600px")),
+                hidden(
+                  fixedPanel(class="panel panel-primary controls",draggable=TRUE,cursor="auto",top=160,bottom="auto",height="auto",
+                             left=575,width="auto",id="IVOptionsPanel",style="padding: 0px",title="Display Options",
+                    div(class="panel-heading", h4("Display Options")),
+                    div(class="panel-body",
+                      flowLayout(
+                        selectizeInput("IVBaseColor","Base Color:",choices=ColorNames, selected="green4",width="125px"),
+                        sliderInput("IVFontSize", "Change Font Size", min=10, max=24, value=14, step=2,width="175px")
+                      ),
+                      h5("Component Colors:"),
+                      flowLayout(
+                        selectizeInput("IVDensityColor","Density Color:",choices=ColorNames, selected="green4", width="125px"),
+                        selectizeInput("IVSizeColor","Size Color:",choices=ColorNames, selected="chartreuse",width="125px"),
+                        selectizeInput("IVDistributionColor","Distribution Color:",choices=ColorNames, selected="yellow",width="125px")
+                      )
+                    ),    
+                    div(class="panel-footer", actionButton(inputId="CloseIVDisplayOptions",class="btn btn-primary",label="Close"))
+                  )
+                )
               ),
               tabPanel(value="Table",
                 tags$div(title="See all data in a table","Data table"),
@@ -310,8 +312,8 @@ navbarPage(title=HTML("<div> <a href='http://science.nature.nps.gov/im/units/ncr
         wellPanel(
           tags$div(
             title="Choose the type of species list", 
-            radioButtons(inputId="SpListType", label="Choose a species list:", choices=c("Vascular plants in the monitorng plots"= 
-                                                                            "Monitoring", "All vascular plants known from the park"="NPSpecies"))
+            radioButtons(inputId="SpListType", label="Choose a species list:",
+                choices=c("Vascular plants in the monitorng plots"= "Monitoring", "All vascular plants known from the park"="NPSpecies"))
           ),
           tags$div(
             title="Choose a park to work with.",uiOutput("SpListParkControl")

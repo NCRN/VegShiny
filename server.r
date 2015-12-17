@@ -31,10 +31,12 @@ shinyServer(function(input,output,session){
     onclick(id="CloseAboutMap", expr= toggle(id="AboutMapPanel")) 
     onclick(id="VideoButton", expr= toggle(id="VideoPanel"))
     onclick(id="CloseVideo", expr= toggle(id="VideoPanel")) 
-### Grpahs
+### Graphs
     onclick(id="densGraphButton", expr=toggle(id="GraphOptionsPanel"))
-    onclick(id="CloseDisplayOptions", expr= toggle(id="GraphOptionsPanel")) 
-      })
+    onclick(id="CloseDisplayOptions", expr= toggle(id="GraphOptionsPanel"))
+    onclick(id="IVGraphButton", expr=toggle(id="IVOptionsPanel"))
+    onclick(id="CloseIVDisplayOptions", expr= toggle(id="IVOptionsPanel"))
+  })
   
 ### Reactive values for app
 #  Values<-reactiveValues(ShapeMouse=NULL) 
@@ -504,7 +506,7 @@ densYlabel<-reactive({
       seedlings="Tree seedlings / ha",
       shrubs="Shrubs / ha",
       shseedlings="Shrub seedlings / ha",
-      vines="Vines on Trees / ha",
+      vines="Vines on Trees / ha"
     ),
     size=switch(input$densGroup,
       trees=,saplings="Basal area cm2/ ha",
