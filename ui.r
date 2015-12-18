@@ -325,11 +325,11 @@ navbarPage(title=HTML("<div> <a href='http://science.nature.nps.gov/im/units/ncr
           )
         )
       ),
-      column(8,
+      column(6,
         tabsetPanel(id="SpeciesListPanel", type="pills",
           tabPanel("Species Lists",
             h3(textOutput("SpeciesTableTitle")),
-            dataTableOutput("SpeciesTable")
+            DT::dataTableOutput("SpeciesTable")
           ),
           tabPanel("About these lists...",
             includeHTML("./www/AboutLists.html")

@@ -6,6 +6,7 @@ library(rgdal)
 library(jsonlite,pos=100)
 library(httr)
 library(dplyr)
+library(DT)
 
 ##################### Housekeeping prior to start of the server function
 NCRN<-importNCRN("./Data/NCRN")
@@ -849,6 +850,7 @@ LatinList<-reactive({
 })
 
 
+
 decapitalize <- function(string) {     ########### used to hack around sorting/encoding issues
   substr(string, 1, 1) <- toupper(substr(string, 1, 1))
   return(string)
@@ -857,11 +859,23 @@ decapitalize <- function(string) {     ########### used to hack around sorting/e
 CommonList<-reactive(decapitalize(getPlantNames(object=NCRN[[input$SpListPark]], names=LatinList(), out.style="common",in.style="Latin")))
 
 
+MonitoringList<-reactive({ 
+  tbl_df( data.frame('Latin.Name'=LatinList(),'Common.Name'=CommonList())) %>% 
+  arrange (Common.Name) %>% 
+  rename('Latin Name'=Latin.Name, 'Common Name'=Common.Name) %>% 
+  .[,c(2,1)]
+})
 
 ###Make URL for and get data from NPSpecies
 NPSpeciesURL<-reactive({paste0("http://irmaservices.nps.gov/v3/rest/npspecies/checklist/",input$SpListPark,"/Vascular%20Plant?format=Json")})
 
-NPSpeciesList<-reactive({ fromJSON(NPSpeciesURL()) })
+NPSpeciesList<-reactive({
+  fromJSON(NPSpeciesURL()) %>% 
+  dplyr::select(CommonNames,ScientificName,Occurrence) %>% 
+  arrange(CommonNames) %>% 
+  rename("Latin Name"=ScientificName, "Common Name"=CommonNames)
+})  
+  
 
 
 ##Create Title for Table
@@ -875,17 +889,18 @@ output$SpeciesTableTitle<- renderText({
 
 
 ##Create Table 
-output$SpeciesTable<- renderDataTable({
+output$SpeciesTable<- DT::renderDataTable({
  validate(
   need(input$SpListPark!="", message="Please choose a park")
   )
-
-expr= switch(input$SpListType,
-        Monitoring= data.frame(Latin=LatinList(),Common=CommonList())[order(LatinList()),],
-        NPSpecies=data.frame("Latin" = NPSpeciesList()$ScientificNameFormatted, "Common"= decapitalize(NPSpeciesList()$CommonNames))
-)}, 
-options=list(order=c(0,"asc"))
-)
+  
+  datatable(rownames=F, caption="Species List", class="display compact", selection="single",
+            data=switch(input$SpListType,
+                        Monitoring= MonitoringList(),
+                        NPSpecies=NPSpeciesList()
+            )
+  )
+})
 
 
 })# end of shinyServer() function
