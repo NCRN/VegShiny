@@ -4,7 +4,7 @@ input[type="number"] {
 
 .outer {
   position: fixed;
-  top: 65px;
+  top: 80px;
   left: 0;
   right: 0;
   bottom: 0;
@@ -76,11 +76,27 @@ padding: 0 0 0 0;
   margin-bottom: 2px;
 }
 
-.navbar {
-  height: 70px;
+
+.shiny-progress .progress-text{
+  height: 36px;
+  right: 150px;
+  font-size: 16px;
+  
 }
 
+.shiny-progress .progress-message{
+  color: #FF0000;
+  padding: 10px 3px;
+}
+
+.shiny-progress .progress{
+  height: 10px;
+}
 .navbar .container {
   margin-left: 0px;
   height: 70px;
+}
+
+.navbar {
+  margin-bottom: 0px;
 }

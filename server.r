@@ -39,8 +39,6 @@ shinyServer(function(input,output,session){
     onclick(id="CloseIVDisplayOptions", expr= toggle(id="IVOptionsPanel"))
   })
   
-### Reactive values for app
-#  Values<-reactiveValues(ShapeMouse=NULL) 
 
   ################################## Code For Map Panel  ######################################################
 
@@ -214,6 +212,7 @@ shinyServer(function(input,output,session){
    leafletProxy("VegMap") %>% 
    clearGroup("Circles") %>% 
     addCircles(data=MapData(), radius=15*as.numeric(input$PlotSize), group="Circles",
+               lng=MapData()$Longitude, lat=MapData()$Latitude,
              layerId=MapData()$Plot_Name,  #This is the ID of the circle to match to other data
              fillColor=CircleColors()(MapData()$Values),
              color=CircleColors()(MapData()$Values),
@@ -237,9 +236,9 @@ shinyServer(function(input,output,session){
              None=clearGroup(.,group=c("Ecoregion","Forested","Soil")) %>% removeControl(.,"LayerLegend"),
              
               EcoReg=clearGroup(.,group=c("Forested","Soil") )%>% 
-                addPolygons(., data=Ecoregion, group="Ecoregion", layerId=Ecoregion$Level3_Nam, 
-                            stroke=FALSE, 
-                            fillOpacity=.65, color=colorFactor(palette=PolyColors, levels=Ecoregion$Level3_Nam)(Ecoregion$Level3_Nam)),
+                 addPolygons(., data=Ecoregion, group="Ecoregion", layerId=Ecoregion$Level3_Nam, 
+                             stroke=FALSE, 
+                             fillOpacity=.65, color=colorFactor(palette=PolyColors, levels=Ecoregion$Level3_Nam)(Ecoregion$Level3_Nam)),
              
              ForArea=clearGroup(.,group=c("Ecoregion","Soil")) %>% 
                addPolygons(.,data=Forested, group="Forested", layerId=Forested$MapClass, stroke=FALSE, 
@@ -276,7 +275,7 @@ shinyServer(function(input,output,session){
       switch(input$MapLayer,
              None=NA,
              EcoReg= addLegend(.,title="Layer Legend",pal=colorFactor(PolyColors, levels=Ecoregion$Level3_Nam), 
-                                   values=Ecoregion$Level3_Nam, layerId="LayerLegend"),
+                                  values=Ecoregion$Level3_Nam, layerId="LayerLegend"),
              
              ForArea= addLegend(.,title="Layer Legend",pal=colorFactor("Greens",levels=Forested$MapClass), 
                                 values=Forested$MapClass,layerId="LayerLegend"),
@@ -899,7 +898,8 @@ output$SpeciesTable<- DT::renderDataTable({
                         Monitoring= MonitoringList(),
                         NPSpecies=NPSpeciesList()
             )
-  )
+  ) %>% 
+  formatStyle('Latin Name', fontStyle='italic' )
 })
 
 

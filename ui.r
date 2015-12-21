@@ -2,6 +2,7 @@ library(shiny)
 library(NPSForVeg)
 library(leaflet)
 library(shinyjs)
+library(DT)
 
 
 navbarPage(title=HTML("<div> <a href='http://science.nature.nps.gov/im/units/ncrn/'> <img src='ah_small_black.gif',
@@ -22,7 +23,7 @@ navbarPage(title=HTML("<div> <a href='http://science.nature.nps.gov/im/units/ncr
     ),
 
 ################### Main Map Controls 
-    fixedPanel(id="MapControlPanel",class="panel panel-default controls",draggable=TRUE,cursor="auto",top=80,bottom="auto",
+    fixedPanel(id="MapControlPanel",class="panel panel-default controls",draggable=TRUE,cursor="auto",top=90,bottom="auto",
                  height="auto",right=200, left="auto", width="225px",
       h4("Map Controls", class="panel-heading"),
       tags$div(title="Choose the type of plant you want to work with", selectInput(inputId="MapGroup", 
@@ -53,7 +54,7 @@ navbarPage(title=HTML("<div> <a href='http://science.nature.nps.gov/im/units/ncr
     ),
 
 ########################## Zoom  Panel
-    fixedPanel(id="ZoomPanel",class="panel panel-default controls",draggable=TRUE,cursor="auto",top=80,bottom="auto",height="auto",
+    fixedPanel(id="ZoomPanel",class="panel panel-default controls",draggable=TRUE,cursor="auto",top=90,bottom="auto",height="auto",
                      left=50,width=250,
       h4("Zoom to:", class="panel-heading"),
       fluidRow(
@@ -142,8 +143,8 @@ navbarPage(title=HTML("<div> <a href='http://science.nature.nps.gov/im/units/ncr
               conditionalPanel(
                 condition="input.densPanel=='Graph'",
                 actionButton(inputId="densGraphButton", label="Display Options", class="btn btn-primary"),
-                downloadButton(outputId="densGraphDownload", label="Save Graph (.jpg)", class="btn btn-primary"),
-                downloadButton(outputId="densWmfDownload", label="Save Graph (.wmf)", class="btn btn-primary")
+                div(downloadButton(outputId="densGraphDownload", label="Save Graph (.jpg)", class="btn btn-primary"),
+                downloadButton(outputId="densWmfDownload", label="Save Graph (.wmf)", class="btn btn-primary"))
               ),
               conditionalPanel(
                 condition="input.densPanel=='Table'",
