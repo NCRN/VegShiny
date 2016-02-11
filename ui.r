@@ -31,7 +31,7 @@ navbarPage(title=HTML("<div> <a href='http://science.nature.nps.gov/im/units/ncr
                 Shrubs="shrubs", "Shrub seedlings"="shseedlings","Understory plants"="herbs","Vines on Trees"="vines"))),
       tags$div(title="Type of data to map",uiOutput("PlantValueControl")),
       tags$div(title="Choose the four year period you want to work with.", sliderInput(inputId="MapYear", 
-              label="Display data from the 4 years ending:", min=2009, max=2014,value=2014, sep="", step=1,ticks=T)),
+              label="Display data from the 4 years ending:", min=2009, max=2015,value=2015, sep="", step=1,ticks=T)),
       tags$div(title="Toggle between common and scientific names",
                      checkboxInput(inputId="mapCommon", label="Show common names?", value=TRUE )),
       tags$div(title="Choose a species of plants to map", uiOutput("MapSpeciesControl")),  
@@ -121,7 +121,7 @@ navbarPage(title=HTML("<div> <a href='http://science.nature.nps.gov/im/units/ncr
               ),
               tags$div(title="Pick the four year period you want to graph",
                        sliderInput(inputId="densYear", label="Display data from the 4 years ending:", 
-                          min=2009, max=2014, value=2014, sep="",step=1, ticks=TRUE)
+                          min=2009, max=2015, value=2015, sep="",step=1, ticks=TRUE)
               ),
               tags$div(title="Choose the type of plant you want to work with", 
                 selectizeInput(inputId="densGroup", label="Type of plant:",   choices=c(Trees="trees",
@@ -230,8 +230,8 @@ navbarPage(title=HTML("<div> <a href='http://science.nature.nps.gov/im/units/ncr
               br(),
               tags$div(
                 title="Pick the four year period you want to graph",
-                sliderInput(inputId="IVYear", label="Display data from the 4 years ending:", min=2009, max=2014,
-                          value=2014, sep="", step=1, ticks=TRUE)
+                sliderInput(inputId="IVYear", label="Display data from the 4 years ending:", min=2009, max=2015,
+                          value=2015, sep="", step=1, ticks=TRUE)
               ),
               br(),
               tags$div(
