@@ -224,7 +224,7 @@ shinyServer(function(input,output,session){
 #### Add GeoJSON polygon layer
 
   withProgress(message="Loading...Please Wait", value=1,{
-    Ecoregion<-readOGR(dsn="./Maps/ecoregion.geojson","OGRGeoJSON")
+    Ecoregion<-readOGR(dsn="./Maps/Ecoregion.geojson","OGRGeoJSON")
     Forested<-readOGR(dsn="./Maps/Forests.geojson","OGRGeoJSON")
     Soil<-readOGR(dsn="./Maps/Soils.geojson","OGRGeoJSON")
     }
@@ -237,17 +237,17 @@ shinyServer(function(input,output,session){
              None=clearGroup(.,group=c("Ecoregion","Forested","Soil")) %>% removeControl(.,"LayerLegend"),
              
               EcoReg=clearGroup(.,group=c("Forested","Soil") )%>% 
-                 addPolygons(., data=Ecoregion, group="Ecoregion", layerId=Ecoregion$Level3_Nam, 
+                 addPolygons(., data=Ecoregion, group="Ecoregion", layerId=Ecoregion$MapClass, 
                              stroke=FALSE, 
-                             fillOpacity=.65, color=colorFactor(palette=PolyColors, levels=Ecoregion$Level3_Nam)(Ecoregion$Level3_Nam)),
+                             fillOpacity=.65, color=colorFactor(palette=PolyColors, levels=Ecoregion$MapClass)(Ecoregion$MapClass)),
              
              ForArea=clearGroup(.,group=c("Ecoregion","Soil")) %>% 
                addPolygons(.,data=Forested, group="Forested", layerId=Forested$MapClass, stroke=FALSE, 
                            fillOpacity=.65, color=colorFactor("Greens",levels=Forested$MapClass)(Forested$MapClass)),
              
              Soil=clearGroup(.,group=c("Ecoregion","Forested")) %>% 
-               addPolygons(.,data=Soil, group="Soil", layerId=Soil$taxorder, stroke=FALSE, 
-                           fillOpacity=.65, color=colorFactor(PolyColors,levels=Soil$taxorder)(Soil$taxorder)) 
+               addPolygons(.,data=Soil, group="Soil", layerId=Soil$MapClass, stroke=FALSE, 
+                           fillOpacity=.65, color=colorFactor(PolyColors,levels=Soil$MapClass)(Soil$MapClass)) 
       )}
   })
 
@@ -275,13 +275,13 @@ shinyServer(function(input,output,session){
     {if("LayerLegend" %in% input$MapHide) 
       switch(input$MapLayer,
              None=NA,
-             EcoReg= addLegend(.,title="Layer Legend",pal=colorFactor(PolyColors, levels=Ecoregion$Level3_Nam), 
-                                  values=Ecoregion$Level3_Nam, layerId="LayerLegend"),
+             EcoReg= addLegend(.,title="Layer Legend",pal=colorFactor(PolyColors, levels=Ecoregion$MapClass), 
+                                  values=Ecoregion$MapClass, layerId="LayerLegend"),
              
              ForArea= addLegend(.,title="Layer Legend",pal=colorFactor("Greens",levels=Forested$MapClass), 
                                 values=Forested$MapClass,layerId="LayerLegend"),
-             Soil= addLegend(.,title="Layer Legend",pal=colorFactor(PolyColors, levels=Soil$taxorder), 
-                               values=Soil$taxorder, layerId="LayerLegend")
+             Soil= addLegend(.,title="Layer Legend",pal=colorFactor(PolyColors, levels=Soil$MapClass), 
+                               values=Soil$MapClass, layerId="LayerLegend")
       )}
   })
  
