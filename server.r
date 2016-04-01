@@ -45,7 +45,7 @@ shinyServer(function(input,output,session){
 ### Create Map  
 
    output$VegMap<-renderLeaflet({ 
-      #req(input$MapSpecies)
+      req(input$MapSpecies)
       leaflet() %>%
       setView(lng=-77.8,lat=39.03,zoom=9) %>% 
       setMaxBounds(lng1=-79.5,lng2=-76.1, lat1=37.7, lat2=40.36)
