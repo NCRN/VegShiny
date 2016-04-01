@@ -5,7 +5,7 @@ input[type="number"] {
 .outer {
   position: fixed;
   top: 80px;
-  left: 0;
+ /* left: 0;*/
   right: 0;
   bottom: 0;
   overflow: hidden;
@@ -34,7 +34,7 @@ hr {
 /* Appearance */
 
   background-color: white;
- padding: 0 20px 10px 20px;
+ padding: 0 10px 5px 10px;
   cursor: move;                        
 
 /* Fade out while not hovering */
@@ -73,8 +73,8 @@ padding: 0 0 0 0;
 }
 
 .btn{
-  margin-bottom: 2px;
-}
+  margin-bottom: 4px;
+} 
 
 
 .shiny-progress .progress-text{
@@ -93,10 +93,14 @@ padding: 0 0 0 0;
   height: 10px;
 }
 .navbar .container {
-  margin-left: 0px;
+  margin-left: 0;
   height: 70px;
 }
 
 .navbar {
-  margin-bottom: 0px;
+  margin-bottom: 0;
+}
+
+.tab-content {
+  padding: 0 10px;
 }

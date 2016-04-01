@@ -9,7 +9,7 @@ library(httr)
 library(dplyr)
 library(DT)
 
-##################### Housekeeping prior to start of the server function
+##### Housekeeping prior to start of the server function ####
 NCRN<-importNCRN("./Data/NCRN")
 
 names(NCRN)<-getNames(NCRN, name.class="code")
@@ -18,17 +18,16 @@ names(ParkList)<-getNames(NCRN)
 
 ParkBounds<-read.csv("boundboxes.csv", as.is=TRUE)
 
-#################### Begin Server Function
+##### Begin Server Function ####
 
 shinyServer(function(input,output,session){
   
-### toggles
+#### toggles ####
   observe ({
 ### Maps  
-    toggle(id="MapControlPanel", condition = ("MapControls" %in% input$MapHide))
     toggle(id="ExtraLayerPanel", condition= ("ExtraLayers" %in% input$MapHide))
     toggle(id="ZoomPanel", condition= ("Zoom" %in% input$MapHide))
-    toggle(id="MapLegendPanel", condition= ("Legend" %in% input$MapHide))
+    toggle(id="MapLegendPanel", condition= ("Legends" %in% input$MapHide))
     onclick(id="AboutMapButton", expr= toggle(id="AboutMapPanel"))
     onclick(id="CloseAboutMap", expr= toggle(id="AboutMapPanel")) 
     onclick(id="VideoButton", expr= toggle(id="VideoPanel"))
@@ -45,24 +44,27 @@ shinyServer(function(input,output,session){
 
 ### Create Map  
 
-  output$VegMap<-renderLeaflet({leaflet() %>%
+   output$VegMap<-renderLeaflet({ 
+      #req(input$MapSpecies)
+      leaflet() %>%
       setView(lng=-77.8,lat=39.03,zoom=9) %>% 
       setMaxBounds(lng1=-79.5,lng2=-76.1, lat1=37.7, lat2=40.36)
-  })
+    })
+      
   
   
   MapYears<-reactive({(input$MapYear-3):input$MapYear  })  
   
   
-#### Make map with Base Layer and Layer Controls
+#### Make map with Base Layer and Layer Controls ####
   NPSAttrib<-HTML("&copy; <a href='http://mapbox.com/about/maps' target='_blank'>Mapbox</a> 
                   &copy; <a href='http://openstreetmap.org/copyright' target='_blank'>OpenStreetMap</a> contributors | 
-                  <a class='improve-park-tiles' href='http://www.nps.gov/npmap/park-tiles/improve/' 
+                  <a class='improve-park-tiles' href='https://www.nps.gov/npmap/park-tiles/improve/' 
                   target='_blank'>Improve Park Tiles</a>")
   
   
 #### Chose a tile layer to use
-  observe({
+  observe({ req(input$MapSpecies)
     leafletProxy("VegMap") %>% 
   
     clearTiles() %>% 
@@ -80,17 +82,16 @@ shinyServer(function(input,output,session){
    if(!"BaseLayers" %in% input$MapHide ) leafletProxy("VegMap") %>% removeLayersControl()
   })
    
-#########################################################################################################
-
-######## Zoom control for map
+# #########################################################################################################
+# 
+# ######## Zoom control for map
 
   output$ParkZoomControl<-renderUI({
     selectInput(inputId="ParkZoom",label=NULL,
               choices=c("All Parks"="All",ParkList) )
   })
 
-############Zoom the map
-
+# ############Zoom the map
   
  observe({
     input$MapZoom
@@ -99,7 +100,7 @@ shinyServer(function(input,output,session){
       leafletProxy("VegMap") %>% fitBounds(lat1=BoundsUse()[1], lng1=BoundsUse()[2], lat2=BoundsUse()[3], lng2=BoundsUse()[4])
     }) 
   })
-
+#  
 ###########################################################################################################
 
 #######  Park Filter for species list control for map
@@ -129,8 +130,8 @@ shinyServer(function(input,output,session){
 
 #################################################################################################
 
-########### Species list control for map 
-##List of names, elements are Latin names, names of elements are Latin or common
+### Species list control for map ####
+#List of names, elements are Latin names, names of elements are Latin or common
   MapSpecList<-reactive({
     SpecTemp<-unique(getPlants(object=if(input$MapPark=="All") {NCRN}  else {NCRN[[input$MapPark]]} , group=input$MapGroup, 
       years=MapYears(),common=F )$Latin_Name)
@@ -140,21 +141,17 @@ shinyServer(function(input,output,session){
     SpecTemp<-c("All Species"="All", SpecTemp)
   })
 
-###make the control
   output$MapSpeciesControl<-renderUI({
-    if(is.null(input$MapPark) || nchar(input$MapPark)==0) {
-      return()
-    }
-    else{
-      selectInput(inputId="MapSpecies", label="Choose a species", choices=c(MapSpecList() ))
-    }
+      req(input$MapPark, MapSpecList())
+              selectInput(inputId="MapSpecies", label="Choose a species", choices=c(MapSpecList() ))
+      
   })
 
 ####################   Calculate the values for the circles on the map. ######################
 
 ### HouseKeeping
 
-  MapSpeciesUse<-reactive({ifelse(input$MapSpecies=="All", NA, input$MapSpecies) }) #put in reactiveValues?
+ MapSpeciesUse<-reactive({ifelse(input$MapSpecies=="All", NA, input$MapSpecies) }) #put in reactiveValues?
 
   
   
@@ -175,25 +172,28 @@ shinyServer(function(input,output,session){
       return(P %>% 
         mutate(Values=(10000/getArea(NCRN[[1]],group=input$MapGroup,type="all")) * (
               SiteXSpec(object=NCRN,group=input$MapGroup, years=MapYears(),
-              species=MapSpeciesUse(),values=input$MapValues)$Total))
+              species=MapSpeciesUse(),
+              values=input$MapValues)$Total))
       )
     } 
     if(input$MapGroup != "herbs" && input$MapValues=="size"){
         return(P %>% mutate(Values=
                (10000/getArea(NCRN[[1]],group=input$MapGroup,type="all")) * (    #need to convert to m^2/ha from cm^2/ha
-                 SiteXSpec(object=NCRN,group=input$MapGroup, years=MapYears(), species=MapSpeciesUse(), 
+                 SiteXSpec(object=NCRN,group=input$MapGroup, years=MapYears(), 
+                           species=MapSpeciesUse(), 
                 values=input$MapValues)$Total)/10000)
         )
     }
       
    if(input$MapGroup == "herbs"){
       return(P %>% 
-        mutate(Values=SiteXSpec(object=NCRN,group=input$MapGroup, years=MapYears(), species=MapSpeciesUse(), values=input$MapValues)$Total/12)
+        mutate(Values=SiteXSpec(object=NCRN,group=input$MapGroup, years=MapYears(), species=MapSpeciesUse(),
+                                values=input$MapValues)$Total/12)
       )
     } 
   })
 
-  #### Map Colors
+  ### Map Colors
   CircleColors<-reactive({
     validate(
       need(MapMetaData()$Cuts,message = FALSE)
@@ -204,7 +204,7 @@ shinyServer(function(input,output,session){
   PolyColors<-colorRamp(c("aquamarine4","green","yellow","goldenrod4")) #colors for polygons
   
   
-##### add Monitoring plot data as circles
+#### add Monitoring plot data as circles
   observe({
     validate(
       need(input$MapValues, message = FALSE)
@@ -251,14 +251,14 @@ shinyServer(function(input,output,session){
       )}
   })
 
-##### Add Circle legends
+# ##### Add Circle legends
   observe({
     validate(
       need(input$MapValues,message=FALSE)
     )
     leafletProxy("VegMap") %>%  
       removeControl(layerId="CircleLegend") %>%
-      {if("Legend" %in% input$MapHide) 
+      {if("Legends" %in% input$MapHide) 
        addLegend(.,title=MapMetaData()$Title,
                 colors=CircleColors()(MapMetaData()$Cuts[-1]-.001),
                 labels=MapMetaData()$Labels,
@@ -269,10 +269,10 @@ shinyServer(function(input,output,session){
   
   
     
-  ### Add layer legends
+  ## Add layer legends
   observe({
     leafletProxy("VegMap") %>%  removeControl(layerId="LayerLegend") %>%
-    {if("LayerLegend" %in% input$MapHide) 
+    {if("Legends" %in% input$MapHide) 
       switch(input$MapLayer,
              None=NA,
              EcoReg= addLegend(.,title="Layer Legend",pal=colorFactor(PolyColors, levels=Ecoregion$MapClass), 
@@ -662,7 +662,7 @@ output$densTableTitle<-renderText({ tempDensTableTitle() })
 tempDensTable<-reactive({
   expr={
   validate(need(try(
-    do.call(dens, DensTableArgs() ),
+    do.call(dens, DensTableArgs() )
   ),
     "There is no data for this combination of choices. Either you need to select a park, or the type of plant you selected was not found in the park during those years"
           ))
@@ -867,7 +867,7 @@ MonitoringList<-reactive({
 })
 
 ###Make URL for and get data from NPSpecies
-NPSpeciesURL<-reactive({paste0("http://irmaservices.nps.gov/v3/rest/npspecies/checklist/",input$SpListPark,"/Vascular%20Plant?format=Json")})
+NPSpeciesURL<-reactive({paste0("https://irmaservices.nps.gov/v3/rest/npspecies/checklist/",input$SpListPark,"/Vascular%20Plant?format=Json")})
 
 NPSpeciesList<-reactive({
   fromJSON(NPSpeciesURL()) %>% 
