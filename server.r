@@ -45,7 +45,7 @@ shinyServer(function(input,output,session){
 ### Create Map  
 
    output$VegMap<-renderLeaflet({ 
-      req(input$MapSpecies)
+    #  req(input$MapSpecies)
       leaflet() %>%
       setView(lng=-77.8,lat=39.03,zoom=9) %>% 
       setMaxBounds(lng1=-79.5,lng2=-76.1, lat1=37.7, lat2=40.36)
@@ -63,8 +63,27 @@ shinyServer(function(input,output,session){
                   target='_blank'>Improve Park Tiles</a>")
   
   
+  #### add Monitoring plot data as circles - needs to be before layers or app hangs for some reason - new issue ####
+  observe({
+    validate(
+      need(input$MapValues, message = FALSE)
+    )
+    input$MapLayer #make sure Circles are always on top
+    leafletProxy("VegMap") %>% 
+      clearGroup("Circles") %>% 
+      addCircles(data=MapData(), radius=15*as.numeric(input$PlotSize), group="Circles",
+                 lng=MapData()$Longitude, lat=MapData()$Latitude,
+                 layerId=MapData()$Plot_Name,  #This is the ID of the circle to match to other data
+                 fillColor=CircleColors()(MapData()$Values),
+                 color=CircleColors()(MapData()$Values),
+                 fillOpacity=1
+      )
+  })
+  
+  
+  
 #### Chose a tile layer to use
-  observe({ req(input$MapSpecies)
+  observe({ #req(input$MapSpecies)
     leafletProxy("VegMap") %>% 
   
     clearTiles() %>% 
@@ -204,22 +223,22 @@ shinyServer(function(input,output,session){
   PolyColors<-colorRamp(c("aquamarine4","green","yellow","goldenrod4")) #colors for polygons
   
   
-#### add Monitoring plot data as circles
-  observe({
-    validate(
-      need(input$MapValues, message = FALSE)
-    )
-   input$MapLayer #make sure Circles are always on top
-   leafletProxy("VegMap") %>% 
-   clearGroup("Circles") %>% 
-    addCircles(data=MapData(), radius=15*as.numeric(input$PlotSize), group="Circles",
-               lng=MapData()$Longitude, lat=MapData()$Latitude,
-             layerId=MapData()$Plot_Name,  #This is the ID of the circle to match to other data
-             fillColor=CircleColors()(MapData()$Values),
-             color=CircleColors()(MapData()$Values),
-             fillOpacity=1
-    )
-  })
+# #### add Monitoring plot data as circles
+#   observe({
+#     validate(
+#       need(input$MapValues, message = FALSE)
+#     )
+#    input$MapLayer #make sure Circles are always on top
+#    leafletProxy("VegMap") %>% 
+#    clearGroup("Circles") %>% 
+#     addCircles(data=MapData(), radius=15*as.numeric(input$PlotSize), group="Circles",
+#                lng=MapData()$Longitude, lat=MapData()$Latitude,
+#              layerId=MapData()$Plot_Name,  #This is the ID of the circle to match to other data
+#              fillColor=CircleColors()(MapData()$Values),
+#              color=CircleColors()(MapData()$Values),
+#              fillOpacity=1
+#     )
+#   })
 
 #### Add GeoJSON polygon layer
 
