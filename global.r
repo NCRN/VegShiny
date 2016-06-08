@@ -1,5 +1,27 @@
 #### Network specific settings ####
 Network<-"NCRN"
+NetworkURL<-paste0('http://science.nature.nps.gov/im/units/',tolower(Network),'/index.cfm')
+
+PlantTypes<-switch(Network,
+     ERMN=list(Trees='trees'),
+     MIDN=list(Trees='trees'),
+     NCRN<-list(Trees="trees",Saplings="saplings","Tree seedlings"="seedlings", Shrubs="shrubs", "Shrub seedlings"="shseedlings",
+                "Understory plants"="herbs","Vines on Trees"="vines"),
+     NETN=list(Trees='trees')
+)
+
+Years<-switch(Network,
+             ERMN=list(Start=2007, End=2014, Range=4),
+             MIDN=NA,
+             NCRN=list(Start=2006, End=2015, Range=4),
+             NETN=NA)
+
+ExtraLayers<-switch(Network,
+                    ERMN=c(None="None"),
+                    MIDN=c(None="None"),
+                    NCRN=c(None="None", "EcoRegions"="EcoReg","Forested Areas"="ForArea","Soil Map "="Soil"),
+                    NETN=c(None="None")
+  )
 
 #### Colors ####
 GraphColors<-read.csv("./Data/colors.csv", header=T, as.is=T)

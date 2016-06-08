@@ -45,7 +45,7 @@ shinyServer(function(input,output,session){
 ### Create Map  
 
    output$VegMap<-renderLeaflet({ 
-    #  req(input$MapSpecies)
+      req(input$MapSpecies)
       leaflet() %>%
       setView(lng=-77.8,lat=39.03,zoom=9) %>% 
       setMaxBounds(lng1=-79.5,lng2=-76.1, lat1=37.7, lat2=40.36)
@@ -83,7 +83,7 @@ shinyServer(function(input,output,session){
   
   
 #### Chose a tile layer to use
-  observe({ #req(input$MapSpecies)
+  observe({ req(MapData())
     leafletProxy("VegMap") %>% 
   
     clearTiles() %>% 
@@ -152,6 +152,7 @@ shinyServer(function(input,output,session){
 ### Species list control for map ####
 #List of names, elements are Latin names, names of elements are Latin or common
   MapSpecList<-reactive({
+    req(input$MapPark)
     SpecTemp<-unique(getPlants(object=if(input$MapPark=="All") {NCRN}  else {NCRN[[input$MapPark]]} , group=input$MapGroup, 
       years=MapYears(),common=F )$Latin_Name)
     SpecNames<-getPlantNames(object=NCRN[[1]], names=SpecTemp, in.style="Latin",out.style=ifelse(input$mapCommon,"common","Latin"))

@@ -5,9 +5,9 @@ library(shinyjs)
 library(DT)
 
 
-navbarPage(title=HTML("<div> <a href='https://science.nature.nps.gov/im/units/ncrn/'> <img src='ah_small_black.gif',
+navbarPage(title=HTML("<div> <a href=",NetworkURL,"> <img src='ah_small_black.gif',
           alt='Forest Vegetation Visualizer'> </a> Forest Vegetation Visualizer</div>"),
-    position = "static-top", inverse=TRUE, collapsible = FALSE, fluid=TRUE, windowTitle = "NCRN Forest Vegetation",
+    position = "static-top", inverse=TRUE, collapsible = FALSE, fluid=TRUE, windowTitle = paste(Network, "Forest Vegetation"),
     theme="https://www.nps.gov/lib/bootstrap/3.3.2/css/nps-bootstrap.min.css", id="MainNavBar",
   ######################################### Map Panel ####################################################################
   
@@ -28,11 +28,11 @@ navbarPage(title=HTML("<div> <a href='https://science.nature.nps.gov/im/units/nc
        div(id="MapControlPanel",class="panel panel-default controls",
             h4("Map Controls", class="panel-heading"),
             tags$div(title="Choose the type of plant you want to work with", selectInput(inputId="MapGroup", 
-              label="Type of plant:", choices=c(Trees="trees",Saplings="saplings","Tree seedlings"="seedlings",
-              Shrubs="shrubs", "Shrub seedlings"="shseedlings","Understory plants"="herbs","Vines on Trees"="vines"))),
+              label="Type of plant:", choices=PlantTypes)),
             tags$div(title="Type of data to map",uiOutput("PlantValueControl")),
             tags$div(title="Choose the four year period you want to work with.", sliderInput(inputId="MapYear", 
-                  label="Display data from the 4 years ending:", min=2009, max=2015,value=2015, sep="", step=1,ticks=T)),
+                  label="Display data from the 4 years ending:", min=Years$Start+Years$Range-1, max=Years$End, value=Years$End,
+                  sep="", step=1,ticks=T)),
             tags$div(title="Toggle between common and scientific names",
                              checkboxInput(inputId="mapCommon", label="Show common names?", value=TRUE )),
             tags$div(title="Choose a species of plants to map", uiOutput("MapSpeciesControl")),  
@@ -69,7 +69,7 @@ navbarPage(title=HTML("<div> <a href='https://science.nature.nps.gov/im/units/nc
         h4("Additional Layers", class="panel-heading"),
         tags$div(title="Overlay additional data onto the parks",
            selectizeInput(inputId="MapLayer", label="Add a map layer:", 
-                    choices=c(None="None", "EcoRegions"="EcoReg","Forested Areas"="ForArea","Soil Map "="Soil")))
+                    choices=ExtraLayers))
         )
       ), ## End of contorls columns
 
