@@ -9,12 +9,22 @@ library(httr)
 library(dplyr)
 library(DT)
 
-##### Housekeeping prior to start of the server function ####
-NCRN<-importNCRN("./Data/NCRN")
 
-names(NCRN)<-getNames(NCRN, name.class="code")
-ParkList<-getNames(NCRN,name.class="code")
-names(ParkList)<-getNames(NCRN)
+#### TO DO ####
+
+#Fix boundboxes stuff and zooms
+
+#### Housekeeping prior to start of the server function ####
+Network<-switch(Network,
+                ERMN=importERMN("./Data/ERMN"),
+                MIDN=importMIDN("./Data/MIDN"),
+                NCRN=importNCRN("./Data/NCRN"),
+                NETN=importNETN("./Data/NETN")
+)
+
+names(Network)<-getNames(Network, name.class="code")
+ParkList<-getNames(Network,name.class="code")
+names(ParkList)<-getNames(Network)
 
 ParkBounds<-read.csv("boundboxes.csv", as.is=TRUE)
 
@@ -42,13 +52,14 @@ shinyServer(function(input,output,session){
 
   ################################## Code For Map Panel  ######################################################
 
-### Create Map  
+#### Create Map  ####
 
    output$VegMap<-renderLeaflet({ 
       req(input$MapSpecies)
-      leaflet() %>%
-      setView(lng=-77.8,lat=39.03,zoom=9) %>% 
-      setMaxBounds(lng1=-79.5,lng2=-76.1, lat1=37.7, lat2=40.36)
+      leaflet() 
+      #%>%
+      #setView(lng=-77.8,lat=39.03,zoom=9) %>% 
+      #setMaxBounds(lng1=-79.5,lng2=-76.1, lat1=37.7, lat2=40.36)
     })
       
   
@@ -82,7 +93,7 @@ shinyServer(function(input,output,session){
   
   
   
-#### Chose a tile layer to use
+#### Chose a tile layer to use ####
   observe({ req(MapData())
     leafletProxy("VegMap") %>% 
   
@@ -96,21 +107,20 @@ shinyServer(function(input,output,session){
                                options=layersControlOptions(collapsed=F))}
   })
   
-  ### Hide Layers Control
+#### Hide Layers Control ####
   observe({
    if(!"BaseLayers" %in% input$MapHide ) leafletProxy("VegMap") %>% removeLayersControl()
   })
    
-# #########################################################################################################
-# 
-# ######## Zoom control for map
+
+#### Zoom control for map ####
 
   output$ParkZoomControl<-renderUI({
     selectInput(inputId="ParkZoom",label=NULL,
               choices=c("All Parks"="All",ParkList) )
   })
 
-# ############Zoom the map
+#### Zoom the map ####
   
  observe({
     input$MapZoom
@@ -122,7 +132,7 @@ shinyServer(function(input,output,session){
 #  
 ###########################################################################################################
 
-#######  Park Filter for species list control for map
+####  Park Filter for species list control for map ####
 
   output$MapParkControl<-renderUI({
     selectInput(inputId="MapPark", label="Filter species list by park",
@@ -131,7 +141,7 @@ shinyServer(function(input,output,session){
 
 ############################## Data to map control################################################
 
-#### Data to display control for Map
+#### Data to display control for Map ####
   ValuesUse<-reactive({
     switch(input$MapGroup,
          trees=,saplings=c(Abundance="count", "Basal Area"="size"),
@@ -149,13 +159,13 @@ shinyServer(function(input,output,session){
 
 #################################################################################################
 
-### Species list control for map ####
+#### Species list control for map ####
 #List of names, elements are Latin names, names of elements are Latin or common
   MapSpecList<-reactive({
     req(input$MapPark)
-    SpecTemp<-unique(getPlants(object=if(input$MapPark=="All") {NCRN}  else {NCRN[[input$MapPark]]} , group=input$MapGroup, 
+    SpecTemp<-unique(getPlants(object=if(input$MapPark=="All") {Network}  else {Network[[input$MapPark]]} , group=input$MapGroup, 
       years=MapYears(),common=F )$Latin_Name)
-    SpecNames<-getPlantNames(object=NCRN[[1]], names=SpecTemp, in.style="Latin",out.style=ifelse(input$mapCommon,"common","Latin"))
+    SpecNames<-getPlantNames(object=Network[[1]], names=SpecTemp, in.style="Latin",out.style=ifelse(input$mapCommon,"common","Latin"))
     names(SpecTemp)<-SpecNames  
     SpecTemp<-SpecTemp[order(tolower(names(SpecTemp)))]
     SpecTemp<-c("All Species"="All", SpecTemp)
@@ -167,7 +177,7 @@ shinyServer(function(input,output,session){
       
   })
 
-####################   Calculate the values for the circles on the map. ######################
+####   Calculate the values for the circles on the map. ####
 
 ### HouseKeeping
 
@@ -175,8 +185,9 @@ shinyServer(function(input,output,session){
 
   
   
-#########  Data for Legend
-  MapMetaData<-reactive({ MapLegend[[input$MapValues]][[input$MapGroup]] })
+### Data for Legend
+  
+MapMetaData<-reactive({ MapLegend[[input$MapValues]][[input$MapGroup]] })
 
 ### Data to plot on map - always for all parks
   MapData<-reactive({              
@@ -185,21 +196,21 @@ shinyServer(function(input,output,session){
       need(input$MapValues, message=FALSE)
     )
     
-    P<-data.frame(getPlots(NCRN, years=MapYears(), output="dataframe",type="all")[c("Plot_Name","Unit_Code","Latitude","Longitude")],
-               Year=getEvents(object=NCRN, years=MapYears())[["Event_Year"]]) 
+    P<-data.frame(getPlots(Network, years=MapYears(), output="dataframe",type="all")[c("Plot_Name","Unit_Code","Latitude","Longitude")],
+               Year=getEvents(object=Network, years=MapYears())[["Event_Year"]]) 
     
     if(input$MapGroup != "herbs" && input$MapValues!="size"){
       return(P %>% 
-        mutate(Values=(10000/getArea(NCRN[[1]],group=input$MapGroup,type="all")) * (
-              SiteXSpec(object=NCRN,group=input$MapGroup, years=MapYears(),
+        mutate(Values=(10000/getArea(Network[[1]],group=input$MapGroup,type="all")) * (
+              SiteXSpec(object=Network,group=input$MapGroup, years=MapYears(),
               species=MapSpeciesUse(),
               values=input$MapValues)$Total))
       )
     } 
     if(input$MapGroup != "herbs" && input$MapValues=="size"){
         return(P %>% mutate(Values=
-               (10000/getArea(NCRN[[1]],group=input$MapGroup,type="all")) * (    #need to convert to m^2/ha from cm^2/ha
-                 SiteXSpec(object=NCRN,group=input$MapGroup, years=MapYears(), 
+               (10000/getArea(Network[[1]],group=input$MapGroup,type="all")) * (    #need to convert to m^2/ha from cm^2/ha
+                 SiteXSpec(object=Network,group=input$MapGroup, years=MapYears(), 
                            species=MapSpeciesUse(), 
                 values=input$MapValues)$Total)/10000)
         )
@@ -207,7 +218,7 @@ shinyServer(function(input,output,session){
       
    if(input$MapGroup == "herbs"){
       return(P %>% 
-        mutate(Values=SiteXSpec(object=NCRN,group=input$MapGroup, years=MapYears(), species=MapSpeciesUse(),
+        mutate(Values=SiteXSpec(object=Netwrok,group=input$MapGroup, years=MapYears(), species=MapSpeciesUse(),
                                 values=input$MapValues)$Total/12)
       )
     } 
@@ -317,7 +328,7 @@ shinyServer(function(input,output,session){
         switch(ShapeOver$group,
                Circles= addPopups(map=.,lat=ShapeOver$lat+.001, lng=ShapeOver$lng, layerId="MouseOverPopup",
                                   popup=paste0(
-                                    h5(getNames(NCRN[[selectedPlot$Unit_Code]], "long")),
+                                    h5(getNames(Network[[selectedPlot$Unit_Code]], "long")),
                                     h6("Monitoring Plot:",selectedPlot$Plot_Name),
                                     h6("Year Monitored:", selectedPlot$Year), 
                                     h6(names(MapSpecList()[MapSpecList()==input$MapSpecies]),":",format(signif(selectedPlot$Values,2), 
@@ -345,26 +356,26 @@ shinyServer(function(input,output,session){
     } else {
                       
       tempData<- if(input$MapGroup != "herbs" && input$MapValues != "size"){
-        (10000/getArea(NCRN[[selectedPlot$Unit_Code]],group=input$MapGroup,type="all")) *
-        SiteXSpec(object=NCRN[[selectedPlot$Unit_Code]],group=input$MapGroup, years=selectedPlot$Year, 
+        (10000/getArea(Network[[selectedPlot$Unit_Code]],group=input$MapGroup,type="all")) *
+        SiteXSpec(object=Network[[selectedPlot$Unit_Code]],group=input$MapGroup, years=selectedPlot$Year, 
         plots=ShapeClick$id, values=input$MapValues, common=input$mapCommon)[-1]
       
         } else {
                        
         if(input$MapGroup != "herbs" && input$MapValues == "size"){ 
-          (10000/getArea(NCRN[[selectedPlot$Unit_Code]],group=input$MapGroup,type="all")) * (    #need to convert to m^2/ha from cm^2/ha
-            SiteXSpec(object=NCRN[[selectedPlot$Unit_Code]],group=input$MapGroup, years=selectedPlot$Year,
+          (10000/getArea(Network[[selectedPlot$Unit_Code]],group=input$MapGroup,type="all")) * (  #need to convert to m^2/ha from cm^2/ha
+            SiteXSpec(object=Network[[selectedPlot$Unit_Code]],group=input$MapGroup, years=selectedPlot$Year,
             plots=ShapeClick$id,values=input$MapValues,common=input$mapCommon)[-1])/10000
         } else {                
       
           if(input$MapGroup == "herbs"){ 
-            SiteXSpec(object=NCRN[[selectedPlot$Unit_Code]], group=input$MapGroup, years=selectedPlot$Year, 
+            SiteXSpec(object=Network[[selectedPlot$Unit_Code]], group=input$MapGroup, years=selectedPlot$Year, 
             plots=ShapeClick$id,values=input$MapValues,common=input$mapCommon)[-1]/12
           }
         }
         }
     
-      content<-paste0( h5(getNames(NCRN[[selectedPlot$Unit_Code]],"long")),
+      content<-paste0( h5(getNames(Network[[selectedPlot$Unit_Code]],"long")),
                     h6("Monitoring Plot:",selectedPlot$Plot_Name),
                     h6("Year Monitored:",selectedPlot$Year),
                     h6("Species: ",MapMetaData()$Title),

@@ -3,7 +3,7 @@ Network<-"ERMN"
 NetworkURL<-paste0('http://science.nature.nps.gov/im/units/',tolower(Network),'/index.cfm')
 
 PlantTypes<-switch(Network,
-    ERMN=list(Trees='trees'),
+    ERMN=list(Trees='trees',Saplings="saplings","Tree seedlings"="seedlings"),
     MIDN=list(Trees='trees'),
     NCRN<-list(Trees="trees",Saplings="saplings","Tree seedlings"="seedlings", Shrubs="shrubs", "Shrub seedlings"="shseedlings",
                 "Understory plants"="herbs","Vines on Trees"="vines"),
@@ -11,7 +11,7 @@ PlantTypes<-switch(Network,
 )
 
 IVPlantTypes<-switch(Network,  #needed as not all plants have an IV
-    ERMN=list(Trees="trees"),
+    ERMN=list(Trees="trees",Saplings="saplings","Tree seedlings"="seedlings"),
     MIDN=list(Trees="trees"),
     NCRN=list(Trees="trees",Saplings="saplings","Tree seedlings"="seedlings","Shrub seedlings"="shseedlings"),
     NETN=list(Trees="trees")
