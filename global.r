@@ -1,13 +1,20 @@
 #### Network specific settings ####
-Network<-"NCRN"
+Network<-"ERMN"
 NetworkURL<-paste0('http://science.nature.nps.gov/im/units/',tolower(Network),'/index.cfm')
 
 PlantTypes<-switch(Network,
-     ERMN=list(Trees='trees'),
-     MIDN=list(Trees='trees'),
-     NCRN<-list(Trees="trees",Saplings="saplings","Tree seedlings"="seedlings", Shrubs="shrubs", "Shrub seedlings"="shseedlings",
+    ERMN=list(Trees='trees'),
+    MIDN=list(Trees='trees'),
+    NCRN<-list(Trees="trees",Saplings="saplings","Tree seedlings"="seedlings", Shrubs="shrubs", "Shrub seedlings"="shseedlings",
                 "Understory plants"="herbs","Vines on Trees"="vines"),
-     NETN=list(Trees='trees')
+    NETN=list(Trees='trees')
+)
+
+IVPlantTypes<-switch(Network,  #needed as not all plants have an IV
+    ERMN=list(Trees="trees"),
+    MIDN=list(Trees="trees"),
+    NCRN=list(Trees="trees",Saplings="saplings","Tree seedlings"="seedlings","Shrub seedlings"="shseedlings"),
+    NETN=list(Trees="trees")
 )
 
 Years<-switch(Network,
@@ -22,6 +29,21 @@ ExtraLayers<-switch(Network,
                     NCRN=c(None="None", "EcoRegions"="EcoReg","Forested Areas"="ForArea","Soil Map "="Soil"),
                     NETN=c(None="None")
   )
+
+ProjectInfo<-switch(Network,
+                    ERMN=HTML("<h1>Add Me!</h1>"),
+                    MIND=HTML("<h1>Add Me!</h1>"),
+                    NCRN=includeHTML("./www/Information.html"),
+                    NETN=HTML("<h1>Add Me!</h1>")
+)
+
+Citations<-switch(Network,
+                    ERMN=HTML("<h1>Add Me!</h1>"),
+                    MIND=HTML("<h1>Add Me!</h1>"),
+                    NCRN=includeHTML("./www/Citations.html"),
+                    NETN=HTML("<h1>Add Me!</h1>")
+)
+
 
 #### Colors ####
 GraphColors<-read.csv("./Data/colors.csv", header=T, as.is=T)

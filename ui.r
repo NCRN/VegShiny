@@ -116,12 +116,11 @@ hidden(
               ),
               tags$div(title="Pick the four year period you want to graph",
                        sliderInput(inputId="densYear", label="Display data from the 4 years ending:", 
-                          min=2009, max=2015, value=2015, sep="",step=1, ticks=TRUE)
+                                   min=Years$Start+Years$Range-1, max=Years$End, value=Years$End,
+                                   sep="", step=1,ticks=T)
               ),
               tags$div(title="Choose the type of plant you want to work with", 
-                selectizeInput(inputId="densGroup", label="Type of plant:",   choices=c(Trees="trees",
-                    Saplings="saplings","Tree seedlings"="seedlings",Shrubs="shrubs",
-                    "Shrub seedlings"="shseedlings","Understory plants"="herbs","Vines on Trees"="vines"))
+                selectizeInput(inputId="densGroup", label="Type of plant:",   choices=PlantTypes)
               ),
               tags$div(title="Toggle between common and scientific names",
                        checkboxInput(inputId="densCommon", label="Show common names?", value=TRUE )
@@ -214,8 +213,7 @@ hidden(
               br(),
               tags$div(
                 title="Choose the type of plant you want to work with", 
-                selectizeInput(inputId="IVGroup", label="Type of plant:",choices=c(Trees="trees",Saplings="saplings",
-                    "Tree seedlings"="seedlings","Shrub seedlings"="shseedlings"))
+                selectizeInput(inputId="IVGroup", label="Type of plant:",choices=IVPlantTypes)
               ),
               br(),
               tags$div(
@@ -225,8 +223,8 @@ hidden(
               br(),
               tags$div(
                 title="Pick the four year period you want to graph",
-                sliderInput(inputId="IVYear", label="Display data from the 4 years ending:", min=2009, max=2015,
-                          value=2015, sep="", step=1, ticks=TRUE)
+                sliderInput(inputId="IVYear", label="Display data from the 4 years ending:", min=Years$Start+Years$Range-1, 
+                            max=Years$End, value=Years$End, sep="", step=1,ticks=T)
               ),
               br(),
               tags$div(
@@ -345,7 +343,7 @@ hidden(
       tags$div(
         title="Background Informaiton", "Project Information"
       ),
-      includeHTML("./www/Information.html")
+      ProjectInfo
     ),
 
 
@@ -353,7 +351,7 @@ hidden(
 ################ Citations 
 
     tabPanel("Citations & References",
-     includeHTML("./www/Citations.html")
+     Citations
     )
 ) #end About menu
 )#end navbarPage()
