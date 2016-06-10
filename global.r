@@ -18,7 +18,7 @@ IVPlantTypes<-switch(Network,  #needed as not all plants have an IV
 )
 
 Years<-switch(Network,
-             ERMN=list(Start=2007, End=2014, Range=4),
+             ERMN=list(Start=2007, End=2015, Range=4),
              MIDN=NA,
              NCRN=list(Start=2006, End=2015, Range=4),
              NETN=NA)

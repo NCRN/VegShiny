@@ -15,16 +15,16 @@ library(DT)
 #Fix boundboxes stuff and zooms
 
 #### Housekeeping prior to start of the server function ####
-Network<-switch(Network,
+VegData<-switch(Network,
                 ERMN=importERMN("./Data/ERMN"),
                 MIDN=importMIDN("./Data/MIDN"),
                 NCRN=importNCRN("./Data/NCRN"),
                 NETN=importNETN("./Data/NETN")
 )
 
-names(Network)<-getNames(Network, name.class="code")
-ParkList<-getNames(Network,name.class="code")
-names(ParkList)<-getNames(Network)
+names(VegData)<-getNames(VegData, name.class="code")
+ParkList<-getNames(VegData,name.class="code")
+names(ParkList)<-getNames(VegData)
 
 ParkBounds<-read.csv("boundboxes.csv", as.is=TRUE)
 
@@ -56,10 +56,12 @@ shinyServer(function(input,output,session){
 
    output$VegMap<-renderLeaflet({ 
       req(input$MapSpecies)
-      leaflet() 
-      #%>%
-      #setView(lng=-77.8,lat=39.03,zoom=9) %>% 
-      #setMaxBounds(lng1=-79.5,lng2=-76.1, lat1=37.7, lat2=40.36)
+      leaflet() %>%
+      setView(lng=mean(c(ParkBounds[ParkBounds$ParkCode==Network,]$LongE,ParkBounds[ParkBounds$ParkCode==Network,]$LongW)), 
+              lat=mean(c(ParkBounds[ParkBounds$ParkCode==Network,]$LatN,ParkBounds[ParkBounds$ParkCode==Network,]$LatS)),
+                        zoom=8 )
+     # setMaxBounds(lng1=ParkBounds["ParkCode"==Network,"LongE"], lng2=ParkBounds["ParkCode"==Network,"LongW"],lat1=ParkBounds["ParkCode"==Network,"LatS"],lat2=ParkBounds["ParkCode"==Network,"LatN"])
+               #    lng1=-79.5,lng2=-76.1, lat1=37.7, lat2=40.36)
     })
       
   
@@ -163,10 +165,10 @@ shinyServer(function(input,output,session){
 #List of names, elements are Latin names, names of elements are Latin or common
   MapSpecList<-reactive({
     req(input$MapPark)
-    SpecTemp<-unique(getPlants(object=if(input$MapPark=="All") {Network}  else {Network[[input$MapPark]]} , group=input$MapGroup, 
+    SpecTemp<-unique(getPlants(object=if(input$MapPark=="All") {VegData}  else {VegData[[input$MapPark]]} , group=input$MapGroup, 
       years=MapYears(),common=F )$Latin_Name)
-    SpecNames<-getPlantNames(object=Network[[1]], names=SpecTemp, in.style="Latin",out.style=ifelse(input$mapCommon,"common","Latin"))
-    names(SpecTemp)<-SpecNames  
+    SpecNames<-getPlantNames(object=VegData[[1]], names=SpecTemp, in.style="Latin",out.style=ifelse(input$mapCommon,"common","Latin"))
+    names(SpecTemp)<-SpecNames
     SpecTemp<-SpecTemp[order(tolower(names(SpecTemp)))]
     SpecTemp<-c("All Species"="All", SpecTemp)
   })
@@ -196,21 +198,21 @@ MapMetaData<-reactive({ MapLegend[[input$MapValues]][[input$MapGroup]] })
       need(input$MapValues, message=FALSE)
     )
     
-    P<-data.frame(getPlots(Network, years=MapYears(), output="dataframe",type="all")[c("Plot_Name","Unit_Code","Latitude","Longitude")],
-               Year=getEvents(object=Network, years=MapYears())[["Event_Year"]]) 
+    P<-data.frame(getPlots(VegData, years=MapYears(), output="dataframe",type="all")[c("Plot_Name","Unit_Code","Latitude","Longitude")],
+               Year=getEvents(object=VegData, years=MapYears(), plot.type = "all")[["Event_Year"]]) 
     
     if(input$MapGroup != "herbs" && input$MapValues!="size"){
       return(P %>% 
-        mutate(Values=(10000/getArea(Network[[1]],group=input$MapGroup,type="all")) * (
-              SiteXSpec(object=Network,group=input$MapGroup, years=MapYears(),
+        mutate(Values=(10000/getArea(VegData[[1]],group=input$MapGroup,type="all")) * (
+              SiteXSpec(object=VegData,group=input$MapGroup, years=MapYears(),
               species=MapSpeciesUse(),
               values=input$MapValues)$Total))
       )
     } 
     if(input$MapGroup != "herbs" && input$MapValues=="size"){
         return(P %>% mutate(Values=
-               (10000/getArea(Network[[1]],group=input$MapGroup,type="all")) * (    #need to convert to m^2/ha from cm^2/ha
-                 SiteXSpec(object=Network,group=input$MapGroup, years=MapYears(), 
+               (10000/getArea(VegData[[1]],group=input$MapGroup,type="all")) * (    #need to convert to m^2/ha from cm^2/ha
+                 SiteXSpec(object=VegData,group=input$MapGroup, years=MapYears(), 
                            species=MapSpeciesUse(), 
                 values=input$MapValues)$Total)/10000)
         )
@@ -218,7 +220,7 @@ MapMetaData<-reactive({ MapLegend[[input$MapValues]][[input$MapGroup]] })
       
    if(input$MapGroup == "herbs"){
       return(P %>% 
-        mutate(Values=SiteXSpec(object=Netwrok,group=input$MapGroup, years=MapYears(), species=MapSpeciesUse(),
+        mutate(Values=SiteXSpec(object=VegData,group=input$MapGroup, years=MapYears(), species=MapSpeciesUse(),
                                 values=input$MapValues)$Total/12)
       )
     } 
@@ -328,7 +330,7 @@ MapMetaData<-reactive({ MapLegend[[input$MapValues]][[input$MapGroup]] })
         switch(ShapeOver$group,
                Circles= addPopups(map=.,lat=ShapeOver$lat+.001, lng=ShapeOver$lng, layerId="MouseOverPopup",
                                   popup=paste0(
-                                    h5(getNames(Network[[selectedPlot$Unit_Code]], "long")),
+                                    h5(getNames(VegData[[selectedPlot$Unit_Code]], "long")),
                                     h6("Monitoring Plot:",selectedPlot$Plot_Name),
                                     h6("Year Monitored:", selectedPlot$Year), 
                                     h6(names(MapSpecList()[MapSpecList()==input$MapSpecies]),":",format(signif(selectedPlot$Values,2), 
@@ -350,32 +352,32 @@ MapMetaData<-reactive({ MapLegend[[input$MapValues]][[input$MapGroup]] })
     selectedPlot <- MapData()[MapData()$Plot_Name == ShapeClick$id,]
     
     if(
-      class(try(SiteXSpec(object=NCRN[[selectedPlot$Unit_Code]], group=input$MapGroup, years=selectedPlot$Year,
+      class(try(SiteXSpec(object=VegData[[selectedPlot$Unit_Code]], group=input$MapGroup, years=selectedPlot$Year,
             plots=ShapeClick$id, common=input$mapCommon), silent=TRUE))=="try-error") {
       content<-as.character(tagList(tags$h6("None found on this plot")))
     } else {
                       
       tempData<- if(input$MapGroup != "herbs" && input$MapValues != "size"){
-        (10000/getArea(Network[[selectedPlot$Unit_Code]],group=input$MapGroup,type="all")) *
-        SiteXSpec(object=Network[[selectedPlot$Unit_Code]],group=input$MapGroup, years=selectedPlot$Year, 
+        (10000/getArea(VegData[[selectedPlot$Unit_Code]],group=input$MapGroup,type="all")) *
+        SiteXSpec(object=VegData[[selectedPlot$Unit_Code]],group=input$MapGroup, years=selectedPlot$Year, 
         plots=ShapeClick$id, values=input$MapValues, common=input$mapCommon)[-1]
       
         } else {
                        
         if(input$MapGroup != "herbs" && input$MapValues == "size"){ 
-          (10000/getArea(Network[[selectedPlot$Unit_Code]],group=input$MapGroup,type="all")) * (  #need to convert to m^2/ha from cm^2/ha
-            SiteXSpec(object=Network[[selectedPlot$Unit_Code]],group=input$MapGroup, years=selectedPlot$Year,
+          (10000/getArea(VegData[[selectedPlot$Unit_Code]],group=input$MapGroup,type="all")) * (  #need to convert to m^2/ha from cm^2/ha
+            SiteXSpec(object=VegData[[selectedPlot$Unit_Code]],group=input$MapGroup, years=selectedPlot$Year,
             plots=ShapeClick$id,values=input$MapValues,common=input$mapCommon)[-1])/10000
         } else {                
       
           if(input$MapGroup == "herbs"){ 
-            SiteXSpec(object=Network[[selectedPlot$Unit_Code]], group=input$MapGroup, years=selectedPlot$Year, 
+            SiteXSpec(object=VegData[[selectedPlot$Unit_Code]], group=input$MapGroup, years=selectedPlot$Year, 
             plots=ShapeClick$id,values=input$MapValues,common=input$mapCommon)[-1]/12
           }
         }
         }
     
-      content<-paste0( h5(getNames(Network[[selectedPlot$Unit_Code]],"long")),
+      content<-paste0( h5(getNames(VegData[[selectedPlot$Unit_Code]],"long")),
                     h6("Monitoring Plot:",selectedPlot$Plot_Name),
                     h6("Year Monitored:",selectedPlot$Year),
                     h6("Species: ",MapMetaData()$Title),
