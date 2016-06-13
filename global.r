@@ -1,5 +1,5 @@
 #### Network specific settings ####
-Network<-"ERMN"
+Network<-"MIDN"
 NetworkURL<-paste0('http://science.nature.nps.gov/im/units/',tolower(Network),'/index.cfm')
 
 PlantTypes<-switch(Network,
@@ -19,7 +19,7 @@ IVPlantTypes<-switch(Network,  #needed as not all plants have an IV
 
 Years<-switch(Network,
              ERMN=list(Start=2007, End=2015, Range=4),
-             MIDN=NA,
+             MIDN=list(Start=2007, End=2014, Range=4),
              NCRN=list(Start=2006, End=2015, Range=4),
              NETN=NA)
 
