@@ -1,10 +1,10 @@
 #### Network specific settings ####
-Network<-"MIDN"
+Network<-"ERMN"
 NetworkURL<-paste0('http://science.nature.nps.gov/im/units/',tolower(Network),'/index.cfm')
 
 PlantTypes<-switch(Network,
     ERMN=list(Trees='trees',Saplings="saplings","Tree seedlings"="seedlings"),
-    MIDN=list(Trees='trees'),
+    MIDN=list(Trees='trees',Saplings="saplings","Tree seedlings"="seedlings","Vines on Trees"="vines" ),
     NCRN<-list(Trees="trees",Saplings="saplings","Tree seedlings"="seedlings", Shrubs="shrubs", "Shrub seedlings"="shseedlings",
                 "Understory plants"="herbs","Vines on Trees"="vines"),
     NETN=list(Trees='trees')
