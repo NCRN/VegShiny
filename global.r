@@ -1,5 +1,5 @@
 #### Network specific settings ####
-Network<-"ERMN"
+Network<-"NETN"
 NetworkURL<-paste0('http://science.nature.nps.gov/im/units/',tolower(Network),'/index.cfm')
 
 PlantTypes<-switch(Network,
@@ -7,21 +7,22 @@ PlantTypes<-switch(Network,
     MIDN=list(Trees='trees',Saplings="saplings","Tree seedlings"="seedlings","Vines on Trees"="vines" ),
     NCRN<-list(Trees="trees",Saplings="saplings","Tree seedlings"="seedlings", Shrubs="shrubs", "Shrub seedlings"="shseedlings",
                 "Understory plants"="herbs","Vines on Trees"="vines"),
-    NETN=list(Trees='trees')
+    NETN=list(Trees="trees",Saplings="saplings","Tree seedlings"="seedlings")
 )
 
 IVPlantTypes<-switch(Network,  #needed as not all plants have an IV
     ERMN=list(Trees="trees",Saplings="saplings","Tree seedlings"="seedlings"),
-    MIDN=list(Trees="trees"),
+    MIDN=list(Trees="trees",Saplings="saplings","Tree seedlings"="seedlings"),
     NCRN=list(Trees="trees",Saplings="saplings","Tree seedlings"="seedlings","Shrub seedlings"="shseedlings"),
-    NETN=list(Trees="trees")
+    NETN=list(Trees="trees",Saplings="saplings","Tree seedlings"="seedlings")
 )
 
 Years<-switch(Network,
              ERMN=list(Start=2007, End=2015, Range=4),
              MIDN=list(Start=2007, End=2014, Range=4),
              NCRN=list(Start=2006, End=2015, Range=4),
-             NETN=NA)
+             NETN=list(Start=2006, End=2015, Range=4)
+  )
 
 ExtraLayers<-switch(Network,
                     ERMN=c(None="None"),

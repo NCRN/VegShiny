@@ -194,29 +194,24 @@ MapMetaData<-reactive({ MapLegend[[input$MapValues]][[input$MapGroup]] })
     )
 
     
-    P<-left_join(getPlots(VegData, years=MapYears(), output="dataframe", type="all") %>% dplyr::select(Plot_Name,Unit_Code, Latitude, Longitude), getEvents(object=VegData, years=MapYears(), plot.type="all") %>% dplyr::select(Plot_Name,Year=Event_Year), by="Plot_Name")
+    P<-left_join(getPlots(VegData, years=MapYears(), output="dataframe", type="all") %>% 
+         dplyr::select(Plot_Name,Unit_Code, Latitude, Longitude), getEvents(object=VegData, years=MapYears(), plot.type="all") %>% 
+           dplyr::select(Plot_Name,Year=Event_Year), by="Plot_Name") %>% 
+          mutate(Size=getArea(VegData[Unit_Code], group=input$MapGroup))
     
-    if(input$MapGroup != "herbs" && input$MapValues!="size"){
+    if(input$MapGroup != "herbs"){
       return(P %>% 
-        mutate(Values=(10000/getArea(VegData[[1]],group=input$MapGroup,type="all")) * (
-              SiteXSpec(object=VegData,group=input$MapGroup, years=MapYears(),
-              species=MapSpeciesUse(),
-              values=input$MapValues)$Total))
+        left_join(SiteXSpec(object=VegData, group=input$MapGroup, years=MapYears(), species=MapSpeciesUse(),values=input$MapValues) %>% 
+                    dplyr::select(Plot_Name,Total), by="Plot_Name") %>% 
+          mutate(Values=Total*10000/Size) %>% 
+        {if(input$MapValues=="size") mutate(.,Values=Values/10000) else .} #Covert to m^2 from cm^2/ha for basal area
       )
     } 
-    if(input$MapGroup != "herbs" && input$MapValues=="size"){
-        return(P %>% mutate(Values=
-               (10000/getArea(VegData[[1]],group=input$MapGroup,type="all")) * (    #need to convert to m^2/ha from cm^2/ha
-                 SiteXSpec(object=VegData,group=input$MapGroup, years=MapYears(), 
-                           species=MapSpeciesUse(), 
-                values=input$MapValues)$Total)/10000)
-        )
-    }
       
    if(input$MapGroup == "herbs"){
       return(P %>% 
         mutate(Values=SiteXSpec(object=VegData,group=input$MapGroup, years=MapYears(), species=MapSpeciesUse(),
-                                values=input$MapValues)$Total/12)
+                                values=input$MapValues)$Total/getArea(VegData[Unit_Code], group=input$MapGroup, type="count"))
       )
     } 
   })
