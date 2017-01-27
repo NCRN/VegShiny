@@ -1,9 +1,59 @@
+#### Network specific settings ####
+Network<-"NCRN"
+NetworkURL<-paste0('http://science.nature.nps.gov/im/units/',tolower(Network),'/index.cfm')
+
+PlantTypes<-switch(Network,
+    ERMN=list(Trees='trees',Saplings="saplings","Tree seedlings"="seedlings"),
+    MIDN=list(Trees='trees',Saplings="saplings","Tree seedlings"="seedlings","Vines on Trees"="vines" ),
+    NCRN<-list(Trees="trees",Saplings="saplings","Tree seedlings"="seedlings", Shrubs="shrubs", "Shrub seedlings"="shseedlings",
+                "Understory plants"="herbs","Vines on Trees"="vines"),
+    NETN=list(Trees="trees",Saplings="saplings","Tree seedlings"="seedlings")
+)
+
+IVPlantTypes<-switch(Network,  #needed as not all plants have an IV
+    ERMN=list(Trees="trees",Saplings="saplings","Tree seedlings"="seedlings"),
+    MIDN=list(Trees="trees",Saplings="saplings","Tree seedlings"="seedlings"),
+    NCRN=list(Trees="trees",Saplings="saplings","Tree seedlings"="seedlings","Shrub seedlings"="shseedlings"),
+    NETN=list(Trees="trees",Saplings="saplings","Tree seedlings"="seedlings")
+)
+
+Years<-switch(Network,
+             ERMN=list(Start=2007, End=2015, Range=4),
+             MIDN=list(Start=2007, End=2014, Range=4),
+             NCRN=list(Start=2006, End=2015, Range=4),
+             NETN=list(Start=2006, End=2016, Range=4)
+  )
+
+ExtraLayers<-switch(Network,
+                    ERMN=c(None="None"),
+                    MIDN=c(None="None"),
+                    NCRN=c(None="None", "EcoRegions"="EcoReg","Forested Areas"="ForArea","Soil Map "="Soil"),
+                    NETN=c(None="None")
+  )
+
+ProjectInfo<-switch(Network,
+                    ERMN=HTML("<h1>Add Me!</h1>"),
+                    MIND=HTML("<h1>Add Me!</h1>"),
+                    NCRN=includeHTML("./www/Information.html"),
+                    NETN=HTML("<h1>Add Me!</h1>")
+)
+
+Citations<-switch(Network,
+                    ERMN=HTML("<h1>Add Me!</h1>"),
+                    MIND=HTML("<h1>Add Me!</h1>"),
+                    NCRN=includeHTML("./www/Citations.html"),
+                    NETN=HTML("<h1>Add Me!</h1>")
+)
+
+
+#### Colors ####
 GraphColors<-read.csv("./Data/colors.csv", header=T, as.is=T)
 ColorNames<-GraphColors$Rcolor
 names(ColorNames)<-GraphColors$DisplayColor
 BlueOr<-colorRampPalette(c("cyan","magenta4","orangered3")) # colors for circles
 AquaYel<-colorRampPalette(c("aquamarine4","green","yellow","goldenrod4")) #colors for polygons
-######################### Legend for Map
+
+#### Legend for Map ####
 MapLegend<-list(
   count=list(
     trees=list(
