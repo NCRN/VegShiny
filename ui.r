@@ -39,13 +39,13 @@ navbarPage(title=HTML("<div> <a href=",NetworkURL,"> <img src='ah_small_black.gi
             tags$div(title="Filter the species list so only species found in a particular park are listed",
                            uiOutput("MapParkControl")),
             actionButton(inputId="AboutMapButton",label="About the map",class="btn btn-primary "),
-            actionButton(inputId="VideoButton", label='"How To" video', class="btn btn-primary "),
-            tags$div(title="You can hide controls that you are not using.",
-                checkboxGroupInput(inputId="MapHide", label="Display:", inline=TRUE,
-                  choices=c("Base Map"="BaseLayers","Legends","Additional Layers"="ExtraLayers", "Zoom"),
-                  selected=c("BaseLayers","LayerLegend", "Legends", "ExtraLayers","Zoom")
-                )
-              )
+            actionButton(inputId="VideoButton", label='"How To" video', class="btn btn-primary ")#,
+            # tags$div(title="You can hide controls that you are not using.",
+            #     checkboxGroupInput(inputId="MapHide", label="Display:", inline=TRUE,
+            #       choices=c("Base Map"="BaseLayers","Legends","Additional Layers"="ExtraLayers", "Zoom"),
+            #       selected=c("BaseLayers","LayerLegend", "Legends", "ExtraLayers","Zoom")
+            #     )
+            #   )
            ),
         
 #### Zoom Controls ####
@@ -71,13 +71,14 @@ navbarPage(title=HTML("<div> <a href=",NetworkURL,"> <img src='ah_small_black.gi
            selectizeInput(inputId="MapLayer", label="Add a map layer:", 
                     choices=ExtraLayers))
         )
-      ), ## End of contorls columns
+      ), ## End of controls columns
 
-      column(10,style="padding: 0",   
-           div(leafletOutput("VegMap", height="1000px"))   # The Map
-      )
-    ),
-#### Floating "About the map" Panel ####
+#### The Map ####
+       column(10,style="padding: 0",
+           div(leafletOutput("VegMap", height="1000px"))   
+       )
+     ),
+# #### Floating "About the map" Panel ####
 hidden(
   fixedPanel(class="panel panel-primary controls",draggable=TRUE,cursor="auto",top=80,bottom="auto",height="520",
              left=450,width="500",id="AboutMapPanel",style="padding: 0px",

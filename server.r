@@ -30,9 +30,6 @@ shinyServer(function(input,output,session){
 #### toggles ####
   observe ({
 ### Maps  
-    toggle(id="ExtraLayerPanel", condition= ("ExtraLayers" %in% input$MapHide))
-    toggle(id="ZoomPanel", condition= ("Zoom" %in% input$MapHide))
-    toggle(id="MapLegendPanel", condition= ("Legends" %in% input$MapHide))
     onclick(id="AboutMapButton", expr= toggle(id="AboutMapPanel"))
     onclick(id="CloseAboutMap", expr= toggle(id="AboutMapPanel")) 
     onclick(id="VideoButton", expr= toggle(id="VideoPanel"))
@@ -45,36 +42,124 @@ shinyServer(function(input,output,session){
   })
   
 
-#### Code For Map Panel  ####
+####  Map Panel  ####
 
-#### Create Map  ####
+#### UI Controls ####
 
-  output$VegMap<-renderLeaflet({ 
+# Zoom control and zoom for map 
+  
+  output$ParkZoomControl<-renderUI({
+    selectInput(inputId="ParkZoom",label=NULL,
+                choices=c("All Parks"=Network,ParkList) )
+  })
+  
+  
+#  Park Filter for species list control for map 
+  
+  output$MapParkControl<-renderUI({
+    selectInput(inputId="MapPark", label="Filter species list by park",
+                choices=c("All Parks"="All",ParkList) )
+  })
+  
+# Data to display control for Map 
+  ValuesUse<-reactive({
+    switch(input$MapGroup,
+           trees=,saplings=c(Abundance="count", "Basal Area"="size"),
+           seedlings=,shseedlings=,shrubs=,vines=c(Abundance="count"),
+           herbs=c("Percent Cover"="size")
+           
+    )
+  })
+  
+  output$PlantValueControl<-renderUI({
+    req(ValuesUse())
+    selectInput(inputId="MapValues", label="Data to Map:", choices=ValuesUse())
+    
+  })
+
+  
+#### Calculations ####
+# Load Layers
+  withProgress(message="Loading...Please Wait", value=1,{
+    Ecoregion<-readOGR(dsn="./Maps/Ecoregion.geojson","OGRGeoJSON")
+    Forested<-readOGR(dsn="./Maps/Forests.geojson","OGRGeoJSON")
+    Soil<-readOGR(dsn="./Maps/Soils.geojson","OGRGeoJSON")
+  })
+  
+# Map Years 
+  MapYears<-reactive({ (input$MapYear-3) : input$MapYear  })   
+  
+  
+# Map MetaData
+  MapMetaData<-reactive({
+    req(input$MapValues, input$MapGroup)
+    MapLegend[[input$MapValues]][[input$MapGroup]] 
+  })
+  
+# Data to plot on map - always for all parks 
+  MapData<-reactive({
+    req(input$MapSpecies=="All" | input$MapSpecies %in% getPlants(object=VegData, group=input$MapGroup, years=MapYears())$Latin_Name )
+    req(input$MapGroup!="vines" | (input$MapGroup=="vines" & input$MapValues=="count"))
+    
+    P<-left_join(getPlots(VegData, years=MapYears(), output="dataframe", type="all") %>% 
+        dplyr::select(Plot_Name,Unit_Code, Latitude, Longitude), getEvents(object=VegData, years=MapYears(), plot.type="all") %>% 
+        dplyr::select(Plot_Name,Year=Event_Year), by="Plot_Name") %>% 
+        mutate(Size=getArea(VegData[Unit_Code], group=input$MapGroup))
+    
+    if(input$MapGroup != "herbs"){
+      return(P %>% 
+               left_join(SiteXSpec(object=VegData, group=input$MapGroup, years=MapYears(), 
+                       species= if(input$MapSpecies=="All") NA else input$MapSpecies, values=input$MapValues) %>% 
+               dplyr::select(Plot_Name,Total), by="Plot_Name") %>% 
+               mutate(Values=Total*10000/Size) %>% 
+               {if(input$MapValues=="size") mutate(.,Values=Values/10000) else .} #Covert to m^2 from cm^2/ha for basal area
+      )
+    } 
+    
+    if(input$MapGroup == "herbs"){
+      return(P %>% 
+            mutate(Values=SiteXSpec(object=VegData,group=input$MapGroup, years=MapYears(),
+                         species= if(input$MapSpecies=="All") NA else input$MapSpecies,
+                         values=input$MapValues)$Total/getArea(VegData[Unit_Code], group=input$MapGroup, type="count"))
+      )
+    }
+})
+  
+# Map Colors
+  CircleColors<-reactive({
+    req(MapMetaData()$Cuts)
+    colorBin(palette=c("cyan","magenta4","orangered3"),domain=MapData()$Values, bins=c(MapMetaData()$Cuts+.001)) # colors for circles
+  })  
+  
+  PolyColors<-colorRamp(c("aquamarine4","green","yellow","goldenrod4")) #colors for polygons
+  
+  
+  
+#### Render Map  ####
+  output$VegMap<-renderLeaflet({
     leaflet() %>%
-    setView(lng=mean(c(ParkBounds[ParkBounds$ParkCode==Network,]$LongE,ParkBounds[ParkBounds$ParkCode==Network,]$LongW)), 
-            lat=mean(c(ParkBounds[ParkBounds$ParkCode==Network,]$LatN,ParkBounds[ParkBounds$ParkCode==Network,]$LatS)),
-                      zoom=8 ) %>% 
-   setMaxBounds(lng1=ParkBounds[ParkBounds$ParkCode==Network,]$LongE,lng2=ParkBounds[ParkBounds$ParkCode==Network,]$LongW, 
-                lat1=ParkBounds[ParkBounds$ParkCode==Network,]$LatN, lat2=ParkBounds[ParkBounds$ParkCode==Network,]$LatS)
+     setView(lng=mean(c(ParkBounds[ParkBounds$ParkCode==Network,]$LongE,ParkBounds[ParkBounds$ParkCode==Network,]$LongW)),
+             lat=mean(c(ParkBounds[ParkBounds$ParkCode==Network,]$LatN,ParkBounds[ParkBounds$ParkCode==Network,]$LatS)),
+                       zoom=8 ) %>%
+    setMaxBounds(lng1=ParkBounds[ParkBounds$ParkCode==Network,]$LongE,lng2=ParkBounds[ParkBounds$ParkCode==Network,]$LongW,
+                 lat1=ParkBounds[ParkBounds$ParkCode==Network,]$LatN, lat2=ParkBounds[ParkBounds$ParkCode==Network,]$LatS)
   })
 
 
-#### Map Years ####  
-  MapYears<-reactive({ (input$MapYear-3) : input$MapYear  })  
-  
-  
-#### Make map with Base Layer and Layer Controls ####
-  NPSAttrib<-HTML("&copy; <a href='http://mapbox.com/about/maps' target='_blank'>Mapbox</a> 
-                  &copy; <a href='http://openstreetmap.org/copyright' target='_blank'>OpenStreetMap</a> contributors | 
-                  <a class='improve-park-tiles' href='https://www.nps.gov/npmap/park-tiles/improve/' 
-                  target='_blank'>Improve Park Tiles</a>")
-  
-  
-#### add Monitoring plot data as circles - needs to be before layers or app hangs for some reason - new issue ####
+# Make Attribution
+  NPSAttrib<-HTML("<a href='https://www.nps.gov/npmap/disclaimer/'>Disclaimer</a> | 
+      &copy; <a href='http://mapbox.com/about/maps' target='_blank'>Mapbox</a>
+      &copy; <a href='http://openstreetmap.org/copyright' target='_blank'>OpenStreetMap</a> contributors |
+      <a class='improve-park-tiles' 
+      href='http://insidemaps.nps.gov/places/editor/#background=mapbox-satellite&map=4/-95.97656/39.02772&overlays=park-tiles-overlay'
+      target='_blank'>Improve Park Tiles</a>")
+
+
+# add Monitoring plot data as circles - needs to be before layers or app hangs for some reason - new issue?
   observe({
-    req(MapData())
+    req(MapData()$Values)
     input$MapLayer #make sure Circles are always on top
-    
+
     leafletProxy("VegMap") %>%
     clearGroup("Circles") %>%
     addCircles(data=MapData(), radius=15*as.numeric(input$PlotSize), group="Circles",
@@ -87,77 +172,36 @@ shinyServer(function(input,output,session){
   })
 
   
-#### Chose a tile layer to use ####
-  observe({ 
-    leafletProxy("VegMap") %>% 
-    clearTiles() %>% 
-
-    addTiles(group="Map", urlTemplate="//{s}.tiles.mapbox.com/v4/nps.2yxv8n84,nps.jhd2e8lb/{z}/{x}/{y}.png?access_token=pk.eyJ1IjoibnBzIiwiYSI6IkdfeS1OY1UifQ.K8Qn5ojTw4RV1GwBlsci-Q",attribution=NPSAttrib, options=tileOptions(minZoom=8))%>% 
-    addTiles(group="Imagery", urlTemplate="//{s}.tiles.mapbox.com/v4/nps.2c589204,nps.25abf75b,nps.7531d30a/{z}/{x}/{y}.png?access_token=pk.eyJ1IjoibnBzIiwiYSI6IkdfeS1OY1UifQ.K8Qn5ojTw4RV1GwBlsci-Q",attribution=NPSAttrib, options=tileOptions(minZoom=8)) %>% 
-    addTiles(group="Slate", urlTemplate="//{s}.tiles.mapbox.com/v4/nps.68926899,nps.502a840b/{z}/{x}/{y}.png?access_token=pk.eyJ1IjoibnBzIiwiYSI6IkdfeS1OY1UifQ.K8Qn5ojTw4RV1GwBlsci-Q", attribution=NPSAttrib, options=tileOptions(minZoom=8) ) %>% 
-    {if("BaseLayers" %in% input$MapHide) 
-             addLayersControl(map=., baseGroups=c("Map","Imagery","Slate"),
-                               options=layersControlOptions(collapsed=F))}
-  })
-  
-#### Hide Layers Control ####
+# #Add a tile layer
   observe({
-   if(!"BaseLayers" %in% input$MapHide ) leafletProxy("VegMap") %>% removeLayersControl()
+    leafletProxy("VegMap") %>%
+    clearTiles() %>%
+
+    addTiles(group="Map", urlTemplate="//{s}.tiles.mapbox.com/v4/nps.2yxv8n84,nps.jhd2e8lb/{z}/{x}/{y}.png?access_token=pk.eyJ1IjoibnBzIiwiYSI6IkdfeS1OY1UifQ.K8Qn5ojTw4RV1GwBlsci-Q",attribution=NPSAttrib, options=tileOptions(minZoom=8))%>%
+    addTiles(group="Imagery", urlTemplate="//{s}.tiles.mapbox.com/v4/nps.2c589204,nps.25abf75b,nps.7531d30a/{z}/{x}/{y}.png?access_token=pk.eyJ1IjoibnBzIiwiYSI6IkdfeS1OY1UifQ.K8Qn5ojTw4RV1GwBlsci-Q",attribution=NPSAttrib, options=tileOptions(minZoom=8)) %>%
+    addTiles(group="Slate", urlTemplate="//{s}.tiles.mapbox.com/v4/nps.68926899,nps.502a840b/{z}/{x}/{y}.png?access_token=pk.eyJ1IjoibnBzIiwiYSI6IkdfeS1OY1UifQ.K8Qn5ojTw4RV1GwBlsci-Q", attribution=NPSAttrib, options=tileOptions(minZoom=8) ) %>%
+     addLayersControl(map=., baseGroups=c("Map","Imagery","Slate"), options=layersControlOptions(collapsed=T))
   })
-   
-
-#### Zoom control for map ####
-
-  output$ParkZoomControl<-renderUI({
-    selectInput(inputId="ParkZoom",label=NULL,
-              choices=c("All Parks"=Network,ParkList) )
-  })
-
-#### Zoom the map ####
   
- observe({
-    input$MapZoom
-    isolate({
-      BoundsUse<-reactive({ as.numeric(ParkBounds[ParkBounds$ParkCode==input$ParkZoom,2:5]) })
-      leafletProxy("VegMap") %>% fitBounds(lat1=BoundsUse()[1], lng1=BoundsUse()[2], lat2=BoundsUse()[3], lng2=BoundsUse()[4])
-    }) 
+# Add Circle legends 
+  observe({
+    leafletProxy("VegMap") %>%
+      removeControl(layerId="CircleLegend") %>%
+      addLegend(.,title=MapMetaData()$Title,
+                colors=CircleColors()(MapMetaData()$Cuts[-1]-.001),
+                labels=MapMetaData()$Labels,
+                layerId="CircleLegend",
+                opacity=1)
   })
-#  
-###########################################################################################################
-
-####  Park Filter for species list control for map ####
-
-  output$MapParkControl<-renderUI({
-    selectInput(inputId="MapPark", label="Filter species list by park",
-              choices=c("All Parks"="All",ParkList) )
-  })
-
-############################## Data to map control################################################
-
-#### Data to display control for Map ####
-  ValuesUse<-reactive({
-    switch(input$MapGroup,
-         trees=,saplings=c(Abundance="count", "Basal Area"="size"),
-         seedlings=,shseedlings=,shrubs=,vines=c(Abundance="count"),
-         herbs=c("Percent Cover"="size")
-         
-    )
-  })
-
-#render the control
-  output$PlantValueControl<-renderUI({
-    req(ValuesUse())
-    selectInput(inputId="MapValues", label="Data to Map:", choices=ValuesUse())
   
-  })
-
-
-#### Species list control for map ####
+  
+# Species list control for map 
 #List of names, elements are Latin names, names of elements are Latin or common
+   
   MapSpecList<-reactive({
     req(input$MapPark, input$MapGroup)
     SpecTemp<-unique(getPlants(object=if(input$MapPark=="All") {VegData}  else {VegData[[input$MapPark]]} , group=input$MapGroup,
-      years=MapYears(),common=F )$Latin_Name)
+                               years=MapYears(),common=F )$Latin_Name)
     SpecNames<-getPlantNames(object=VegData[[1]], names=SpecTemp, in.style="Latin",out.style=ifelse(input$mapCommon,"common","Latin"))
     names(SpecTemp)<-SpecNames
     SpecTemp<-SpecTemp[order(tolower(names(SpecTemp)))]
@@ -167,180 +211,117 @@ shinyServer(function(input,output,session){
   output$MapSpeciesControl<-renderUI({
     req(input$MapPark, input$MapGroup)
     selectInput(inputId="MapSpecies", label="Choose a species", choices=c(MapSpecList() ))
-      
+
   })
-
-####   Calculate the values for the circles on the map. ####
-
-### HouseKeeping
-  
-#### Data for Legend ####
-  
-MapMetaData<-reactive({
-  req(input$MapValues, input$MapGroup)
-  MapLegend[[input$MapValues]][[input$MapGroup]] 
-})
-
-#### Data to plot on map - always for all parks ####
-  MapData<-reactive({
-    req(input$MapSpecies=="All" | input$MapSpecies %in% getPlants(object=VegData, group=input$MapGroup, years=MapYears())$Latin_Name )
-    
-    P<-left_join(getPlots(VegData, years=MapYears(), output="dataframe", type="all") %>% 
-      dplyr::select(Plot_Name,Unit_Code, Latitude, Longitude), getEvents(object=VegData, years=MapYears(), plot.type="all") %>% 
-      dplyr::select(Plot_Name,Year=Event_Year), by="Plot_Name") %>% 
-      mutate(Size=getArea(VegData[Unit_Code], group=input$MapGroup))
-    
-    if(input$MapGroup != "herbs"){
-      return(P %>% 
-        left_join(SiteXSpec(object=VegData, group=input$MapGroup, years=MapYears(), 
-          species= if(input$MapSpecies=="All") NA else input$MapSpecies, values=input$MapValues) %>% 
-        dplyr::select(Plot_Name,Total), by="Plot_Name") %>% 
-          mutate(Values=Total*10000/Size) %>% 
-        {if(input$MapValues=="size") mutate(.,Values=Values/10000) else .} #Covert to m^2 from cm^2/ha for basal area
-      )
-    } 
-      
-   if(input$MapGroup == "herbs"){
-      return(P %>% 
-        mutate(Values=SiteXSpec(object=VegData,group=input$MapGroup, years=MapYears(),
-            species= if(input$MapSpecies=="All") NA else input$MapSpecies,
-                                values=input$MapValues)$Total/getArea(VegData[Unit_Code], group=input$MapGroup, type="count"))
-      )
-    } }
-  )
-
-  #### Map Colors ####
-  CircleColors<-reactive({
-    validate(
-      need(MapMetaData()$Cuts,message = FALSE)
-    )
-    colorBin(palette=c("cyan","magenta4","orangered3"),domain=MapData()$Values, bins=c(MapMetaData()$Cuts+.001)) # colors for circles
-  })  
-  
-  PolyColors<-colorRamp(c("aquamarine4","green","yellow","goldenrod4")) #colors for polygons
   
 
-#### Add GeoJSON polygon layer ####
-
-  withProgress(message="Loading...Please Wait", value=1,{
-    Ecoregion<-readOGR(dsn="./Maps/Ecoregion.geojson","OGRGeoJSON")
-    Forested<-readOGR(dsn="./Maps/Forests.geojson","OGRGeoJSON")
-    Soil<-readOGR(dsn="./Maps/Soils.geojson","OGRGeoJSON")
-    }
-  )
-
+# Add GeoJSON polygon layer 
   
-  observe({
-    leafletProxy("VegMap") %>% {
-      switch(input$MapLayer,
-             None=clearGroup(.,group=c("Ecoregion","Forested","Soil")) %>% removeControl(.,"LayerLegend"),
-             
-              EcoReg=clearGroup(.,group=c("Forested","Soil") )%>% 
-                 addPolygons(., data=Ecoregion, group="Ecoregion", layerId=Ecoregion$MapClass, 
-                             stroke=FALSE, 
-                             fillOpacity=.65, color=colorFactor(palette=PolyColors, levels=Ecoregion$MapClass)(Ecoregion$MapClass)),
-             
-             ForArea=clearGroup(.,group=c("Ecoregion","Soil")) %>% 
-               addPolygons(.,data=Forested, group="Forested", layerId=Forested$MapClass, stroke=FALSE, 
-                           fillOpacity=.65, color=colorFactor("Greens",levels=Forested$MapClass)(Forested$MapClass)),
-             
-             Soil=clearGroup(.,group=c("Ecoregion","Forested")) %>% 
-               addPolygons(.,data=Soil, group="Soil", layerId=Soil$MapClass, stroke=FALSE, 
-                           fillOpacity=.65, color=colorFactor(PolyColors,levels=Soil$MapClass)(Soil$MapClass)) 
-      )}
+ observe({
+   leafletProxy("VegMap") %>% {
+     switch(input$MapLayer,
+            None=clearGroup(.,group=c("Ecoregion","Forested","Soil")) %>% removeControl(.,"LayerLegend"),
+            
+             EcoReg=clearGroup(.,group=c("Forested","Soil") )%>% 
+                addPolygons(., data=Ecoregion, group="Ecoregion", layerId=Ecoregion$MapClass, 
+                            stroke=FALSE, 
+                            fillOpacity=.65, color=colorFactor(palette=PolyColors, levels=Ecoregion$MapClass)(Ecoregion$MapClass)),
+            
+            ForArea=clearGroup(.,group=c("Ecoregion","Soil")) %>% 
+              addPolygons(.,data=Forested, group="Forested", layerId=Forested$MapClass, stroke=FALSE, 
+                          fillOpacity=.65, color=colorFactor("Greens",levels=Forested$MapClass)(Forested$MapClass)),
+            
+            Soil=clearGroup(.,group=c("Ecoregion","Forested")) %>% 
+              addPolygons(.,data=Soil, group="Soil", layerId=Soil$MapClass, stroke=FALSE, 
+                          fillOpacity=.65, color=colorFactor(PolyColors,levels=Soil$MapClass)(Soil$MapClass)) 
+     )}
+ })
+
+  # Zoom the map
+  
+  observeEvent(input$MapZoom, {
+    BoundsUse<-reactive({ as.numeric(ParkBounds[ParkBounds$ParkCode==input$ParkZoom,2:5]) })
+    leafletProxy("VegMap") %>% fitBounds(lat1=BoundsUse()[1], lng1=BoundsUse()[2], lat2=BoundsUse()[3], lng2=BoundsUse()[4])
   })
-
-#### Add Circle legends ####
-observe({
-  leafletProxy("VegMap") %>%
-    removeControl(layerId="CircleLegend") %>%
-    {if("Legends" %in% input$MapHide)
-     addLegend(.,title=MapMetaData()$Title,
-              colors=CircleColors()(MapMetaData()$Cuts[-1]-.001),
-              labels=MapMetaData()$Labels,
-              layerId="CircleLegend",
-              opacity=1)
-  }
-})
-
   
-    
-#### Add layer legends ####
+  
+# Add layer legends 
+  
   observe({
     leafletProxy("VegMap") %>%  removeControl(layerId="LayerLegend") %>%
-    {if("Legends" %in% input$MapHide) 
-      switch(input$MapLayer,
+    { switch(input$MapLayer,
              None=NA,
-             EcoReg= addLegend(.,title="Layer Legend",pal=colorFactor(PolyColors, levels=Ecoregion$MapClass), 
+             EcoReg= addLegend(.,title="Layer Legend",pal=colorFactor(PolyColors, levels=Ecoregion$MapClass),
                                   values=Ecoregion$MapClass, layerId="LayerLegend"),
-             
-             ForArea= addLegend(.,title="Layer Legend",pal=colorFactor("Greens",levels=Forested$MapClass), 
+
+             ForArea= addLegend(.,title="Layer Legend",pal=colorFactor("Greens",levels=Forested$MapClass),
                                 values=Forested$MapClass,layerId="LayerLegend"),
-             Soil= addLegend(.,title="Layer Legend",pal=colorFactor(PolyColors, levels=Soil$MapClass), 
+             Soil= addLegend(.,title="Layer Legend",pal=colorFactor(PolyColors, levels=Soil$MapClass),
                                values=Soil$MapClass, layerId="LayerLegend")
       )}
   })
  
-#### Mouse Hover ####
-  observeEvent(input$VegMap_shape_mouseover, {  
-    
+# Mouse Hover 
+
+   observeEvent(input$VegMap_shape_mouseover, {
+
     ShapeOver<-input$VegMap_shape_mouseover
     selectedPlot <- MapData()[MapData()$Plot_Name == ShapeOver$id,]
-    
-    
-    leafletProxy("VegMap") %>% 
+
+
+    leafletProxy("VegMap") %>%
       clearPopups() %>% {
         switch(ShapeOver$group,
                Circles= addPopups(map=.,lat=ShapeOver$lat+.001, lng=ShapeOver$lng, layerId="MouseOverPopup",
                                   popup=paste0(
                                     h5(getNames(VegData[[selectedPlot$Unit_Code]], "long")),
                                     h6("Monitoring Plot:",selectedPlot$Plot_Name),
-                                    h6("Year Monitored:", selectedPlot$Year), 
-                                    h6(names(MapSpecList()[MapSpecList()==input$MapSpecies]),":",format(signif(selectedPlot$Values,2), 
+                                    h6("Year Monitored:", selectedPlot$Year),
+                                    h6(names(MapSpecList()[MapSpecList()==input$MapSpecies]),":",format(signif(selectedPlot$Values,2),
                                                                                             big.mark=","), " ", MapMetaData()$Title),
                                     tags$h6("Click on plot to see full list")
-                                    )
-                                  
+                                  )
                )
         )}
   })
 
   observeEvent(input$VegMap_shape_mouseout,{    #clear popup when mouse leaves circle
-               leafletProxy("VegMap") %>% 
+               leafletProxy("VegMap") %>%
                  clearPopups()
   })
-  
-#### Mouse Click ####
-  observeEvent(input$VegMap_shape_click, {          # user clicked on a shape
+
+# Mouse Click 
+ 
+   observeEvent(input$VegMap_shape_click, {          # user clicked on a shape
     ShapeClick<-input$VegMap_shape_click
     selectedPlot <- MapData()[MapData()$Plot_Name == ShapeClick$id,]
-    
+
     if(
       class(try(SiteXSpec(object=VegData[[selectedPlot$Unit_Code]], group=input$MapGroup, years=selectedPlot$Year,
             plots=ShapeClick$id, common=input$mapCommon), silent=TRUE))=="try-error") {
       content<-as.character(tagList(tags$h6("None found on this plot")))
     } else {
-                      
+
       tempData<- if(input$MapGroup != "herbs" && input$MapValues != "size"){
         (10000/getArea(VegData[[selectedPlot$Unit_Code]],group=input$MapGroup,type="all")) *
-        SiteXSpec(object=VegData[[selectedPlot$Unit_Code]],group=input$MapGroup, years=selectedPlot$Year, 
+        SiteXSpec(object=VegData[[selectedPlot$Unit_Code]],group=input$MapGroup, years=selectedPlot$Year,
         plots=ShapeClick$id, values=input$MapValues, common=input$mapCommon)[-1]
-      
+
         } else {
-                       
-        if(input$MapGroup != "herbs" && input$MapValues == "size"){ 
+
+        if(input$MapGroup != "herbs" && input$MapValues == "size"){
           (10000/getArea(VegData[[selectedPlot$Unit_Code]],group=input$MapGroup,type="all")) * (  #need to convert to m^2/ha from cm^2/ha
             SiteXSpec(object=VegData[[selectedPlot$Unit_Code]],group=input$MapGroup, years=selectedPlot$Year,
             plots=ShapeClick$id,values=input$MapValues,common=input$mapCommon)[-1])/10000
-        } else {                
-      
-          if(input$MapGroup == "herbs"){ 
-            SiteXSpec(object=VegData[[selectedPlot$Unit_Code]], group=input$MapGroup, years=selectedPlot$Year, 
+        } else {
+
+          if(input$MapGroup == "herbs"){
+            SiteXSpec(object=VegData[[selectedPlot$Unit_Code]], group=input$MapGroup, years=selectedPlot$Year,
             plots=ShapeClick$id,values=input$MapValues,common=input$mapCommon)[-1]/12
           }
         }
         }
-    
+
       content<-paste0( h5(getNames(VegData[[selectedPlot$Unit_Code]],"long")),
                     h6("Monitoring Plot:",selectedPlot$Plot_Name),
                     h6("Year Monitored:",selectedPlot$Year),
@@ -355,18 +336,18 @@ observe({
                       Name=names(tempData),
                       Value=unlist(tempData), SIMPLIFY=FALSE
                       )))
-                    
+
       )
     }
-    
-    leafletProxy("VegMap") %>% 
+
+    leafletProxy("VegMap") %>%
       clearPopups() %>% {
       switch(ShapeClick$group,
              Circles= addPopups(map=.,lat=ShapeClick$lat+.001, lng=ShapeClick$lng, layerId="CircleClickPopup",popup=content),
              Ecoregion=, Forested=, Soil= addPopups(map=.,lat=ShapeClick$lat, lng=ShapeClick$lng, popup=ShapeClick$id)
       )}
-      
-  })  
+
+  })
 
 #### Plots Tab ####
 
