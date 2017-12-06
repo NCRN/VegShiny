@@ -14,7 +14,8 @@ VegData<-switch(Network,
                 ERMN=importERMN("./Data/ERMN"),
                 MIDN=importMIDN("./Data/MIDN"),
                 NCRN=importNCRN("./Data/NCRN"),
-                NETN=importNETN("./Data/NETN")
+                NETN=importNETN("./Data/NETN"),
+                SHEN=list(importSHEN("./Data/SHEN"))
 )
 
 names(VegData)<-getNames(VegData, name.class="code")
@@ -44,12 +45,13 @@ shinyServer(function(input,output,session){
 
 ####  Map Panel  ####
 
+  
 #### UI Controls ####
 
 # Zoom control and zoom for map 
   
   output$ParkZoomControl<-renderUI({
-    selectInput(inputId="ParkZoom",label=NULL,
+    selectInput(inputId="ParkZoom",label=NULL,selectize=FALSE,
                 choices=c("All Parks"=Network,ParkList) )
   })
   
@@ -81,9 +83,9 @@ shinyServer(function(input,output,session){
 #### Calculations ####
 # Load Layers
   withProgress(message="Loading...Please Wait", value=1,{
-    Ecoregion<-readOGR(dsn="./Maps/Ecoregion.geojson","OGRGeoJSON")
-    Forested<-readOGR(dsn="./Maps/Forests.geojson","OGRGeoJSON")
-    Soil<-readOGR(dsn="./Maps/Soils.geojson","OGRGeoJSON")
+    Ecoregion<-readOGR(dsn="./Maps/Ecoregion.geojson")#,"OGRGeoJSON")
+    Forested<-readOGR(dsn="./Maps/Forests.geojson")#,"OGRGeoJSON")
+    Soil<-readOGR(dsn="./Maps/Soils.geojson")#,"OGRGeoJSON")
   })
   
 # Map Years 
