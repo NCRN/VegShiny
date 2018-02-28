@@ -150,7 +150,7 @@ hidden(
             conditionalPanel(
               condition="input.densPanel=='Graph'",
               wellPanel(class="panel panel-default",
-                h4("Comaprison Data:", class="panel-heading"),
+                h4("Comparison Data:", class="panel-heading"),
                   tags$div(title="Compare the base data with a differnet park, growth stage, or time period",
                   radioButtons(inputId="CompareType", label ="Compare to another:",
                           choices=c("None","Park","Growth Stage","Time"),selected="None",inline=TRUE)

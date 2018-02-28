@@ -6,11 +6,11 @@ NetworkURL<-switch(Network,
 )
 
 PlantTypes<-switch(Network,
-    ERMN=list(Trees='trees',Saplings="saplings","Tree seedlings"="seedlings"),
+    ERMN=list(Trees='trees',Saplings="saplings","Tree seedlings"="seedlings", "Understory plants"="herbs"),
     MIDN=list(Trees='trees',Saplings="saplings","Tree seedlings"="seedlings","Vines on Trees"="vines" ),
     NCRN=list(Trees="trees",Saplings="saplings","Tree seedlings"="seedlings", Shrubs="shrubs", "Shrub seedlings"="shseedlings",
                 "Understory plants"="herbs","Vines on Trees"="vines"),
-    NETN=list(Trees="trees",Saplings="saplings","Tree seedlings"="seedlings"),
+    NETN=list(Trees="trees",Saplings="saplings","Tree seedlings"="seedlings", "Understory plants"="herbs"),
     SHEN=list(Trees="trees",Saplings="saplings","Tree seedlings"="seedlings", Shrubs="shrubs", "Shrub seedlings"="shseedlings",
                "Understory plants"="herbs")
 )
@@ -24,7 +24,7 @@ IVPlantTypes<-switch(Network,  #needed as not all plants have an IV
   )
 
 Years<-switch(Network,
-             ERMN=list(Start=2007, End=2015, Range=4),
+             ERMN=list(Start=2007, End=2017, Range=4),
              MIDN=list(Start=2007, End=2014, Range=4),
              NCRN=list(Start=2006, End=2016, Range=4),
              NETN=list(Start=2006, End=2016, Range=4),
@@ -40,7 +40,7 @@ ExtraLayers<-switch(Network,
   )
 
 ProjectInfo<-switch(Network,
-                    ERMN=HTML("<h1>Add Me!</h1>"),
+                    ERMN=includeHTML("./www/InformationERMN.html"),
                     MIND=HTML("<h1>Add Me!</h1>"),
                     NCRN=includeHTML("./www/Information.html"),
                     NETN=HTML("<h1>Add Me!</h1>"),
@@ -48,7 +48,7 @@ ProjectInfo<-switch(Network,
 )
 
 Citations<-switch(Network,
-                    ERMN=HTML("<h1>Add Me!</h1>"),
+                    ERMN=includeHTML("./www/CitationsERMN.html"),
                     MIND=HTML("<h1>Add Me!</h1>"),
                     NCRN=includeHTML("./www/Citations.html"),
                     NETN=HTML("<h1>Add Me!</h1>"),
