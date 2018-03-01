@@ -51,7 +51,7 @@ Citations<-switch(Network,
                     ERMN=includeHTML("./www/CitationsERMN.html"),
                     MIDN=includeHTML("./www/CitationsMIDN.html"),
                     NCRN=includeHTML("./www/Citations.html"),
-                    NETN=includeHTML("./www/Citations.html"),
+                    NETN=includeHTML("./www/CitationsNETN.html"),
                     SHEN=HTML("<h1>Add Me!</h1>")
 )
 
