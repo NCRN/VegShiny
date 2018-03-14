@@ -7,10 +7,10 @@ NetworkURL<-switch(Network,
 
 PlantTypes<-switch(Network,
     ERMN=list(Trees='trees',Saplings="saplings","Tree seedlings"="seedlings", "Understory plants"="herbs"),
-    MIDN=list(Trees='trees',Saplings="saplings","Tree seedlings"="seedlings","Vines on Trees"="vines" ),
+    MIDN=list(Trees='trees',Saplings="saplings","Tree seedlings"="seedlings", "Understory plants"="herbs","Vines on Trees"="vines"),
     NCRN=list(Trees="trees",Saplings="saplings","Tree seedlings"="seedlings", Shrubs="shrubs", "Shrub seedlings"="shseedlings",
                 "Understory plants"="herbs","Vines on Trees"="vines"),
-    NETN=list(Trees="trees",Saplings="saplings","Tree seedlings"="seedlings", "Understory plants"="herbs"),
+    NETN=list(Trees="trees",Saplings="saplings","Tree seedlings"="seedlings", "Understory plants"="herbs","Vines on Trees"="vines"),
     SHEN=list(Trees="trees",Saplings="saplings","Tree seedlings"="seedlings", Shrubs="shrubs", "Shrub seedlings"="shseedlings",
                "Understory plants"="herbs")
 )
