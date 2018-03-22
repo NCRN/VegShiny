@@ -33,7 +33,6 @@ shinyServer(function(input,output,session){
 ### Maps  
     onclick(id="AboutMapButton", expr= toggle(id="AboutMapPanel"))
     onclick(id="CloseAboutMap", expr= toggle(id="AboutMapPanel")) 
-    onclick(id="VideoButton", expr= toggle(id="VideoPanel"))
     onclick(id="CloseVideo", expr= toggle(id="VideoPanel")) 
 ### Graphs
     onclick(id="densGraphButton", expr=toggle(id="GraphOptionsPanel"))
