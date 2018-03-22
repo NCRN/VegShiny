@@ -121,7 +121,7 @@ hidden(
                 condition="input.densPanel=='Graph'",
                 actionButton(inputId="densGraphButton", label="Display Options", class="btn btn-primary"),
                 div(downloadButton(outputId="densGraphDownload", label="Save Graph (.jpg)", class="btn btn-primary"),
-                downloadButton(outputId="densWmfDownload", label="Save Graph (.wmf)", class="btn btn-primary"))
+                downloadButton(outputId="densWmfDownload", label="Save Graph (.png)", class="btn btn-primary"))
               ),
               conditionalPanel(
                 condition="input.densPanel=='Table'",

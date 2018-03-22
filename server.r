@@ -616,9 +616,9 @@ output$densGraphDownload<-downloadHandler(
 
 ##### wmf plot download ####
 output$densWmfDownload<-downloadHandler(
-  filename=function(){paste(DensTitle(), ".wmf", sep="")}, 
+  filename=function(){paste(DensTitle(), ".png", sep="")}, 
   content=function (file){
-    win.metafile(file,width=15,height=6)
+    png(file,width=15,height=6,res=300, units="in")
     print(tempDensPlot())
     dev.off()
   }
