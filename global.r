@@ -1,5 +1,5 @@
 #### Network specific settings ####
-Network<-"NETN"
+Network<-"NCRN"
 NetworkURL<-switch(Network,
                    ERMN=, MIDN=, NCRN=, NETN = paste0('https://science.nature.nps.gov/im/units/',tolower(Network),'/index.cfm'),
                    SHEN='https://www.nps.gov/shen/index.htm'
@@ -44,7 +44,7 @@ ProjectInfo<-switch(Network,
                     MIDN=includeHTML("./www/InformationMIDN.html"),
                     NCRN=includeHTML("./www/Information.html"),
                     NETN=includeHTML("./www/InformationNETN.html"),
-                    SHEN=HTML("<h1>Add Me!</h1>")
+                    SHEN=HTML("./www/InformationSHEN.html")
 )
 
 Citations<-switch(Network,
@@ -52,7 +52,7 @@ Citations<-switch(Network,
                     MIDN=includeHTML("./www/CitationsMIDN.html"),
                     NCRN=includeHTML("./www/Citations.html"),
                     NETN=includeHTML("./www/CitationsNETN.html"),
-                    SHEN=HTML("<h1>Add Me!</h1>")
+                    SHEN=HTML("./www/CitationsSHEN.html")
 )
 
 

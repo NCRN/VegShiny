@@ -38,14 +38,7 @@ navbarPage(title=HTML("<div> <a href=",NetworkURL,"> <img src='ah_small_black.gi
             tags$div(title="Choose a species of plants to map", uiOutput("MapSpeciesControl")),  
             tags$div(title="Filter the species list so only species found in a particular park are listed",
                            uiOutput("MapParkControl")),
-            actionButton(inputId="AboutMapButton",label="About the map",class="btn btn-primary "),
-            actionButton(inputId="VideoButton", label='"How To" video', class="btn btn-primary ")#,
-            # tags$div(title="You can hide controls that you are not using.",
-            #     checkboxGroupInput(inputId="MapHide", label="Display:", inline=TRUE,
-            #       choices=c("Base Map"="BaseLayers","Legends","Additional Layers"="ExtraLayers", "Zoom"),
-            #       selected=c("BaseLayers","LayerLegend", "Legends", "ExtraLayers","Zoom")
-            #     )
-            #   )
+            actionButton(inputId="AboutMapButton",label="About the map",class="btn btn-primary ")
            ),
         
 #### Zoom Controls ####
@@ -86,17 +79,6 @@ hidden(
              div(class="panel-body",style="height: 400px;  overflow-y: scroll",  includeHTML("./www/AboutMap.html")),
              div(class="panel-footer", 
                  actionButton(inputId="CloseAboutMap",class="btn btn-primary",label="Close"))  )
-  ),
-#### Floating Video panel ####
-hidden(
-  fixedPanel(class="panel panel-primary controls",draggable=TRUE,cursor="auto",top=80,bottom="auto",height="auto",
-      left=450,width="auto",id="VideoPanel",style="padding: 0px; margin: 0px", 
-      div(class="panel-heading", h4('How to Use This Website')), 
-      div(class="panel-body", 
-          HTML('<iframe width="580" height="315" src="//www.youtube.com/embed/Kg9FvgPa6Lc" frameborder="0" allowfullscreen></iframe>')
-      ),
-      div(class="panel-footer", 
-          actionButton(inputId="CloseVideo",class="btn btn-primary",label="Close"))  )
   )
 ),  ## end of map page
 
@@ -139,7 +121,7 @@ hidden(
                 condition="input.densPanel=='Graph'",
                 actionButton(inputId="densGraphButton", label="Display Options", class="btn btn-primary"),
                 div(downloadButton(outputId="densGraphDownload", label="Save Graph (.jpg)", class="btn btn-primary"),
-                downloadButton(outputId="densWmfDownload", label="Save Graph (.wmf)", class="btn btn-primary"))
+                downloadButton(outputId="densWmfDownload", label="Save Graph (.png)", class="btn btn-primary"))
               ),
               conditionalPanel(
                 condition="input.densPanel=='Table'",
