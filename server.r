@@ -33,6 +33,7 @@ shinyServer(function(input,output,session){
 ### Maps  
     onclick(id="AboutMapButton", expr= toggle(id="AboutMapPanel"))
     onclick(id="CloseAboutMap", expr= toggle(id="AboutMapPanel")) 
+    onclick(id="VideoButton", expr= toggle(id="VideoPanel"))
     onclick(id="CloseVideo", expr= toggle(id="VideoPanel")) 
 ### Graphs
     onclick(id="densGraphButton", expr=toggle(id="GraphOptionsPanel"))
@@ -110,10 +111,10 @@ shinyServer(function(input,output,session){
     if(input$MapGroup != "herbs"){
       return(P %>% 
                left_join(SiteXSpec(object=VegData, group=input$MapGroup, years=MapYears(), 
-                       species= if(input$MapSpecies=="All") NA else input$MapSpecies, values=input$MapValues) %>% 
-               dplyr::select(Plot_Name,Total), by="Plot_Name") %>% 
-               mutate(Values=Total*10000/Size) %>% 
-               {if(input$MapValues=="size") mutate(.,Values=Values/10000) else .} #Covert to m^2 from cm^2/ha for basal area
+                       species= if(input$MapSpecies=="All") NA else input$MapSpecies, values=input$MapValues, area="ha") %>% 
+               dplyr::select(Plot_Name,Values=Total), by="Plot_Name")# %>% 
+               #mutate(Values=Total*10000/Size) #%>% 
+              # {if(input$MapValues=="size") mutate(.,Values=Values/10000) else .} #Covert to m^2 from cm^2/ha for basal area
       )
     } 
     
@@ -121,7 +122,7 @@ shinyServer(function(input,output,session){
       return(P %>% 
             mutate(Values=SiteXSpec(object=VegData,group=input$MapGroup, years=MapYears(),
                          species= if(input$MapSpecies=="All") NA else input$MapSpecies,
-                         values=input$MapValues)$Total/getArea(VegData[Unit_Code], group=input$MapGroup, type="count"))
+                         values=input$MapValues)$Total)#/getArea(VegData[Unit_Code], group=input$MapGroup, type="count"))
       )
     }
 })
@@ -178,9 +179,9 @@ shinyServer(function(input,output,session){
     leafletProxy("VegMap") %>%
     clearTiles() %>%
 
-    addTiles(group="Map", urlTemplate="//{s}.tiles.mapbox.com/v4/nps.397cfb9a,nps.3cf3d4ab,nps.b0add3e6/{z}/{x}/{y}.png?access_token=pk.eyJ1IjoibnBzIiwiYSI6IkdfeS1OY1UifQ.K8Qn5ojTw4RV1GwBlsci-Q",attribution=NPSAttrib, options=tileOptions(minZoom=8))%>%
+    addTiles(group="Map", urlTemplate="//{s}.tiles.mapbox.com/v4/nps.2yxv8n84,nps.jhd2e8lb/{z}/{x}/{y}.png?access_token=pk.eyJ1IjoibnBzIiwiYSI6IkdfeS1OY1UifQ.K8Qn5ojTw4RV1GwBlsci-Q",attribution=NPSAttrib, options=tileOptions(minZoom=8))%>%
     addTiles(group="Imagery", urlTemplate="//{s}.tiles.mapbox.com/v4/nps.2c589204,nps.25abf75b,nps.7531d30a/{z}/{x}/{y}.png?access_token=pk.eyJ1IjoibnBzIiwiYSI6IkdfeS1OY1UifQ.K8Qn5ojTw4RV1GwBlsci-Q",attribution=NPSAttrib, options=tileOptions(minZoom=8)) %>%
-    addTiles(group="Slate", urlTemplate="//{s}.tiles.mapbox.com/v4/nps.9e521899,nps.17f575d9,nps.e091bdaf/{z}/{x}/{y}.png?access_token=pk.eyJ1IjoibnBzIiwiYSI6IkdfeS1OY1UifQ.K8Qn5ojTw4RV1GwBlsci-Q", attribution=NPSAttrib, options=tileOptions(minZoom=8) ) %>%
+    addTiles(group="Slate", urlTemplate="//{s}.tiles.mapbox.com/v4/nps.68926899,nps.502a840b/{z}/{x}/{y}.png?access_token=pk.eyJ1IjoibnBzIiwiYSI6IkdfeS1OY1UifQ.K8Qn5ojTw4RV1GwBlsci-Q", attribution=NPSAttrib, options=tileOptions(minZoom=8) ) %>%
      addLayersControl(map=., baseGroups=c("Map","Imagery","Slate"), options=layersControlOptions(collapsed=T))
   })
   
@@ -303,42 +304,42 @@ shinyServer(function(input,output,session){
       content<-as.character(tagList(tags$h6("None found on this plot")))
     } else {
 
-      tempData<- if(input$MapGroup != "herbs" && input$MapValues != "size"){
-        (10000/getArea(VegData[[selectedPlot$Unit_Code]],group=input$MapGroup,type="all")) *
+      tempData<- if(input$MapGroup != "herbs"){ # && input$MapValues != "size"){
+        #(10000/getArea(VegData[[selectedPlot$Unit_Code]],group=input$MapGroup,type="all")) *
         SiteXSpec(object=VegData[[selectedPlot$Unit_Code]],group=input$MapGroup, years=selectedPlot$Year,
-        plots=ShapeClick$id, values=input$MapValues, common=input$mapCommon)[-1]
+        plots=ShapeClick$id, values=input$MapValues,area="ha", common=input$mapCommon)[-1]
 
-        } else {
+      } else {
 
-        if(input$MapGroup != "herbs" && input$MapValues == "size"){
-          (10000/getArea(VegData[[selectedPlot$Unit_Code]],group=input$MapGroup,type="all")) * (  #need to convert to m^2/ha from cm^2/ha
-            SiteXSpec(object=VegData[[selectedPlot$Unit_Code]],group=input$MapGroup, years=selectedPlot$Year,
-            plots=ShapeClick$id,values=input$MapValues,common=input$mapCommon)[-1])/10000
-        } else {
+        # if(input$MapGroup != "herbs" && input$MapValues == "size"){
+        #   (10000/getArea(VegData[[selectedPlot$Unit_Code]],group=input$MapGroup,type="all")) * (  #need to convert to m^2/ha from cm^2/ha
+        #     SiteXSpec(object=VegData[[selectedPlot$Unit_Code]],group=input$MapGroup, years=selectedPlot$Year,
+        #     plots=ShapeClick$id,values=input$MapValues,common=input$mapCommon)[-1])/10000
+        # } else {
 
-          if(input$MapGroup == "herbs"){
+        if(input$MapGroup == "herbs"){
             SiteXSpec(object=VegData[[selectedPlot$Unit_Code]], group=input$MapGroup, years=selectedPlot$Year,
-            plots=ShapeClick$id,values=input$MapValues,common=input$mapCommon)[-1]/12
-          }
+            plots=ShapeClick$id,values=input$MapValues,common=input$mapCommon)[-1]
         }
-        }
+    }
+  
 
-      content<-paste0( h5(getNames(VegData[[selectedPlot$Unit_Code]],"long")),
-                    h6("Monitoring Plot:",selectedPlot$Plot_Name),
-                    h6("Year Monitored:",selectedPlot$Year),
-                    h6("Species: ",MapMetaData()$Title),
-                    tagList(tags$table(
-                      mapply(FUN=function(Name,Value){
-                        tags$tr(
-                          tags$td(sprintf("%s:  ", Name)),
-                          tags$td(align="right",sprintf("%s", format(signif(Value,2), big.mark=",")))
-                        )
-                      },
-                      Name=names(tempData),
-                      Value=unlist(tempData), SIMPLIFY=FALSE
-                      )))
+    content<-paste0( h5(getNames(VegData[[selectedPlot$Unit_Code]],"long")),
+                  h6("Monitoring Plot:",selectedPlot$Plot_Name),
+                  h6("Year Monitored:",selectedPlot$Year),
+                  h6("Species: ",MapMetaData()$Title),
+                  tagList(tags$table(
+                    mapply(FUN=function(Name,Value){
+                      tags$tr(
+                        tags$td(sprintf("%s:  ", Name)),
+                        tags$td(align="right",sprintf("%s", format(signif(Value,2), big.mark=",")))
+                      )
+                    },
+                    Name=names(tempData),
+                    Value=unlist(tempData), SIMPLIFY=FALSE
+                    )))
 
-      )
+    )
     }
 
     leafletProxy("VegMap") %>%
@@ -616,9 +617,9 @@ output$densGraphDownload<-downloadHandler(
 
 ##### wmf plot download ####
 output$densWmfDownload<-downloadHandler(
-  filename=function(){paste(DensTitle(), ".png", sep="")}, 
+  filename=function(){paste(DensTitle(), ".wmf", sep="")}, 
   content=function (file){
-    png(file,width=15,height=6,res=300, units="in")
+    win.metafile(file,width=15,height=6)
     print(tempDensPlot())
     dev.off()
   }
