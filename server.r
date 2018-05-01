@@ -112,9 +112,7 @@ shinyServer(function(input,output,session){
       return(P %>% 
                left_join(SiteXSpec(object=VegData, group=input$MapGroup, years=MapYears(), 
                        species= if(input$MapSpecies=="All") NA else input$MapSpecies, values=input$MapValues, area="ha") %>% 
-               dplyr::select(Plot_Name,Values=Total), by="Plot_Name")# %>% 
-               #mutate(Values=Total*10000/Size) #%>% 
-              # {if(input$MapValues=="size") mutate(.,Values=Values/10000) else .} #Covert to m^2 from cm^2/ha for basal area
+               dplyr::select(Plot_Name,Values=Total), by="Plot_Name")
       )
     } 
     
@@ -304,18 +302,12 @@ shinyServer(function(input,output,session){
       content<-as.character(tagList(tags$h6("None found on this plot")))
     } else {
 
-      tempData<- if(input$MapGroup != "herbs"){ # && input$MapValues != "size"){
-        #(10000/getArea(VegData[[selectedPlot$Unit_Code]],group=input$MapGroup,type="all")) *
+      tempData<- if(input$MapGroup != "herbs"){ 
         SiteXSpec(object=VegData[[selectedPlot$Unit_Code]],group=input$MapGroup, years=selectedPlot$Year,
         plots=ShapeClick$id, values=input$MapValues,area="ha", common=input$mapCommon)[-1]
 
       } else {
 
-        # if(input$MapGroup != "herbs" && input$MapValues == "size"){
-        #   (10000/getArea(VegData[[selectedPlot$Unit_Code]],group=input$MapGroup,type="all")) * (  #need to convert to m^2/ha from cm^2/ha
-        #     SiteXSpec(object=VegData[[selectedPlot$Unit_Code]],group=input$MapGroup, years=selectedPlot$Year,
-        #     plots=ShapeClick$id,values=input$MapValues,common=input$mapCommon)[-1])/10000
-        # } else {
 
         if(input$MapGroup == "herbs"){
             SiteXSpec(object=VegData[[selectedPlot$Unit_Code]], group=input$MapGroup, years=selectedPlot$Year,
@@ -430,6 +422,7 @@ output$CompareSelect<-renderUI({
                             max=Years$End, value=Years$End,  sep="", step=1,ticks=T))
   )
 })
+
 #### Need Compare species to keep the number of species to display to accepted number ####
 CompareSpecies<-reactive({
   if(input$CompareType=="None") {NA} else {
@@ -454,12 +447,12 @@ DensCompare<-reactive({switch(input$CompareType,
     Park=  if (is.null(input$ComparePark) || nchar(input$ComparePark)==0) {return(NA)}
       else{
         return(list(object=VegData[input$ComparePark], group=input$densGroup,  years=densYears(),
-                    values=input$densvalues, species=CompareSpecies(), common=input$densCommon ))
+                    values=input$densvalues, species=CompareSpecies(), common=input$densCommon, area=ifelse(input$densvalues=="size","ha","plot" ) ))
       },
     "Growth Stage"=return(list(object=VegData[input$densPark], group=input$CompareGroup, years=densYears(),
-                    values=input$densvalues, species=CompareSpecies(),common=input$densCommon )),
+                    values=input$densvalues, species=CompareSpecies(),common=input$densCommon, area=ifelse(input$densvalues=="size","ha","plot" ) )),
     Time=return(list(object=VegData[input$densPark], group=input$densGroup, years=c((input$CompareYear-3):input$CompareYear),
-                     values=input$densvalues, species=CompareSpecies(),common=input$densCommon))
+                     values=input$densvalues, species=CompareSpecies(),common=input$densCommon,area=ifelse(input$densvalues=="size","ha","plot" )))
     )
 })
 
@@ -490,7 +483,7 @@ densYlabel<-reactive({
       vines="Vines on Trees / ha"
     ),
     size=switch(input$densGroup,
-      trees=,saplings="Basal area cm2/ ha",
+      trees=,saplings="Basal area m2/ ha",
       herbs="Percent Cover"
     ),
     presab="Proportion of Plots Occupied"
@@ -561,7 +554,8 @@ DensPlotArgs<-reactive({
         Pick= {species=input$densSpecies},
         Common=  {species=NA},
         All= {species=NA}
-      )
+      ),
+      area=ifelse(input$densvalues=="size","ha","plot" )
     ),
     compare=list(DensCompare()),
     labels=DensLabels(),
@@ -595,15 +589,7 @@ tempDensPlot<-reactive({
 
 output$DensPlot<-renderPlot(print(tempDensPlot()))
 
-DensTableArgs<-reactive({
-  list(
-    object=DensPlotArgs()$object,
-    group=DensPlotArgs()$densargs$group,
-    years=DensPlotArgs()$densargs$years,
-    values=DensPlotArgs()$densargs$values,
-    common=DensPlotArgs()$densargs$common
-  )
-})
+
 
 ##### jpeg Plot download ####
 output$densGraphDownload<-downloadHandler(
@@ -636,6 +622,20 @@ tempDensTableTitle<-reactive({
   
 output$densTableTitle<-renderText({ tempDensTableTitle() })  
 
+
+#### Data for Table ####
+DensTableArgs<-reactive({
+  list(
+    object=DensPlotArgs()$object,
+    group=DensPlotArgs()$densargs$group,
+    years=DensPlotArgs()$densargs$years,
+    values=DensPlotArgs()$densargs$values,
+    area=ifelse(DensPlotArgs()$densargs$values=="size","ha","plot"),
+    common=DensPlotArgs()$densargs$common
+  )
+})
+
+
 #### Make Table ####
 
 tempDensTable<-reactive({
@@ -647,7 +647,8 @@ tempDensTable<-reactive({
           ))
   TableOut<-do.call(dens,DensTableArgs())
   names(TableOut)<-c("Species",'Mean',"Lower 95% CI", "Upper 95% CI")
-  return(TableOut)}
+  return(TableOut)
+    }
   
 })
 
