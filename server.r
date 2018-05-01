@@ -24,6 +24,7 @@ names(ParkList)<-getNames(VegData)
 
 ParkBounds<-read.csv("boundboxes.csv", as.is=TRUE)
 
+DataCycles<-getCycles(VegData[[1]])  #assumes that first park has all the cycles
 ##### Begin Server Function ####
 
 shinyServer(function(input,output,session){
@@ -87,10 +88,22 @@ shinyServer(function(input,output,session){
     Forested<-readOGR(dsn="./Maps/Forests.geojson")#,"OGRGeoJSON")
     Soil<-readOGR(dsn="./Maps/Soils.geojson")#,"OGRGeoJSON")
   })
-  
-# Map Years 
-  MapYears<-reactive({ (input$MapYear-3) : input$MapYear  })   
-  
+
+#Map Cycles
+
+  output$MapCycleControl<-renderUI({
+    req(DataCycles)
+    selectInput(inputId="MapCycles", label="Display data from years:", 
+      choices=rev(setNames(as.character(DataCycles$Cycle), paste0(DataCycles$Name,": ",
+                                DataCycles$YearStart,"-",DataCycles$YearEnd)))
+    )
+})
+
+  MapYears<-reactive({
+    req(input$MapCycles)
+    (DataCycles %>% filter(Cycle==input$MapCycles) %>% pull(YearStart)) : 
+      (DataCycles %>% filter(Cycle==input$MapCycles) %>% pull(YearEnd))
+  })
   
 # Map MetaData
   MapMetaData<-reactive({
@@ -352,9 +365,23 @@ output$densParkControl<-renderUI({
                                 onInitialize = I('function() { this.setValue(""); }') )) 
 })
 
-#### Years to plot from control ####
-densYears<-reactive({ (input$densYear-3):input$densYear })
+   
+#### Dens Cycles ####
+output$densCycleControl<-renderUI({
+     req(DataCycles)
+     selectInput(inputId="densCycles", label="Display data from years:", 
+       choices=rev(setNames(as.character(DataCycles$Cycle), paste0(DataCycles$Name,": ",
+                                           DataCycles$YearStart,"-",DataCycles$YearEnd)))
+     )
+})
 
+#### Dens Years ####
+densYears<-reactive({
+     req(input$densCycles)
+     (DataCycles %>% filter(Cycle==input$densCycles) %>% pull(YearStart)) : 
+       (DataCycles %>% filter(Cycle==input$densCycles) %>% pull(YearEnd))
+})
+   
 
 ##### Data to display control for density plot ####
 DensValuesUse<-reactive({
@@ -362,7 +389,6 @@ DensValuesUse<-reactive({
          trees=,saplings=c(Abundance="count", "Basal Area"="size", "Proportion of Plots Occupied"="presab"),
          seedlings=,shseedlings=,shrubs=,vines=c(Abundance="count","Proportion of Plots Occupied"="presab"),
          herbs=c("Percent Cover"="size","Proportion of Plots Occupied"="presab")
-         
   )
 })
 
@@ -400,6 +426,14 @@ output$densSpeciesControl<-renderUI({
 #### Control for comparison ####
 
 
+#### Compare Years ####
+compYears<-reactive({
+  req(input$compCycles)
+  (DataCycles %>% filter(Cycle==input$compCycles) %>% pull(YearStart)) : 
+    (DataCycles %>% filter(Cycle==input$compCycles) %>% pull(YearEnd))
+})
+
+
 output$CompareSelect<-renderUI({
   switch(input$CompareType, 
     None=,return(),
@@ -418,26 +452,29 @@ output$CompareSelect<-renderUI({
                     )
                   ),
     Time=tags$div(title= "Choose a second range of years",
-                sliderInput(inputId="CompareYear", label="Display data from the 4 years ending:", min=Years$Start+Years$Range-1, 
-                            max=Years$End, value=Years$End,  sep="", step=1,ticks=T))
+          selectInput(inputId="compCycles", label="Display data from years:", 
+            choices=rev(setNames(as.character(DataCycles$Cycle), paste0(DataCycles$Name,": ",
+                                              DataCycles$YearStart,"-",DataCycles$YearEnd)))
+          )
+    )
   )
 })
 
+
+#### This is currently disabled while the output of dens() for all 0s is reconsidered
 #### Need Compare species to keep the number of species to display to accepted number ####
-CompareSpecies<-reactive({
-  if(input$CompareType=="None") {NA} else {
-    switch(input$densSpeciesType,
-      Common=getPlantNames( object=VegData[[input$densPark]], out.style="Latin", 
-              in.style= ifelse(input$densCommon, "common", "Latin"),
-              names= as.character(dens(object=VegData[[input$densPark]], group=input$densGroup, years=densYears(),
-                    values=input$densvalues, Total=F, common=input$densCommon)[order(-dens(object=VegData[[input$densPark]],
-                    group=input$densGroup, years=densYears(),values=input$densvalues, common=input$densCommon, 
-                    Total=F)["Mean"]),][1:input$densTop,1] )),
-      Pick=input$densSpecies,
-      All=NA
-    )
-  }
-})
+# CompareSpecies<-reactive({
+#   req(input$CompareType)
+#     switch(input$densSpeciesType,
+#       Common=getPlantNames( object=VegData[[input$densPark]], out.style="Latin", 
+#               in.style="Latin",
+#               names= as.character(dens(object=VegData[[input$densPark]], group=input$densGroup, years=densYears(),
+#                     values=input$densvalues, Total=F, common=F) %>% arrange(desc(Mean)) %>% slice(1:input$densTop) %>% pull(Latin_Name))
+#         ),
+#       Pick=input$densSpecies,
+#       All=NA
+#     )
+# })
 
 
 #### make compare and labels arguments for densplot() ####
@@ -447,12 +484,18 @@ DensCompare<-reactive({switch(input$CompareType,
     Park=  if (is.null(input$ComparePark) || nchar(input$ComparePark)==0) {return(NA)}
       else{
         return(list(object=VegData[input$ComparePark], group=input$densGroup,  years=densYears(),
-                    values=input$densvalues, species=CompareSpecies(), common=input$densCommon, area=ifelse(input$densvalues=="size","ha","plot" ) ))
+                    values=input$densvalues, 
+                    #species=CompareSpecies(), 
+                    common=input$densCommon, area=if(input$densvalues=="size") "ha" else "plot" ) )
       },
     "Growth Stage"=return(list(object=VegData[input$densPark], group=input$CompareGroup, years=densYears(),
-                    values=input$densvalues, species=CompareSpecies(),common=input$densCommon, area=ifelse(input$densvalues=="size","ha","plot" ) )),
-    Time=return(list(object=VegData[input$densPark], group=input$densGroup, years=c((input$CompareYear-3):input$CompareYear),
-                     values=input$densvalues, species=CompareSpecies(),common=input$densCommon,area=ifelse(input$densvalues=="size","ha","plot" )))
+                    values=input$densvalues,
+                    #species=CompareSpecies(),
+                    common=input$densCommon,area=if(input$densvalues=="size") "ha" else "plot" ) ),
+    Time=return(list(object=VegData[input$densPark], group=input$densGroup, years=compYears(),
+                     values=input$densvalues, 
+                     #species=CompareSpecies(),
+                     common=input$densCommon,area=if(input$densvalues=="size") "ha" else "plot" ))
     )
 })
 
@@ -465,9 +508,11 @@ DensLabels<-reactive({switch(input$CompareType,
     "Growth Stage"=if (is.null(input$CompareGroup) || nchar(input$CompareGroup)==0) {return(NA)}
             else{ return(c(DensLabelData[DensLabelData$Name==input$densGroup,]$Label,
                            DensLabelData[DensLabelData$Name==input$CompareGroup,]$Label))},
-    Time=if (is.null(input$CompareYear) || nchar(input$CompareYear)==0) {return(NA)}
-              else{return(c( paste0(as.character(input$densYear-3),"-",as.character(input$densYear)),
-                  paste0(as.character(input$CompareYear-3),"-",as.character(input$CompareYear)) ))}
+    Time=if (is.null(input$compCycles) || nchar(input$compCycles)==0) {return(NA)}
+              else{ return( 
+                c( paste0(as.character(min(densYears())),"-",as.character(max(densYears()))),
+                  paste0(as.character(min(compYears())),"-",as.character(max(compYears()))))
+                  )}
   ) 
 })
 
@@ -527,16 +572,16 @@ densTitleValues<-reactive({
 DensTitle<-reactive({
   switch(input$CompareType,
          None=  return(paste(getNames(VegData[input$densPark],"long"),":",densTitleGroup(),densTitleValues(), 
-               paste0(as.character(input$densYear-3),"-",as.character(input$densYear)) )),
+               paste0(as.character(min(densYears())),"-",as.character(max(densYears()))) )),
          Park=return(paste(getNames(VegData[input$densPark],"long"),"vs.",getNames(VegData[input$ComparePark],"long"),":",
                            densTitleGroup(),densTitleValues(), 
-                           paste0(as.character(input$densYear-3),"-",as.character(input$densYear)) )),
+                           paste0(as.character(min(densYears())),"-",as.character(max(densYears()))) )),
          "Growth Stage"= return(paste(getNames(VegData[input$densPark],"long"),":",densTitleGroup(),"vs.",
                                       compareTitleGroup(), densTitleValues(), 
-                                      paste0(as.character(input$densYear-3),"-",as.character(input$densYear)) )),
+                                      paste0(as.character(min(densYears())),"-",as.character(max(densYears()))) )),
          Time=return(paste(getNames(VegData[input$densPark],"long"),":",densTitleGroup(),densTitleValues(), 
-                           paste0(as.character(input$densYear-3),"-",as.character(input$densYear)),"vs.",
-                           paste0(as.character(input$CompareYear-3),"-",as.character(input$CompareYear)) ))
+                           paste0(as.character(min(densYears())),"-",as.character(max(densYears()))),"vs.",
+                           paste0(as.character(min(compYears())),"-",as.character(max(compYears()))) ))
   )
 })
 
@@ -555,7 +600,7 @@ DensPlotArgs<-reactive({
         Common=  {species=NA},
         All= {species=NA}
       ),
-      area=ifelse(input$densvalues=="size","ha","plot" )
+      area=if(input$densvalues=="size") "ha" else "plot" 
     ),
     compare=list(DensCompare()),
     labels=DensLabels(),
@@ -615,9 +660,9 @@ output$densWmfDownload<-downloadHandler(
 #### Title for table ####
 tempDensTableTitle<-reactive({
   validate(need(try(paste(getNames(VegData[input$densPark],"long"),":",densTitleGroup(),densTitleValues(), 
-                          paste0(as.character(input$densYear-3),"-",as.character(input$densYear),"(",densYlabel(),")") )), message=FALSE) )
+                          paste0(as.character(min(densYears())),"-",as.character(max(densYears())),"(",densYlabel(),")") )), message=FALSE) )
   paste(getNames(VegData[input$densPark],"long"),":",densTitleGroup(),densTitleValues(), 
-        paste0(as.character(input$densYear-3),"-",as.character(input$densYear) ," (",densYlabel(),")") )
+        paste0(as.character(min(densYears())),"-",as.character(max(densYears())) ," (",densYlabel(),")") )
 })
   
 output$densTableTitle<-renderText({ tempDensTableTitle() })  
@@ -672,7 +717,22 @@ output$IVParkControl<-renderUI({
 })
 
 #### All arguments for IVPlot ####
-IVYears<-reactive({ (input$IVYear-3):input$IVYear})
+
+#IV Cycles
+
+output$IVCycleControl<-renderUI({
+  req(DataCycles)
+  selectInput(inputId="IVCycles", label="Display data from years:", 
+    choices=rev(setNames(as.character(DataCycles$Cycle), paste0(DataCycles$Name,": ",
+                                      DataCycles$YearStart,"-",DataCycles$YearEnd)))
+  )
+})
+
+IVYears<-reactive({
+  req(input$IVCycles)
+  (DataCycles %>% filter(Cycle==input$IVCycles) %>% pull(YearStart)) : 
+    (DataCycles %>% filter(Cycle==input$IVCycles) %>% pull(YearEnd))
+})
 
 #### Title for IVPlot ####
 IVTitleGroup<-reactive({
@@ -688,7 +748,7 @@ IVTitleGroup<-reactive({
          
 IVTitle<-reactive({
   return(paste(getNames(VegData[input$IVPark],"long"),":","\n", IVTitleGroup(),"Importance Values", 
-                             paste0(as.character(input$IVYear-3),"-",as.character(input$IVYear)) ))
+                             paste0(as.character(min(IVYears())),"-",as.character(max(IVYears()))) ))
          
 })
 

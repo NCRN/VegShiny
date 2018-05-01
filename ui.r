@@ -30,9 +30,10 @@ navbarPage(title=HTML("<div> <a href=",NetworkURL,"> <img src='ah_small_black.gi
             tags$div(title="Choose the type of plant you want to work with", selectInput(inputId="MapGroup", 
               label="Type of plant:", choices=PlantTypes)),
             tags$div(title="Type of data to map",uiOutput("PlantValueControl")),
-            tags$div(title="Choose the four year period you want to work with.", sliderInput(inputId="MapYear", 
-                  label="Display data from the 4 years ending:", min=Years$Start+Years$Range-1, max=Years$End, value=Years$End,
-                  sep="", step=1,ticks=T)),
+            tags$div(title="Choose the time period you want to work with.", uiOutput("MapCycleControl")),
+            #tags$div(title="Choose the four year period you want to work with.", sliderInput(inputId="MapYear", 
+             #     label="Display data from the 4 years ending:", min=Years$Start+Years$Range-1, max=Years$End, value=Years$End,
+              #    sep="", step=1,ticks=T)),
             tags$div(title="Toggle between common and scientific names",
                              checkboxInput(inputId="mapCommon", label="Show common names?", value=TRUE )),
             tags$div(title="Choose a species of plants to map", uiOutput("MapSpeciesControl")),  
@@ -97,11 +98,12 @@ hidden(
               tags$div(title="Choose a park to work with.",
                        uiOutput(outputId="densParkControl")
               ),
-              tags$div(title="Pick the four year period you want to graph",
-                       sliderInput(inputId="densYear", label="Display data from the 4 years ending:", 
-                                   min=Years$Start+Years$Range-1, max=Years$End, value=Years$End,
-                                   sep="", step=1,ticks=T)
-              ),
+              tags$div(title="Choose the time period you want to work with.", uiOutput("densCycleControl")),
+              # tags$div(title="Pick the four year period you want to graph",
+              #          sliderInput(inputId="densYear", label="Display data from the 4 years ending:", 
+              #                      min=Years$Start+Years$Range-1, max=Years$End, value=Years$End,
+              #                      sep="", step=1,ticks=T)
+              # ),
               tags$div(title="Choose the type of plant you want to work with", 
                 selectizeInput(inputId="densGroup", label="Type of plant:",   choices=PlantTypes)
               ),
@@ -204,11 +206,12 @@ hidden(
                 checkboxInput(inputId="IVCommon", label="Show common names?", value=TRUE)
               ),
               br(),
-              tags$div(
-                title="Pick the four year period you want to graph",
-                sliderInput(inputId="IVYear", label="Display data from the 4 years ending:", min=Years$Start+Years$Range-1, 
-                            max=Years$End, value=Years$End, sep="", step=1,ticks=T)
-              ),
+              # tags$div(
+              #   title="Pick the four year period you want to graph",
+              #   sliderInput(inputId="IVYear", label="Display data from the 4 years ending:", min=Years$Start+Years$Range-1, 
+              #               max=Years$End, value=Years$End, sep="", step=1,ticks=T)
+              # ),
+              tags$div(title="Choose the time period you want to work with.", uiOutput("IVCycleControl")),
               br(),
               tags$div(
                 title="Show density, size and disbribution separately",
