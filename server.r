@@ -24,6 +24,7 @@ names(ParkList)<-getNames(VegData)
 
 ParkBounds<-read.csv("boundboxes.csv", as.is=TRUE)
 
+DataCycles<-getCycles(VegData[[1]])  #assumes that first park has all the cycles
 ##### Begin Server Function ####
 
 shinyServer(function(input,output,session){
@@ -33,6 +34,7 @@ shinyServer(function(input,output,session){
 ### Maps  
     onclick(id="AboutMapButton", expr= toggle(id="AboutMapPanel"))
     onclick(id="CloseAboutMap", expr= toggle(id="AboutMapPanel")) 
+    onclick(id="VideoButton", expr= toggle(id="VideoPanel"))
     onclick(id="CloseVideo", expr= toggle(id="VideoPanel")) 
 ### Graphs
     onclick(id="densGraphButton", expr=toggle(id="GraphOptionsPanel"))
@@ -86,10 +88,22 @@ shinyServer(function(input,output,session){
     Forested<-readOGR(dsn="./Maps/Forests.geojson")#,"OGRGeoJSON")
     Soil<-readOGR(dsn="./Maps/Soils.geojson")#,"OGRGeoJSON")
   })
-  
-# Map Years 
-  MapYears<-reactive({ (input$MapYear-3) : input$MapYear  })   
-  
+
+#Map Cycles
+
+  output$MapCycleControl<-renderUI({
+    req(DataCycles)
+    selectInput(inputId="MapCycles", label="Display data from years:", 
+      choices=rev(setNames(as.character(DataCycles$Cycle), paste0(DataCycles$Name,": ",
+                                DataCycles$YearStart,"-",DataCycles$YearEnd)))
+    )
+})
+
+  MapYears<-reactive({
+    req(input$MapCycles)
+    (DataCycles %>% filter(Cycle==input$MapCycles) %>% pull(YearStart)) : 
+      (DataCycles %>% filter(Cycle==input$MapCycles) %>% pull(YearEnd))
+  })
   
 # Map MetaData
   MapMetaData<-reactive({
@@ -110,10 +124,8 @@ shinyServer(function(input,output,session){
     if(input$MapGroup != "herbs"){
       return(P %>% 
                left_join(SiteXSpec(object=VegData, group=input$MapGroup, years=MapYears(), 
-                       species= if(input$MapSpecies=="All") NA else input$MapSpecies, values=input$MapValues) %>% 
-               dplyr::select(Plot_Name,Total), by="Plot_Name") %>% 
-               mutate(Values=Total*10000/Size) %>% 
-               {if(input$MapValues=="size") mutate(.,Values=Values/10000) else .} #Covert to m^2 from cm^2/ha for basal area
+                       species= if(input$MapSpecies=="All") NA else input$MapSpecies, values=input$MapValues, area="ha") %>% 
+               dplyr::select(Plot_Name,Values=Total), by="Plot_Name")
       )
     } 
     
@@ -121,7 +133,7 @@ shinyServer(function(input,output,session){
       return(P %>% 
             mutate(Values=SiteXSpec(object=VegData,group=input$MapGroup, years=MapYears(),
                          species= if(input$MapSpecies=="All") NA else input$MapSpecies,
-                         values=input$MapValues)$Total/getArea(VegData[Unit_Code], group=input$MapGroup, type="count"))
+                         values=input$MapValues)$Total)#/getArea(VegData[Unit_Code], group=input$MapGroup, type="count"))
       )
     }
 })
@@ -178,9 +190,9 @@ shinyServer(function(input,output,session){
     leafletProxy("VegMap") %>%
     clearTiles() %>%
 
-    addTiles(group="Map", urlTemplate="//{s}.tiles.mapbox.com/v4/nps.397cfb9a,nps.3cf3d4ab,nps.b0add3e6/{z}/{x}/{y}.png?access_token=pk.eyJ1IjoibnBzIiwiYSI6IkdfeS1OY1UifQ.K8Qn5ojTw4RV1GwBlsci-Q",attribution=NPSAttrib, options=tileOptions(minZoom=8))%>%
+    addTiles(group="Map", urlTemplate="//{s}.tiles.mapbox.com/v4/nps.2yxv8n84,nps.jhd2e8lb/{z}/{x}/{y}.png?access_token=pk.eyJ1IjoibnBzIiwiYSI6IkdfeS1OY1UifQ.K8Qn5ojTw4RV1GwBlsci-Q",attribution=NPSAttrib, options=tileOptions(minZoom=8))%>%
     addTiles(group="Imagery", urlTemplate="//{s}.tiles.mapbox.com/v4/nps.2c589204,nps.25abf75b,nps.7531d30a/{z}/{x}/{y}.png?access_token=pk.eyJ1IjoibnBzIiwiYSI6IkdfeS1OY1UifQ.K8Qn5ojTw4RV1GwBlsci-Q",attribution=NPSAttrib, options=tileOptions(minZoom=8)) %>%
-    addTiles(group="Slate", urlTemplate="//{s}.tiles.mapbox.com/v4/nps.9e521899,nps.17f575d9,nps.e091bdaf/{z}/{x}/{y}.png?access_token=pk.eyJ1IjoibnBzIiwiYSI6IkdfeS1OY1UifQ.K8Qn5ojTw4RV1GwBlsci-Q", attribution=NPSAttrib, options=tileOptions(minZoom=8) ) %>%
+    addTiles(group="Slate", urlTemplate="//{s}.tiles.mapbox.com/v4/nps.68926899,nps.502a840b/{z}/{x}/{y}.png?access_token=pk.eyJ1IjoibnBzIiwiYSI6IkdfeS1OY1UifQ.K8Qn5ojTw4RV1GwBlsci-Q", attribution=NPSAttrib, options=tileOptions(minZoom=8) ) %>%
      addLayersControl(map=., baseGroups=c("Map","Imagery","Slate"), options=layersControlOptions(collapsed=T))
   })
   
@@ -303,42 +315,36 @@ shinyServer(function(input,output,session){
       content<-as.character(tagList(tags$h6("None found on this plot")))
     } else {
 
-      tempData<- if(input$MapGroup != "herbs" && input$MapValues != "size"){
-        (10000/getArea(VegData[[selectedPlot$Unit_Code]],group=input$MapGroup,type="all")) *
+      tempData<- if(input$MapGroup != "herbs"){ 
         SiteXSpec(object=VegData[[selectedPlot$Unit_Code]],group=input$MapGroup, years=selectedPlot$Year,
-        plots=ShapeClick$id, values=input$MapValues, common=input$mapCommon)[-1]
+        plots=ShapeClick$id, values=input$MapValues,area="ha", common=input$mapCommon)[-1]
 
-        } else {
+      } else {
 
-        if(input$MapGroup != "herbs" && input$MapValues == "size"){
-          (10000/getArea(VegData[[selectedPlot$Unit_Code]],group=input$MapGroup,type="all")) * (  #need to convert to m^2/ha from cm^2/ha
-            SiteXSpec(object=VegData[[selectedPlot$Unit_Code]],group=input$MapGroup, years=selectedPlot$Year,
-            plots=ShapeClick$id,values=input$MapValues,common=input$mapCommon)[-1])/10000
-        } else {
 
-          if(input$MapGroup == "herbs"){
+        if(input$MapGroup == "herbs"){
             SiteXSpec(object=VegData[[selectedPlot$Unit_Code]], group=input$MapGroup, years=selectedPlot$Year,
-            plots=ShapeClick$id,values=input$MapValues,common=input$mapCommon)[-1]/12
-          }
+            plots=ShapeClick$id,values=input$MapValues,common=input$mapCommon)[-1]
         }
-        }
+    }
+  
 
-      content<-paste0( h5(getNames(VegData[[selectedPlot$Unit_Code]],"long")),
-                    h6("Monitoring Plot:",selectedPlot$Plot_Name),
-                    h6("Year Monitored:",selectedPlot$Year),
-                    h6("Species: ",MapMetaData()$Title),
-                    tagList(tags$table(
-                      mapply(FUN=function(Name,Value){
-                        tags$tr(
-                          tags$td(sprintf("%s:  ", Name)),
-                          tags$td(align="right",sprintf("%s", format(signif(Value,2), big.mark=",")))
-                        )
-                      },
-                      Name=names(tempData),
-                      Value=unlist(tempData), SIMPLIFY=FALSE
-                      )))
+    content<-paste0( h5(getNames(VegData[[selectedPlot$Unit_Code]],"long")),
+                  h6("Monitoring Plot:",selectedPlot$Plot_Name),
+                  h6("Year Monitored:",selectedPlot$Year),
+                  h6("Species: ",MapMetaData()$Title),
+                  tagList(tags$table(
+                    mapply(FUN=function(Name,Value){
+                      tags$tr(
+                        tags$td(sprintf("%s:  ", Name)),
+                        tags$td(align="right",sprintf("%s", format(signif(Value,2), big.mark=",")))
+                      )
+                    },
+                    Name=names(tempData),
+                    Value=unlist(tempData), SIMPLIFY=FALSE
+                    )))
 
-      )
+    )
     }
 
     leafletProxy("VegMap") %>%
@@ -359,9 +365,23 @@ output$densParkControl<-renderUI({
                                 onInitialize = I('function() { this.setValue(""); }') )) 
 })
 
-#### Years to plot from control ####
-densYears<-reactive({ (input$densYear-3):input$densYear })
+   
+#### Dens Cycles ####
+output$densCycleControl<-renderUI({
+     req(DataCycles)
+     selectInput(inputId="densCycles", label="Display data from years:", 
+       choices=rev(setNames(as.character(DataCycles$Cycle), paste0(DataCycles$Name,": ",
+                                           DataCycles$YearStart,"-",DataCycles$YearEnd)))
+     )
+})
 
+#### Dens Years ####
+densYears<-reactive({
+     req(input$densCycles)
+     (DataCycles %>% filter(Cycle==input$densCycles) %>% pull(YearStart)) : 
+       (DataCycles %>% filter(Cycle==input$densCycles) %>% pull(YearEnd))
+})
+   
 
 ##### Data to display control for density plot ####
 DensValuesUse<-reactive({
@@ -369,7 +389,6 @@ DensValuesUse<-reactive({
          trees=,saplings=c(Abundance="count", "Basal Area"="size", "Proportion of Plots Occupied"="presab"),
          seedlings=,shseedlings=,shrubs=,vines=c(Abundance="count","Proportion of Plots Occupied"="presab"),
          herbs=c("Percent Cover"="size","Proportion of Plots Occupied"="presab")
-         
   )
 })
 
@@ -407,6 +426,14 @@ output$densSpeciesControl<-renderUI({
 #### Control for comparison ####
 
 
+#### Compare Years ####
+compYears<-reactive({
+  req(input$compCycles)
+  (DataCycles %>% filter(Cycle==input$compCycles) %>% pull(YearStart)) : 
+    (DataCycles %>% filter(Cycle==input$compCycles) %>% pull(YearEnd))
+})
+
+
 output$CompareSelect<-renderUI({
   switch(input$CompareType, 
     None=,return(),
@@ -425,25 +452,29 @@ output$CompareSelect<-renderUI({
                     )
                   ),
     Time=tags$div(title= "Choose a second range of years",
-                sliderInput(inputId="CompareYear", label="Display data from the 4 years ending:", min=Years$Start+Years$Range-1, 
-                            max=Years$End, value=Years$End,  sep="", step=1,ticks=T))
+          selectInput(inputId="compCycles", label="Display data from years:", 
+            choices=rev(setNames(as.character(DataCycles$Cycle), paste0(DataCycles$Name,": ",
+                                              DataCycles$YearStart,"-",DataCycles$YearEnd)))
+          )
+    )
   )
 })
+
+
+#### This is currently disabled while the output of dens() for all 0s is reconsidered
 #### Need Compare species to keep the number of species to display to accepted number ####
-CompareSpecies<-reactive({
-  if(input$CompareType=="None") {NA} else {
-    switch(input$densSpeciesType,
-      Common=getPlantNames( object=VegData[[input$densPark]], out.style="Latin", 
-              in.style= ifelse(input$densCommon, "common", "Latin"),
-              names= as.character(dens(object=VegData[[input$densPark]], group=input$densGroup, years=densYears(),
-                    values=input$densvalues, Total=F, common=input$densCommon)[order(-dens(object=VegData[[input$densPark]],
-                    group=input$densGroup, years=densYears(),values=input$densvalues, common=input$densCommon, 
-                    Total=F)["Mean"]),][1:input$densTop,1] )),
-      Pick=input$densSpecies,
-      All=NA
-    )
-  }
-})
+# CompareSpecies<-reactive({
+#   req(input$CompareType)
+#     switch(input$densSpeciesType,
+#       Common=getPlantNames( object=VegData[[input$densPark]], out.style="Latin", 
+#               in.style="Latin",
+#               names= as.character(dens(object=VegData[[input$densPark]], group=input$densGroup, years=densYears(),
+#                     values=input$densvalues, Total=F, common=F) %>% arrange(desc(Mean)) %>% slice(1:input$densTop) %>% pull(Latin_Name))
+#         ),
+#       Pick=input$densSpecies,
+#       All=NA
+#     )
+# })
 
 
 #### make compare and labels arguments for densplot() ####
@@ -453,12 +484,18 @@ DensCompare<-reactive({switch(input$CompareType,
     Park=  if (is.null(input$ComparePark) || nchar(input$ComparePark)==0) {return(NA)}
       else{
         return(list(object=VegData[input$ComparePark], group=input$densGroup,  years=densYears(),
-                    values=input$densvalues, species=CompareSpecies(), common=input$densCommon ))
+                    values=input$densvalues, 
+                    #species=CompareSpecies(), 
+                    common=input$densCommon, area=if(input$densvalues=="size") "ha" else "plot" ) )
       },
     "Growth Stage"=return(list(object=VegData[input$densPark], group=input$CompareGroup, years=densYears(),
-                    values=input$densvalues, species=CompareSpecies(),common=input$densCommon )),
-    Time=return(list(object=VegData[input$densPark], group=input$densGroup, years=c((input$CompareYear-3):input$CompareYear),
-                     values=input$densvalues, species=CompareSpecies(),common=input$densCommon))
+                    values=input$densvalues,
+                    #species=CompareSpecies(),
+                    common=input$densCommon,area=if(input$densvalues=="size") "ha" else "plot" ) ),
+    Time=return(list(object=VegData[input$densPark], group=input$densGroup, years=compYears(),
+                     values=input$densvalues, 
+                     #species=CompareSpecies(),
+                     common=input$densCommon,area=if(input$densvalues=="size") "ha" else "plot" ))
     )
 })
 
@@ -471,9 +508,11 @@ DensLabels<-reactive({switch(input$CompareType,
     "Growth Stage"=if (is.null(input$CompareGroup) || nchar(input$CompareGroup)==0) {return(NA)}
             else{ return(c(DensLabelData[DensLabelData$Name==input$densGroup,]$Label,
                            DensLabelData[DensLabelData$Name==input$CompareGroup,]$Label))},
-    Time=if (is.null(input$CompareYear) || nchar(input$CompareYear)==0) {return(NA)}
-              else{return(c( paste0(as.character(input$densYear-3),"-",as.character(input$densYear)),
-                  paste0(as.character(input$CompareYear-3),"-",as.character(input$CompareYear)) ))}
+    Time=if (is.null(input$compCycles) || nchar(input$compCycles)==0) {return(NA)}
+              else{ return( 
+                c( paste0(as.character(min(densYears())),"-",as.character(max(densYears()))),
+                  paste0(as.character(min(compYears())),"-",as.character(max(compYears()))))
+                  )}
   ) 
 })
 
@@ -489,7 +528,7 @@ densYlabel<-reactive({
       vines="Vines on Trees / ha"
     ),
     size=switch(input$densGroup,
-      trees=,saplings="Basal area cm2/ ha",
+      trees=,saplings="Basal area m2/ ha",
       herbs="Percent Cover"
     ),
     presab="Proportion of Plots Occupied"
@@ -533,16 +572,16 @@ densTitleValues<-reactive({
 DensTitle<-reactive({
   switch(input$CompareType,
          None=  return(paste(getNames(VegData[input$densPark],"long"),":",densTitleGroup(),densTitleValues(), 
-               paste0(as.character(input$densYear-3),"-",as.character(input$densYear)) )),
+               paste0(as.character(min(densYears())),"-",as.character(max(densYears()))) )),
          Park=return(paste(getNames(VegData[input$densPark],"long"),"vs.",getNames(VegData[input$ComparePark],"long"),":",
                            densTitleGroup(),densTitleValues(), 
-                           paste0(as.character(input$densYear-3),"-",as.character(input$densYear)) )),
+                           paste0(as.character(min(densYears())),"-",as.character(max(densYears()))) )),
          "Growth Stage"= return(paste(getNames(VegData[input$densPark],"long"),":",densTitleGroup(),"vs.",
                                       compareTitleGroup(), densTitleValues(), 
-                                      paste0(as.character(input$densYear-3),"-",as.character(input$densYear)) )),
+                                      paste0(as.character(min(densYears())),"-",as.character(max(densYears()))) )),
          Time=return(paste(getNames(VegData[input$densPark],"long"),":",densTitleGroup(),densTitleValues(), 
-                           paste0(as.character(input$densYear-3),"-",as.character(input$densYear)),"vs.",
-                           paste0(as.character(input$CompareYear-3),"-",as.character(input$CompareYear)) ))
+                           paste0(as.character(min(densYears())),"-",as.character(max(densYears()))),"vs.",
+                           paste0(as.character(min(compYears())),"-",as.character(max(compYears()))) ))
   )
 })
 
@@ -560,7 +599,8 @@ DensPlotArgs<-reactive({
         Pick= {species=input$densSpecies},
         Common=  {species=NA},
         All= {species=NA}
-      )
+      ),
+      area=if(input$densvalues=="size") "ha" else "plot" 
     ),
     compare=list(DensCompare()),
     labels=DensLabels(),
@@ -594,15 +634,7 @@ tempDensPlot<-reactive({
 
 output$DensPlot<-renderPlot(print(tempDensPlot()))
 
-DensTableArgs<-reactive({
-  list(
-    object=DensPlotArgs()$object,
-    group=DensPlotArgs()$densargs$group,
-    years=DensPlotArgs()$densargs$years,
-    values=DensPlotArgs()$densargs$values,
-    common=DensPlotArgs()$densargs$common
-  )
-})
+
 
 ##### jpeg Plot download ####
 output$densGraphDownload<-downloadHandler(
@@ -616,9 +648,9 @@ output$densGraphDownload<-downloadHandler(
 
 ##### wmf plot download ####
 output$densWmfDownload<-downloadHandler(
-  filename=function(){paste(DensTitle(), ".png", sep="")}, 
+  filename=function(){paste(DensTitle(), ".wmf", sep="")}, 
   content=function (file){
-    png(file,width=15,height=6,res=300, units="in")
+    win.metafile(file,width=15,height=6)
     print(tempDensPlot())
     dev.off()
   }
@@ -628,12 +660,26 @@ output$densWmfDownload<-downloadHandler(
 #### Title for table ####
 tempDensTableTitle<-reactive({
   validate(need(try(paste(getNames(VegData[input$densPark],"long"),":",densTitleGroup(),densTitleValues(), 
-                          paste0(as.character(input$densYear-3),"-",as.character(input$densYear),"(",densYlabel(),")") )), message=FALSE) )
+                          paste0(as.character(min(densYears())),"-",as.character(max(densYears())),"(",densYlabel(),")") )), message=FALSE) )
   paste(getNames(VegData[input$densPark],"long"),":",densTitleGroup(),densTitleValues(), 
-        paste0(as.character(input$densYear-3),"-",as.character(input$densYear) ," (",densYlabel(),")") )
+        paste0(as.character(min(densYears())),"-",as.character(max(densYears())) ," (",densYlabel(),")") )
 })
   
 output$densTableTitle<-renderText({ tempDensTableTitle() })  
+
+
+#### Data for Table ####
+DensTableArgs<-reactive({
+  list(
+    object=DensPlotArgs()$object,
+    group=DensPlotArgs()$densargs$group,
+    years=DensPlotArgs()$densargs$years,
+    values=DensPlotArgs()$densargs$values,
+    area=ifelse(DensPlotArgs()$densargs$values=="size","ha","plot"),
+    common=DensPlotArgs()$densargs$common
+  )
+})
+
 
 #### Make Table ####
 
@@ -646,7 +692,8 @@ tempDensTable<-reactive({
           ))
   TableOut<-do.call(dens,DensTableArgs())
   names(TableOut)<-c("Species",'Mean',"Lower 95% CI", "Upper 95% CI")
-  return(TableOut)}
+  return(TableOut)
+    }
   
 })
 
@@ -670,7 +717,22 @@ output$IVParkControl<-renderUI({
 })
 
 #### All arguments for IVPlot ####
-IVYears<-reactive({ (input$IVYear-3):input$IVYear})
+
+#IV Cycles
+
+output$IVCycleControl<-renderUI({
+  req(DataCycles)
+  selectInput(inputId="IVCycles", label="Display data from years:", 
+    choices=rev(setNames(as.character(DataCycles$Cycle), paste0(DataCycles$Name,": ",
+                                      DataCycles$YearStart,"-",DataCycles$YearEnd)))
+  )
+})
+
+IVYears<-reactive({
+  req(input$IVCycles)
+  (DataCycles %>% filter(Cycle==input$IVCycles) %>% pull(YearStart)) : 
+    (DataCycles %>% filter(Cycle==input$IVCycles) %>% pull(YearEnd))
+})
 
 #### Title for IVPlot ####
 IVTitleGroup<-reactive({
@@ -686,7 +748,7 @@ IVTitleGroup<-reactive({
          
 IVTitle<-reactive({
   return(paste(getNames(VegData[input$IVPark],"long"),":","\n", IVTitleGroup(),"Importance Values", 
-                             paste0(as.character(input$IVYear-3),"-",as.character(input$IVYear)) ))
+                             paste0(as.character(min(IVYears())),"-",as.character(max(IVYears()))) ))
          
 })
 
