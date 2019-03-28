@@ -124,6 +124,7 @@ shinyServer(function(input,output,session){
     if(input$MapGroup != "herbs"){
       return(P %>% 
                left_join(SiteXSpec(object=VegData, group=input$MapGroup, years=MapYears(), 
+                                   status=input$TreeStatus,
                        species= if(input$MapSpecies=="All") NA else input$MapSpecies, values=input$MapValues, area="ha") %>% 
                dplyr::select(Plot_Name,Values=Total), by="Plot_Name")
       )
