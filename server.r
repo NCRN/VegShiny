@@ -36,6 +36,7 @@ shinyServer(function(input,output,session){
     onclick(id="CloseAboutMap", expr= toggle(id="AboutMapPanel")) 
     onclick(id="VideoButton", expr= toggle(id="VideoPanel"))
     onclick(id="CloseVideo", expr= toggle(id="VideoPanel")) 
+    toggle(id='TreeStatus', condition=input$MapGroup=='trees')
 ### Graphs
     onclick(id="densGraphButton", expr=toggle(id="GraphOptionsPanel"))
     onclick(id="CloseDisplayOptions", expr= toggle(id="GraphOptionsPanel"))
@@ -124,7 +125,7 @@ shinyServer(function(input,output,session){
     if(input$MapGroup != "herbs"){
       return(P %>% 
                left_join(SiteXSpec(object=VegData, group=input$MapGroup, years=MapYears(), 
-                                   status=input$TreeStatus,
+                                   status=if(input$MapGroup=='trees') input$TreeStatus else 'alive',
                        species= if(input$MapSpecies=="All") NA else input$MapSpecies, values=input$MapValues, area="ha") %>% 
                dplyr::select(Plot_Name,Values=Total), by="Plot_Name")
       )
