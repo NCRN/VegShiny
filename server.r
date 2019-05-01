@@ -314,13 +314,17 @@ shinyServer(function(input,output,session){
 
     if(
       class(try(SiteXSpec(object=VegData[[selectedPlot$Unit_Code]], group=input$MapGroup, years=selectedPlot$Year,
-            plots=ShapeClick$id, common=input$mapCommon), silent=TRUE))=="try-error") {
+            plots=ShapeClick$id, common=input$mapCommon,
+            status= if(input$MapGroup=='trees') input$TreeStatus else 'alive' 
+            ), silent=TRUE))=="try-error") {
       content<-as.character(tagList(tags$h6("None found on this plot")))
     } else {
 
       tempData<- if(input$MapGroup != "herbs"){ 
         SiteXSpec(object=VegData[[selectedPlot$Unit_Code]],group=input$MapGroup, years=selectedPlot$Year,
-        plots=ShapeClick$id, values=input$MapValues,area="ha", common=input$mapCommon)[-1]
+        plots=ShapeClick$id, values=input$MapValues,area="ha", common=input$mapCommon,
+        status= if(input$MapGroup=='trees') input$TreeStatus else 'alive'
+        )[-1]
 
       } else {
 
