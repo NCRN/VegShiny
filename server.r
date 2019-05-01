@@ -70,6 +70,7 @@ shinyServer(function(input,output,session){
     switch(input$MapGroup,
            trees=,saplings=c(Abundance="count", "Basal Area"="size"),
            seedlings=,shseedlings=,shrubs=,vines=c(Abundance="count"),
+           cwd=c("Volume"="size"),
            herbs=c("Percent Cover"="size")
            
     )
