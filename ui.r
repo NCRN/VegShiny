@@ -30,7 +30,7 @@ navbarPage(title=HTML("<div> <a href=",NetworkURL,"> <img src='ah_small_black.gi
             tags$div(title="Choose the type of plant you want to work with", selectInput(inputId="MapGroup", 
               label="Type of plant:", choices=PlantTypes)),
             tags$div(title="Choose live or dead", selectInput(inputId="TreeStatus", label="Live or dead",
-                                                              choices=c("Live"='alive',"Dead"='dead',"All"='all'))),
+                                                              choices=c("Live"='alive',"Dead"='snag',"All"='all'))),
             tags$div(title="Type of data to map",uiOutput("PlantValueControl")),
             tags$div(title="Choose the time period you want to work with.", uiOutput("MapCycleControl")),
             #tags$div(title="Choose the four year period you want to work with.", sliderInput(inputId="MapYear", 
