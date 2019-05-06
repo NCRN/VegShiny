@@ -395,7 +395,8 @@ DensValuesUse<-reactive({
   switch(input$densGroup,
          trees=,saplings=c(Abundance="count", "Basal Area"="size", "Proportion of Plots Occupied"="presab"),
          seedlings=,shseedlings=,shrubs=,vines=c(Abundance="count","Proportion of Plots Occupied"="presab"),
-         herbs=c("Percent Cover"="size","Proportion of Plots Occupied"="presab")
+         herbs=c("Percent Cover"="size","Proportion of Plots Occupied"="presab"),
+         cwd=c("Volume"="size")
   )
 })
 
@@ -536,7 +537,8 @@ densYlabel<-reactive({
     ),
     size=switch(input$densGroup,
       trees=,saplings="Basal area m2/ ha",
-      herbs="Percent Cover"
+      herbs="Percent Cover",
+      cwd='m3 / ha'
     ),
     presab="Proportion of Plots Occupied"
   )
@@ -551,7 +553,8 @@ densTitleGroup<-reactive({
          shrubs="Shrub",
          shseedlings="Shrub Seedlings",
          herbs="Understory Plant",
-         vines="Vines on Trees"
+         vines="Vines on Trees",
+         cwd='Coarse Woody Debrs'
          )  
 })
 compareTitleGroup<-reactive({
@@ -562,7 +565,8 @@ compareTitleGroup<-reactive({
          shrubs="Shrub",
          shseedlings="Shrub Seedling",
          herbs="Understory Plant",
-         vines="Vines on Trees"
+         vines="Vines on Trees",
+         cwd='Coarse Woody Debris'
   )  
 })
 
@@ -596,7 +600,7 @@ DensTitle<-reactive({
 #### All arguments for densityPlot ####
 DensPlotArgs<-reactive({
   list(
-    object=VegData[input$densPark],
+    object=VegData[[input$densPark]],
     densargs=list(
       group=input$densGroup,
       years=densYears(),
@@ -761,7 +765,7 @@ IVTitle<-reactive({
 
 IVPlotArgs<-reactive({
   list(
-    object=VegData[input$IVPark],
+    object=VegData[[input$IVPark]],
     IVargs=list(
       group=input$IVGroup,
       years=IVYears(),
