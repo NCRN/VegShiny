@@ -36,6 +36,7 @@ shinyServer(function(input,output,session){
     onclick(id="CloseAboutMap", expr= toggle(id="AboutMapPanel")) 
     onclick(id="VideoButton", expr= toggle(id="VideoPanel"))
     onclick(id="CloseVideo", expr= toggle(id="VideoPanel")) 
+    toggle(id='TreeStatus', condition=input$MapGroup=='trees')
 ### Graphs
     onclick(id="densGraphButton", expr=toggle(id="GraphOptionsPanel"))
     onclick(id="CloseDisplayOptions", expr= toggle(id="GraphOptionsPanel"))
@@ -69,6 +70,7 @@ shinyServer(function(input,output,session){
     switch(input$MapGroup,
            trees=,saplings=c(Abundance="count", "Basal Area"="size"),
            seedlings=,shseedlings=,shrubs=,vines=c(Abundance="count"),
+           cwd=c("Volume"="size"),
            herbs=c("Percent Cover"="size")
            
     )
@@ -124,6 +126,7 @@ shinyServer(function(input,output,session){
     if(input$MapGroup != "herbs"){
       return(P %>% 
                left_join(SiteXSpec(object=VegData, group=input$MapGroup, years=MapYears(), 
+                                   status=if(input$MapGroup=='trees') input$TreeStatus else 'alive',
                        species= if(input$MapSpecies=="All") NA else input$MapSpecies, values=input$MapValues, area="ha") %>% 
                dplyr::select(Plot_Name,Values=Total), by="Plot_Name")
       )
@@ -311,13 +314,17 @@ shinyServer(function(input,output,session){
 
     if(
       class(try(SiteXSpec(object=VegData[[selectedPlot$Unit_Code]], group=input$MapGroup, years=selectedPlot$Year,
-            plots=ShapeClick$id, common=input$mapCommon), silent=TRUE))=="try-error") {
+            plots=ShapeClick$id, common=input$mapCommon,
+            status= if(input$MapGroup=='trees') input$TreeStatus else 'alive' 
+            ), silent=TRUE))=="try-error") {
       content<-as.character(tagList(tags$h6("None found on this plot")))
     } else {
 
       tempData<- if(input$MapGroup != "herbs"){ 
         SiteXSpec(object=VegData[[selectedPlot$Unit_Code]],group=input$MapGroup, years=selectedPlot$Year,
-        plots=ShapeClick$id, values=input$MapValues,area="ha", common=input$mapCommon)[-1]
+        plots=ShapeClick$id, values=input$MapValues,area="ha", common=input$mapCommon,
+        status= if(input$MapGroup=='trees') input$TreeStatus else 'alive'
+        )[-1]
 
       } else {
 
@@ -388,7 +395,8 @@ DensValuesUse<-reactive({
   switch(input$densGroup,
          trees=,saplings=c(Abundance="count", "Basal Area"="size", "Proportion of Plots Occupied"="presab"),
          seedlings=,shseedlings=,shrubs=,vines=c(Abundance="count","Proportion of Plots Occupied"="presab"),
-         herbs=c("Percent Cover"="size","Proportion of Plots Occupied"="presab")
+         herbs=c("Percent Cover"="size","Proportion of Plots Occupied"="presab"),
+         cwd=c("Volume"="size")
   )
 })
 
@@ -529,7 +537,8 @@ densYlabel<-reactive({
     ),
     size=switch(input$densGroup,
       trees=,saplings="Basal area m2/ ha",
-      herbs="Percent Cover"
+      herbs="Percent Cover",
+      cwd='m3 / ha'
     ),
     presab="Proportion of Plots Occupied"
   )
@@ -544,7 +553,8 @@ densTitleGroup<-reactive({
          shrubs="Shrub",
          shseedlings="Shrub Seedlings",
          herbs="Understory Plant",
-         vines="Vines on Trees"
+         vines="Vines on Trees",
+         cwd='Coarse Woody Debrs'
          )  
 })
 compareTitleGroup<-reactive({
@@ -555,7 +565,8 @@ compareTitleGroup<-reactive({
          shrubs="Shrub",
          shseedlings="Shrub Seedling",
          herbs="Understory Plant",
-         vines="Vines on Trees"
+         vines="Vines on Trees",
+         cwd='Coarse Woody Debris'
   )  
 })
 
@@ -589,7 +600,7 @@ DensTitle<-reactive({
 #### All arguments for densityPlot ####
 DensPlotArgs<-reactive({
   list(
-    object=VegData[input$densPark],
+    object=VegData[[input$densPark]],
     densargs=list(
       group=input$densGroup,
       years=densYears(),
@@ -754,7 +765,7 @@ IVTitle<-reactive({
 
 IVPlotArgs<-reactive({
   list(
-    object=VegData[input$IVPark],
+    object=VegData[[input$IVPark]],
     IVargs=list(
       group=input$IVGroup,
       years=IVYears(),

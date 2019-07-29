@@ -1,16 +1,18 @@
 #### Network specific settings ####
-Network<-"NETN"
+Network<-"NCRN"
 NetworkURL<-switch(Network,
                    ERMN=, MIDN=, NCRN=, NETN = paste0('https://www.nps.gov/im/',tolower(Network)),
                    SHEN='https://www.nps.gov/shen/index.htm'
 )
 
 PlantTypes<-switch(Network,
-    ERMN=list(Trees='trees',Saplings="saplings","Tree seedlings"="seedlings", "Understory plants"="herbs"),
-    MIDN=list(Trees='trees',Saplings="saplings","Tree seedlings"="seedlings", "Understory plants"="herbs","Vines on Trees"="vines"),
+    ERMN=list(Trees='trees',Saplings="saplings","Tree seedlings"="seedlings", "Understory plants"="herbs","Coarse Woody Debris"='cwd'),
+    MIDN=list(Trees='trees',Saplings="saplings","Tree seedlings"="seedlings", "Understory plants"="herbs","Vines on Trees"="vines",
+              "Coarse Woody Debris"='cwd'),
     NCRN=list(Trees="trees",Saplings="saplings","Tree seedlings"="seedlings", Shrubs="shrubs", "Shrub seedlings"="shseedlings",
                 "Understory plants"="herbs","Vines on Trees"="vines"),
-    NETN=list(Trees="trees",Saplings="saplings","Tree seedlings"="seedlings", "Understory plants"="herbs","Vines on Trees"="vines"),
+    NETN=list(Trees="trees",Saplings="saplings","Tree seedlings"="seedlings", "Understory plants"="herbs","Vines on Trees"="vines", 
+              "Coarse Woody Debris"='cwd'),
     SHEN=list(Trees="trees",Saplings="saplings","Tree seedlings"="seedlings", Shrubs="shrubs", "Shrub seedlings"="shseedlings",
                "Understory plants"="herbs")
 )
@@ -112,6 +114,11 @@ MapLegend<-list(
       Title="Percent Cover",
       Cuts=c(-1,0,1,5,10,25,50,75,1000),
       Labels=c("0%","0 - 1%","1 - 5%","5 - 10%","10 - 25%","25 - 50%","50 - 75%","75%+")
+    ),
+    cwd=list(
+      Title="Volume m3 / hectare",
+      Cuts=c(-1,0,0.5, 1.5, 7.5,15,30,45,10000000),
+      Labels=c("0","0 - 0.5","0.5 - 1.5","1.5 - 7.5","7.5 - 15","15 - 30","30 - 45","45+")
     )
   )
 )
