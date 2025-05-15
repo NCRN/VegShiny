@@ -8,14 +8,14 @@ Start a new RStudio project from version control
 This is the url that you should clone: https://github.com/NCRN/VegShiny
 
 *terminal*
-Confirm that RStudio and Git know what github repo to push/pull
-`git remote -v`
-Check what branch you are on. You should start your project by branching from the `ncrn` branch
-`git status`
-Confirm that you have the latest version of the `ncrn` branch
-`git pull`
-Create a new branch for your ticket
-`git checkout -b <ticket_name_here>`
+Confirm that RStudio and Git know what github repo to push/pull  
+`git remote -v`  
+Check what branch you are on. You should start your project by branching from the `ncrn` branch  
+`git status`  
+Confirm that you have the latest version of the `ncrn` branch  
+`git pull`  
+Create a new branch for your ticket  
+`git checkout -b <ticket_name_here>`  
 
 *RStudio*
 In your project directory, make a new folder `Data`
