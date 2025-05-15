@@ -2,7 +2,7 @@ library(shiny)
 library(NPSForVeg)
 library(leaflet)
 library(lattice)
-library(rgdal)
+# library(rgdal)
 library(shinyjs)
 library(jsonlite,pos=100)
 library(httr)
@@ -85,11 +85,11 @@ shinyServer(function(input,output,session){
   
 #### Calculations ####
 # Load Layers
-  withProgress(message="Loading...Please Wait", value=1,{
-    Ecoregion<-readOGR(dsn="./Maps/Ecoregion.geojson")#,"OGRGeoJSON")
-    Forested<-readOGR(dsn="./Maps/Forests.geojson")#,"OGRGeoJSON")
-    Soil<-readOGR(dsn="./Maps/Soils.geojson")#,"OGRGeoJSON")
-  })
+  # withProgress(message="Loading...Please Wait", value=1,{
+  #   Ecoregion<-readOGR(dsn="./Maps/Ecoregion.geojson")#,"OGRGeoJSON")
+  #   Forested<-readOGR(dsn="./Maps/Forests.geojson")#,"OGRGeoJSON")
+  #   Soil<-readOGR(dsn="./Maps/Soils.geojson")#,"OGRGeoJSON")
+  # })
 
 #Map Cycles
 

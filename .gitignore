@@ -3,3 +3,8 @@
 .RData
 starter.R
 VegShiny.Rproj
+renv/
+.Rprofile
+*.Rproj
+sandbox.R
+Data/
