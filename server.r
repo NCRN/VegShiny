@@ -8,6 +8,7 @@ library(jsonlite,pos=100)
 library(httr)
 library(dplyr)
 library(DT)
+library(sf)
 
 #### Housekeeping prior to start of the server function ####
 VegData<-switch(Network,
@@ -90,7 +91,12 @@ shinyServer(function(input,output,session){
   #   Forested<-readOGR(dsn="./Maps/Forests.geojson")#,"OGRGeoJSON")
   #   Soil<-readOGR(dsn="./Maps/Soils.geojson")#,"OGRGeoJSON")
   # })
-
+  withProgress(message="Loading...Please Wait", value=1,{
+    Ecoregion<-sf::st_read(dsn="./Maps/Ecoregion.geojson", quiet= TRUE)
+    Forested<-sf::st_read(dsn="./Maps/Forests.geojson", quiet = TRUE)
+    Soil<-sf::st_read(dsn="./Maps/Soils.geojson", quiet = TRUE)
+  })
+  
 #Map Cycles
 
   output$MapCycleControl<-renderUI({
