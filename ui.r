@@ -75,14 +75,15 @@ navbarPage(title=HTML("<div> <a href=",NetworkURL,"> <img src='ah_small_black.gi
        )
      ),
 # #### Floating "About the map" Panel ####
-# hidden(
-#   fixedPanel(class="panel panel-primary controls",draggable=TRUE,cursor="auto",top=80,bottom="auto",height="520",
-#              left=450,width="500",id="AboutMapPanel",style="padding: 0px",
-#              div(class="panel-heading", h4("About the Map" )),
-#              div(class="panel-body",style="height: 400px;  overflow-y: scroll",  includeHTML("./www/AboutMap.html")),
-#              div(class="panel-footer", 
-#                  actionButton(inputId="CloseAboutMap",class="btn btn-primary",label="Close"))  )
-#   )
+hidden(
+  fixedPanel(class="panel panel-primary controls",#draggable=TRUE,
+             cursor="auto",top=80,bottom="auto",height="520",
+             left=450,width="500",id="AboutMapPanel",style="padding: 0px",
+             div(class="panel-heading", h4("About the Map" )),
+             div(class="panel-body",style="height: 400px;  overflow-y: scroll",  includeHTML("./www/AboutMap.html")),
+             div(class="panel-footer",
+                 actionButton(inputId="CloseAboutMap",class="btn btn-primary",label="Close"))  )
+  )
 ),  ## end of map page
 
 
