@@ -75,15 +75,13 @@ navbarPage(title=HTML("<div> <a href=",NetworkURL,"> <img src='ah_small_black.gi
        )
      ),
 # #### Floating "About the map" Panel ####
-hidden(
-  fixedPanel(class="panel panel-primary controls",#draggable=TRUE,
+  fixedPanel(class="panel panel-primary controls",draggable=TRUE,
              cursor="auto",top=80,bottom="auto",height="520",
-             left=450,width="500",id="AboutMapPanel",style="padding: 0px",
+             left=450,width="500",id="AboutMapPanel",style="padding: 0px; display:none;",
              div(class="panel-heading", h4("About the Map" )),
              div(class="panel-body",style="height: 400px;  overflow-y: scroll",  includeHTML("./www/AboutMap.html")),
              div(class="panel-footer",
                  actionButton(inputId="CloseAboutMap",class="btn btn-primary",label="Close"))  )
-  )
 ),  ## end of map page
 
 
@@ -151,10 +149,10 @@ hidden(
                 tabPanel(title=tags$div(title="Graph the data", "Graph"),value="Graph",
                   tags$div(title="Mean and 95% Confidence interval",
                   plotOutput(outputId="DensPlot", height="600px")),
-                 hidden(
-                    fixedPanel(class="panel panel-primary controls",#draggable=TRUE,
+             
+                    fixedPanel(class="panel panel-primary controls",draggable=TRUE,
                                cursor="auto",top=160,bottom="auto",height="auto",
-                               left=575,width="auto",id="GraphOptionsPanel",style="padding: 0px",
+                               left=575,width="auto",id="GraphOptionsPanel",style="padding: 0px; display: none;",
                       title="Display Options",
                     div(class="panel-heading", h4("Display Options")),
                     div(class="panel-body",
@@ -169,7 +167,7 @@ hidden(
                     )),
                   div(class="panel-footer",
                         actionButton(inputId="CloseDisplayOptions",class="btn btn-primary",label="Close"))
-                  ))
+                  )
                   
                   
                 ),
@@ -248,10 +246,10 @@ hidden(
               tabPanel(value="Graph",
                 tags$div(title="Graph the data","Graph"),
                 tags$div(title="Graph of IV",plotOutput("IVPlot",height="600px")),
-                hidden(
-                  fixedPanel(class="panel panel-primary controls",#draggable=TRUE,
+              
+                  fixedPanel(class="panel panel-primary controls",draggable=TRUE,
                              cursor="auto",top=160,bottom="auto",height="auto",
-                             left=575,width="auto",id="IVOptionsPanel",style="padding: 0px",title="Display Options",
+                             left=575,width="auto",id="IVOptionsPanel",style="padding: 0px; display: none;",title="Display Options",
                     div(class="panel-heading", h4("Display Options")),
                     div(class="panel-body",
                       flowLayout(
@@ -267,7 +265,6 @@ hidden(
                     ),
                     div(class="panel-footer", actionButton(inputId="CloseIVDisplayOptions",class="btn btn-primary",label="Close"))
                   )
-                )
               ),
               tabPanel(value="Table",
                 tags$div(title="See all data in a table","Data table"),
