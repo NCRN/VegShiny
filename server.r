@@ -13,7 +13,7 @@ library(DT)
 VegData<-switch(Network,
                 ERMN=importERMN("./Data/ERMN"),
                 MIDN=importMIDN("./Data/MIDN"),
-                NCRN=importNCRN("./Data/NCRN"),
+                NCRN=importNCRN("./Data/NCRN_norm"),
                 NETN=importNETN("./Data/NETN"),
                 SHEN=list(importSHEN("./Data/SHEN"))
 )
@@ -226,11 +226,16 @@ shinyServer(function(input,output,session){
    
   MapSpecList<-reactive({
     req(input$MapPark, input$MapGroup)
+    
     SpecTemp<-unique(getPlants(object=if(input$MapPark=="All") {VegData}  else {VegData[[input$MapPark]]} , group=input$MapGroup,
-                               years=MapYears(),common=F )$Latin_Name)
+                               years=MapYears(),common=F )$latin_name)
+    
     SpecNames<-getPlantNames(object=VegData[[1]], names=SpecTemp, in.style="Latin",out.style=ifelse(input$mapCommon,"common","Latin"))
+    
     names(SpecTemp)<-SpecNames
+    
     SpecTemp<-SpecTemp[order(tolower(names(SpecTemp)))]
+    
     SpecTemp<-c("All Species"="All", SpecTemp)
   })
 
