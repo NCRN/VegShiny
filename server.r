@@ -62,7 +62,9 @@ shinyServer(function(input,output,session){
   
   output$MapParkControl<-renderUI({
     selectInput(inputId="MapPark", label="Filter species list by park",
-                choices=c("All Parks"="All",ParkList) )
+                choices=c("All Parks"="All",ParkList)
+                # , selected = "ANTI"
+                )
   })
   
 # Data to display control for Map 
@@ -233,7 +235,7 @@ shinyServer(function(input,output,session){
         ritis::common_names(tsn),
         error = function(e) NULL)
       cn <- cn %>%
-        dplyr::filter(language == "English") %>%
+        dplyr::filter(language %in% c("English", "unspecified")) %>%
         dplyr::mutate(name_word_count = lengths(strsplit(commonName, "\\s+"))) %>%
         dplyr::filter(!(name_word_count == 1 & any(name_word_count >= 2))) %>%
         dplyr::slice(1)
@@ -252,51 +254,78 @@ shinyServer(function(input,output,session){
     
     return(cn_df)
   }
+  ### extract Trees for all Parks ###
   
-  selected_tsn_list <- reactive({
+  selected_object <- reactive({
+    
     req(input$MapGroup)
+    rep(input$MapPark)
+    
     actual_slot_name <- PlantSlotLookup[[input$MapGroup]]
     validate(
       need(!is.null(actual_slot_name), "Selected plant group is not available in this network")
     )
-    selected_data <- slot(VegData[[1]], actual_slot_name)
-    tsn_list <- as.character(unique(selected_data$TSN))
+    
+    if (input$MapPark == "All") {
+      selected_list <- VegData
+    } else {
+      selected_list <- list(VegData[[input$MapPark]])
+    }
+    
+    vegdata_df <- selected_list %>%
+      lapply(function(obj) slot(obj, actual_slot_name)) %>%
+      dplyr::bind_rows() %>%
+      as.data.frame() %>% 
+      filter(Latin_Name != "Unknown")
+    
+    return(vegdata_df)
+  })
+  
+  getTSNlist <- reactive({
+    
+    vegdata_df <- selected_object()
+    
+    tsn_list<- as.character(unique(vegdata_df$TSN))
+    bad_tsns <- c("19243", "-400000")   # may have to update with non-Tree bad TSNs
+    tsn_list <- tsn_list[!tsn_list %in% bad_tsns]
+    
     return(tsn_list)
   })
-  
-  cn_df <- reactive({
-    req(selected_tsn_list())
-    getCNdf(selected_tsn_list())
-  })
-  
+    
+  returnCNdf <- reactive({
+    
+    tsn_list <- getTSNlist()
+    cn_df <- getCNdf(tsn_list)
+    
+    return(cn_df)
+  })  
   
   ### generate lookup table for getPlantNames ###
   
-  
-  plants_merged <- reactive({
+  plants_lookup <- reactive({
     req(input$MapGroup)
-    req(cn_df())
+    req(input$MapPark)
     
     actual_slot_name <- PlantSlotLookup[[input$MapGroup]]
     validate(
       need(!is.null(actual_slot_name), "Selected plant group is not available in this network")
     )
-    plants_df <- as.data.frame(slot(VegData[[1]], actual_slot_name))
     
-    plants_df$TSN <- as.character(plants_df$TSN)
-    cn_df_curr <- cn_df()
-    cn_df_curr$TSN <- as.character(cn_df_curr$TSN)
+    vegdata_df <- selected_object()
+    vegdata_df$TSN <- as.character(vegdata_df$TSN)
     
-    merged <- dplyr::left_join(plants_df, cn_df_curr, by = "TSN")
+    cn_df <- returnCNdf()
+    cn_df$TSN <- as.character(cn_df$TSN)
     
-    return(merged)
-  })
+    plants_merged <- dplyr::left_join(vegdata_df, cn_df, by = "TSN")
+    plants_lookup <- plants_merged %>%
+      dplyr::distinct(Latin_Name, Common, .keep_all = FALSE) %>%
+      dplyr::mutate(Common = ifelse(Latin_Name == "Carya ovata", "shagbark hickory", Common)) %>%
+      dplyr::mutate(Common = ifelse(Latin_Name == "Pyrus betulifolia","birchleaf pear", Common))
+    
+    return(plants_lookup)
+  })  
   
-  plants_lookup <- reactive({
-    req(plants_merged())
-    plants_merged() %>%
-      dplyr::distinct(Latin_Name, Common, .keep_all = FALSE)
-  })
   
 #List of names, elements are Latin names, names of elements are Latin or common
    
@@ -306,7 +335,16 @@ shinyServer(function(input,output,session){
     SpecTemp<-unique(getPlants(object=if(input$MapPark=="All") {VegData}  else {VegData[[input$MapPark]]} , group=input$MapGroup,
                                years=MapYears(),common=F )$Latin_Name)
     
-    SpecNames<-getPlantNames(object=plants_lookup(), names=SpecTemp, in.style="Latin",out.style=ifelse(input$mapCommon,"common","Latin"))
+    observe({
+      req(plants_lookup())
+      print(head(plants_lookup()))
+      print(SpecTemp)
+      
+    })
+    
+    plants_lookup <- plants_lookup()
+    
+    SpecNames<-getPlantNames(object=plants_lookup, names=SpecTemp, in.style="Latin",out.style=ifelse(input$mapCommon,"common","Latin"))
     
     names(SpecTemp)<-SpecNames
     
