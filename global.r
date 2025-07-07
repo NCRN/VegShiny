@@ -17,6 +17,19 @@ PlantTypes<-switch(Network,
                "Understory plants"="herbs")
 )
 
+PlantSlotLookup<-switch(Network,
+    NCRN=c(
+      trees = "Trees",
+      saplings = "Saplings",
+      seedlings = "Tree seedlings",
+      shrubs = "Shrubs",
+      shseedlings = "Shrub seedlings",
+      herbs = "Understory plants",
+      vines = "Vines on Trees",
+      cwd = "Coarse Woody Debris"
+    )
+)
+
 IVPlantTypes<-switch(Network,  #needed as not all plants have an IV
     ERMN=list(Trees="trees",Saplings="saplings","Tree seedlings"="seedlings"),
     MIDN=list(Trees="trees",Saplings="saplings","Tree seedlings"="seedlings"),
