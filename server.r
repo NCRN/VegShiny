@@ -274,42 +274,42 @@ shinyServer(function(input,output,session){
   # }
   # ### extract MapGroup input (Trees) from VegData for all Parks ###
   # 
-  # selected_object <- reactive({
-  #   # Defines a reactive function based on user inputs to MapGroup and MapPark that binds together dfs from various slots of 
-  #   # VegData to create a data object containing relevant TSNs and Latin Names. For example, if 'Trees' and 'All parks' are 
-  #   # selected, the trees data from all 11 slots in VegData will be bound as a single data.frame.
-  #   # 
-  #   # Args:
-  #   #   VegData, NPSForVeg S4 object, required.
-  #   # 
-  #   # Returns:
-  #   #   vegdata_df, data.frame. 
-  #   # 
-  #   # Example:
-  #   #   vegdata_df <- selected_object()
-  #   
-  #   req(input$MapGroup)
-  #   req(input$MapPark)
-  #   
-  #   actual_slot_name <- PlantSlotLookup[[input$MapGroup]]
-  #   validate(
-  #     need(!is.null(actual_slot_name), "Selected plant group is not available in this network")
-  #   )
-  #   
-  #   if (input$MapPark == "All") {
-  #     selected_list <- VegData
-  #   } else {
-  #     selected_list <- list(VegData[[input$MapPark]])
-  #   }
-  #   
-  #   vegdata_df <- selected_list %>%
-  #     lapply(function(obj) slot(obj, actual_slot_name)) %>%
-  #     dplyr::bind_rows() %>%
-  #     as.data.frame() %>% 
-  #     filter(Latin_Name != "Unknown")
-  #   
-  #   return(vegdata_df)
-  # })
+  selected_object <- reactive({
+    # Defines a reactive function based on user inputs to MapGroup and MapPark that binds together dfs from various slots of
+    # VegData to create a data object containing relevant TSNs and Latin Names. For example, if 'Trees' and 'All parks' are
+    # selected, the trees data from all 11 slots in VegData will be bound as a single data.frame.
+    #
+    # Args:
+    #   VegData, NPSForVeg S4 object, required.
+    #
+    # Returns:
+    #   vegdata_df, data.frame.
+    #
+    # Example:
+    #   vegdata_df <- selected_object()
+
+    req(input$MapGroup)
+    req(input$MapPark)
+
+    actual_slot_name <- PlantSlotLookup[[input$MapGroup]]
+    validate(
+      need(!is.null(actual_slot_name), "Selected plant group is not available in this network")
+    )
+
+    if (input$MapPark == "All") {
+      selected_list <- VegData
+    } else {
+      selected_list <- list(VegData[[input$MapPark]])
+    }
+
+    vegdata_df <- selected_list %>%
+      lapply(function(obj) slot(obj, actual_slot_name)) %>%
+      dplyr::bind_rows() %>%
+      as.data.frame() %>%
+      filter(Latin_Name != "Unknown")
+
+    return(vegdata_df)
+  })
   # 
   # getTSNlist <- reactive({
   #   # Defines a reactive function which creates a list of unique and valid TSNs from a previously created data object.
@@ -449,12 +449,14 @@ shinyServer(function(input,output,session){
     #   need(!is.null(actual_slot_name), "Selected plant group is not available in this network")
     # )
     
-    if (input$MapPark == "All") {
-      selected_list <- VegData
-    } else {
-      selected_list <- list(VegData[[input$MapPark]])
-    }
+    # output does not change based on input to MapPark because CommonNames.csv is identical for each park
+    # if (input$MapPark == "All") {
+    #   selected_list <- VegData
+    # } else {
+    #   selected_list <- list(VegData[[input$MapPark]])
+    # }
     
+    selected_list <- VegData
     vegdata_df <- selected_list[[1]]@Commons
     
     return(vegdata_df)
@@ -464,7 +466,7 @@ shinyServer(function(input,output,session){
     
     vegdata_df <- selected_commons()
     tsn_df <- vegdata_df %>%
-      dplyr::distinct(TSN, Common, .keep_all = FALSE) %>%
+      dplyr::distinct(TSN, Common, .keep_all = TRUE) %>%
       dplyr::filter(Common == "")
     tsn_list <- tsn_df$TSN
     tsn_list <- tsn_list[tsn_list != "25328"]
@@ -490,40 +492,61 @@ shinyServer(function(input,output,session){
         Common = ifelse(Common == "" | is.na(Common), Common_new, Common)
       ) %>%
       select(-Common_new) %>%
-      mutate(Common = ifelse(TSN == "25328", "meadowsweet", Common)) %>%
+      mutate(Common = ifelse(TSN == "25328", "spirea", Common)) %>%
       dplyr::distinct(Latin_Name, Common, .keep_all = FALSE)
     
-    new_vd_row <- data.frame(
-      Latin_Name = "Rosaceae Family",
-      Common = "roses"
-    )
-    vd_filled <- rbind(vd_filled, new_vd_row)
+    # new_vd_row <- data.frame(
+    #   Latin_Name = "Rosaceae Family",
+    #   Common = "roses"
+    # )
+    # vd_filled <- rbind(vd_filled, new_vd_row)
     
     return(vd_filled)
   })
   
 #List of names, elements are Latin names, names of elements are Latin or common
-   
   MapSpecList<-reactive({
     req(input$MapPark, input$MapGroup)
     SpecTemp<-unique(getPlants(object=if(input$MapPark=="All") {VegData}  else {VegData[[input$MapPark]]} , group=input$MapGroup,
                                years=MapYears(),common=F )$Latin_Name)
-    # observe({
-    #   req(plants_lookup())
-    #   print(head(plants_lookup()))
-    #   print(SpecTemp)
-    #   
-    # })
+    vd_filled<-get_vd_filled()
+    safeGetPlantNames <- function(object, names, in.style, out.style) {
+      tryCatch({
+        getPlantNames(object = object, names = names, in.style = in.style, out.style = out.style)
+      }, 
+      error = function(e) {
+        available_names <- names[names %in% object$Latin_Name]
+        removed_names <- setdiff(names, available_names)
+        message("The following taxa were not found and were removed: ",
+                paste(removed_names, collapse = ", "))
+        
+        # Try again with only the valid names
+        getPlantNames(object = object, names = available_names, in.style = in.style, out.style = out.style)
+        
+      })
+    }
     
-    # plants_lookup <- plants_lookup()
-    # vd_filled <- get_vd_filled()
-    common_lookup <- read.csv("Data/common_lookup")
-      
-    SpecNames<-getPlantNames(object=common_lookup, names=SpecTemp, in.style="Latin",out.style=ifelse(input$mapCommon,"common","Latin"))
+    SpecNames <- safeGetPlantNames(object = vd_filled,
+                                   names = SpecTemp,
+                                   in.style = "Latin",
+                                   out.style = ifelse(input$mapCommon, "common", "Latin"))
+    
     names(SpecTemp)<-SpecNames
     SpecTemp<-SpecTemp[order(tolower(names(SpecTemp)))]
     SpecTemp<-c("All Species"="All", SpecTemp)
   })
+  
+  # MapSpecList<-reactive({
+  #   req(input$MapPark, input$MapGroup)
+  #   SpecTemp<-unique(getPlants(object=if(input$MapPark=="All") {VegData}  else {VegData[[input$MapPark]]} , group=input$MapGroup,
+  #                              years=MapYears(),common=F )$Latin_Name)
+  #   vd_filled <- get_vd_filled()
+  #     
+  #   SpecNames<-getPlantNames(object=vd_filled, names=SpecTemp, in.style="Latin",out.style=ifelse(input$mapCommon,"common","Latin"))
+  #   names(SpecTemp)<-SpecNames
+  #   SpecTemp<-SpecTemp[order(tolower(names(SpecTemp)))]
+  #   SpecTemp<-c("All Species"="All", SpecTemp)
+  # })
 
   output$MapSpeciesControl<-renderUI({
     req(input$MapPark, input$MapGroup)
