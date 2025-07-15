@@ -495,11 +495,11 @@ shinyServer(function(input,output,session){
       mutate(Common = ifelse(TSN == "25328", "spirea", Common)) %>%
       dplyr::distinct(Latin_Name, Common, .keep_all = FALSE)
     
-    # new_vd_row <- data.frame(
-    #   Latin_Name = "Rosaceae Family",
-    #   Common = "roses"
-    # )
-    # vd_filled <- rbind(vd_filled, new_vd_row)
+    new_vd_rows <- data.frame(
+      Latin_Name = c("Acer spp.", "Quercus acutissima", "Oplismenus undulatifolius", "Robinia viscosa", "Viburnum lantana", "Rosaceae Family", "Lygodium palmatum"),
+      Common = c("maples", "sawtooth oak", "wavyleaf basketgrass", "clammy locust", "wayfaring tree", "roses", "American climbing fern")
+    )
+    vd_filled <- rbind(vd_filled, new_vd_rows)
     
     return(vd_filled)
   })
