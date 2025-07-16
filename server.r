@@ -8,8 +8,57 @@ library(jsonlite,pos=100)
 library(httr)
 library(dplyr)
 library(DT)
+library(ritis)
+library(tidyr)
 
 #### Housekeeping prior to start of the server function ####
+
+# ### .csv Pre-processing ###
+# 
+# folderpath <- "Data/NCRN"
+# outpath <- "Data/NCRN_norm"
+# 
+# files <- list.files(path = folderpath, pattern = "\\.csv$", full.names = TRUE)
+# 
+# normalize_columns <- function(file) {
+#   df <- read.csv(file, stringsAsFactors = FALSE)
+# 
+#   latin_match <- tolower(names(df)) == "latin_name"
+#   if (any(latin_match)) {
+#     names(df)[latin_match] <- "Latin_Name"
+#   } else {
+#     warning(paste("No latin_name column found in:", file))
+#   }
+# 
+#   tsn_match <- tolower(names(df)) == "tsn"
+#   if (any(tsn_match)) {
+#     names(df)[tsn_match] <- "TSN"
+#   } else {
+#     warning(paste("No tsn column found in:", file))
+#   }
+# 
+#   plot_name_match <- tolower(names(df)) == "plot_name"
+#   if (any(plot_name_match)) {
+#     names(df)[plot_name_match] <- "Plot_Name"
+#   } else {
+#     warning(paste("No plot_name column found in:", file))
+#   }
+#   
+#   out_file <- file.path(outpath, basename(file))
+#   write.csv(df, file = out_file, row.names = FALSE)
+# }
+# 
+# lapply(files, normalize_columns)
+# 
+# # Plots.csv
+# plots <- "Data/NCRN_norm/Plots.csv"
+# df <- read.csv(plots, stringsAsFactors = FALSE)
+# df <- df %>% rename(Unit_Code = l_Unit_Code)
+# outpath <- "Data/NCRN_norm"
+# out_file <- file.path(outpath, "Plots.csv")
+# write.csv(df, file = out_file, row.names=FALSE)
+
+### .csv Import ###
 VegData<-switch(Network,
                 ERMN=importERMN("./Data/ERMN"),
                 MIDN=importMIDN("./Data/MIDN"),
@@ -125,14 +174,41 @@ shinyServer(function(input,output,session){
         dplyr::select(Plot_Name,Year=Event_Year), by="Plot_Name") %>% 
         mutate(Size=getArea(VegData[Unit_Code], group=input$MapGroup))
     
-    if(input$MapGroup != "herbs"){
-      return(P %>% 
-               left_join(SiteXSpec(object=VegData, group=input$MapGroup, years=MapYears(), 
-                                   status=if(input$MapGroup=='trees') input$TreeStatus else 'alive',
-                       species= if(input$MapSpecies=="All") NA else input$MapSpecies, values=input$MapValues, area="ha") %>% 
-               dplyr::select(Plot_Name,Values=Total), by="Plot_Name")
-      )
-    } 
+    # if(input$MapGroup != "herbs"){
+    #   return(P %>% 
+    #            left_join(SiteXSpec(object=VegData, group=input$MapGroup, years=MapYears(), 
+    #                                status=if(input$MapGroup=='trees') {
+    #                                  req(input$TreeStatus)
+    #                                  input$TreeStatus
+    #                                  } else {'alive'},
+    #                    species= if(input$MapSpecies=="All") NA else input$MapSpecies, values=input$MapValues, area="ha") %>% 
+    #            dplyr::select(Plot_Name,Values=Total), by="Plot_Name")
+    #   )
+    # }
+    
+    if (input$MapGroup != "herbs") {
+      
+      status_val <- if (input$MapGroup == "trees") {
+        req(input$TreeStatus)
+        input$TreeStatus
+      } else {
+        "alive"
+      }
+      
+      species_val <- if (input$MapSpecies == "All") NA else input$MapSpecies
+      
+      spec_data <- SiteXSpec(
+        object = VegData,
+        group = input$MapGroup,
+        years = MapYears(),
+        status = status_val,
+        species = species_val,
+        values = input$MapValues,
+        area = "ha"
+        )
+      
+      return(P %>% left_join(spec_data %>% dplyr::select(Plot_Name, Values = Total), by = "Plot_Name"))
+    }
     
     if(input$MapGroup == "herbs"){
       return(P %>% 
