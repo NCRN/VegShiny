@@ -75,14 +75,13 @@ navbarPage(title=HTML("<div> <a href=",NetworkURL,"> <img src='ah_small_black.gi
        )
      ),
 # #### Floating "About the map" Panel ####
-# hidden(
-#   fixedPanel(class="panel panel-primary controls",draggable=TRUE,cursor="auto",top=80,bottom="auto",height="520",
-#              left=450,width="500",id="AboutMapPanel",style="padding: 0px",
-#              div(class="panel-heading", h4("About the Map" )),
-#              div(class="panel-body",style="height: 400px;  overflow-y: scroll",  includeHTML("./www/AboutMap.html")),
-#              div(class="panel-footer", 
-#                  actionButton(inputId="CloseAboutMap",class="btn btn-primary",label="Close"))  )
-#   )
+  fixedPanel(class="panel panel-primary controls",draggable=TRUE,
+             cursor="auto",top=80,bottom="auto",height="520",
+             left=450,width="500",id="AboutMapPanel",style="padding: 0px; display:none;",
+             div(class="panel-heading", h4("About the Map" )),
+             div(class="panel-body",style="height: 400px;  overflow-y: scroll",  includeHTML("./www/AboutMap.html")),
+             div(class="panel-footer",
+                 actionButton(inputId="CloseAboutMap",class="btn btn-primary",label="Close"))  )
 ),  ## end of map page
 
 
@@ -150,24 +149,25 @@ navbarPage(title=HTML("<div> <a href=",NetworkURL,"> <img src='ah_small_black.gi
                 tabPanel(title=tags$div(title="Graph the data", "Graph"),value="Graph",
                   tags$div(title="Mean and 95% Confidence interval",
                   plotOutput(outputId="DensPlot", height="600px")),
-                 # hidden(
-                 #    fixedPanel(class="panel panel-primary controls",draggable=TRUE,cursor="auto",top=160,bottom="auto",height="auto",
-                 #               left=575,width="auto",id="GraphOptionsPanel",style="padding: 0px",
-                 #      title="Display Options",
-                 #    div(class="panel-heading", h4("Display Options")),
-                 #    div(class="panel-body",
-                 #    flowLayout(cellArgs=list(style="width: 160px"),
-                 #      selectizeInput("densBaseColor","Base Data Color:",choices=ColorNames, selected="blue",width=150),
-                 #      selectizeInput("densCompareColor","Comparison Data Color:",choices=ColorNames, selected="red",width=150)
-                 #    ),
-                 #    br(),
-                 #    flowLayout(cellArgs=list(style="width: 160px"),
-                 #      sliderInput("densPointSize", "Change Point Size", min=4, max=24, value=8, step=2,width=150),
-                 #      sliderInput("densFontSize", "Change Font Size", min=12, max=32, value=20, step=2,width=150)
-                 #    )),
-                 #  div(class="panel-footer", 
-                 #        actionButton(inputId="CloseDisplayOptions",class="btn btn-primary",label="Close"))
-                 #  ))
+             
+                    fixedPanel(class="panel panel-primary controls",draggable=TRUE,
+                               cursor="auto",top=160,bottom="auto",height="auto",
+                               left=575,width="auto",id="GraphOptionsPanel",style="padding: 0px; display: none;",
+                      title="Display Options",
+                    div(class="panel-heading", h4("Display Options")),
+                    div(class="panel-body",
+                    flowLayout(cellArgs=list(style="width: 160px"),
+                      selectizeInput("densBaseColor","Base Data Color:",choices=ColorNames, selected="blue",width=150),
+                      selectizeInput("densCompareColor","Comparison Data Color:",choices=ColorNames, selected="red",width=150)
+                    ),
+                    br(),
+                    flowLayout(cellArgs=list(style="width: 160px"),
+                      sliderInput("densPointSize", "Change Point Size", min=4, max=24, value=8, step=2,width=150),
+                      sliderInput("densFontSize", "Change Font Size", min=12, max=32, value=20, step=2,width=150)
+                    )),
+                  div(class="panel-footer",
+                        actionButton(inputId="CloseDisplayOptions",class="btn btn-primary",label="Close"))
+                  )
                   
                   
                 ),
@@ -246,25 +246,25 @@ navbarPage(title=HTML("<div> <a href=",NetworkURL,"> <img src='ah_small_black.gi
               tabPanel(value="Graph",
                 tags$div(title="Graph the data","Graph"),
                 tags$div(title="Graph of IV",plotOutput("IVPlot",height="600px")),
-                # hidden(
-                #   fixedPanel(class="panel panel-primary controls",draggable=TRUE,cursor="auto",top=160,bottom="auto",height="auto",
-                #              left=575,width="auto",id="IVOptionsPanel",style="padding: 0px",title="Display Options",
-                #     div(class="panel-heading", h4("Display Options")),
-                #     div(class="panel-body",
-                #       flowLayout(
-                #         selectizeInput("IVBaseColor","Base Color:",choices=ColorNames, selected="green4",width="125px"),
-                #         sliderInput("IVFontSize", "Change Font Size", min=10, max=24, value=14, step=2,width="175px")
-                #       ),
-                #       h5("Component Colors:"),
-                #       flowLayout(
-                #         selectizeInput("IVDensityColor","Density Color:",choices=ColorNames, selected="green4", width="125px"),
-                #         selectizeInput("IVSizeColor","Size Color:",choices=ColorNames, selected="chartreuse",width="125px"),
-                #         selectizeInput("IVDistributionColor","Distribution Color:",choices=ColorNames, selected="yellow",width="125px")
-                #       )
-                #     ),    
-                #     div(class="panel-footer", actionButton(inputId="CloseIVDisplayOptions",class="btn btn-primary",label="Close"))
-                #   )
-                # )
+              
+                  fixedPanel(class="panel panel-primary controls",draggable=TRUE,
+                             cursor="auto",top=160,bottom="auto",height="auto",
+                             left=575,width="auto",id="IVOptionsPanel",style="padding: 0px; display: none;",title="Display Options",
+                    div(class="panel-heading", h4("Display Options")),
+                    div(class="panel-body",
+                      flowLayout(
+                        selectizeInput("IVBaseColor","Base Color:",choices=ColorNames, selected="green4",width="125px"),
+                        sliderInput("IVFontSize", "Change Font Size", min=10, max=24, value=14, step=2,width="175px")
+                      ),
+                      h5("Component Colors:"),
+                      flowLayout(
+                        selectizeInput("IVDensityColor","Density Color:",choices=ColorNames, selected="green4", width="125px"),
+                        selectizeInput("IVSizeColor","Size Color:",choices=ColorNames, selected="chartreuse",width="125px"),
+                        selectizeInput("IVDistributionColor","Distribution Color:",choices=ColorNames, selected="yellow",width="125px")
+                      )
+                    ),
+                    div(class="panel-footer", actionButton(inputId="CloseIVDisplayOptions",class="btn btn-primary",label="Close"))
+                  )
               ),
               tabPanel(value="Table",
                 tags$div(title="See all data in a table","Data table"),
