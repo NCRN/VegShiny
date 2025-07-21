@@ -15,7 +15,7 @@ library(tidyr)
 
 # ### .csv Pre-processing ###
 #
-# Logic: if NCRN .csv files need pre-processing: move to folder `NCRN_original`, write preprocessed files back to `NCRN`
+# Logic: if NCRN .csv files need pre-processing: move to folder `NCRN_original`, write pre-processed files back to `NCRN`
 #
 folderpath <- "Data/NCRN"
 files <- list.files(path = folderpath, pattern = "\\.csv$", full.names = TRUE)
@@ -25,7 +25,7 @@ for (i in seq_along(files)) {
   df <- read.csv(file, stringsAsFactors = FALSE)
   target_columns <- c("latin_name", "tsn", "plot_name", "l_Unit_Code")
   match <- intersect(names(df), target_columns)
-  preprocess[[i]] <- match  
+  preprocess[[basename(file)]] <- match
 }
 
 preprocess_val <- any(sapply(preprocess, function(x) length(x) > 0))
