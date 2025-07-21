@@ -14,55 +14,76 @@ library(tidyr)
 #### Housekeeping prior to start of the server function ####
 
 # ### .csv Pre-processing ###
-# 
-# folderpath <- "Data/NCRN"
-# outpath <- "Data/NCRN_norm"
-# 
-# files <- list.files(path = folderpath, pattern = "\\.csv$", full.names = TRUE)
-# 
-# normalize_columns <- function(file) {
-#   df <- read.csv(file, stringsAsFactors = FALSE)
-# 
-#   latin_match <- tolower(names(df)) == "latin_name"
-#   if (any(latin_match)) {
-#     names(df)[latin_match] <- "Latin_Name"
-#   } else {
-#     warning(paste("No latin_name column found in:", file))
-#   }
-# 
-#   tsn_match <- tolower(names(df)) == "tsn"
-#   if (any(tsn_match)) {
-#     names(df)[tsn_match] <- "TSN"
-#   } else {
-#     warning(paste("No tsn column found in:", file))
-#   }
-# 
-#   plot_name_match <- tolower(names(df)) == "plot_name"
-#   if (any(plot_name_match)) {
-#     names(df)[plot_name_match] <- "Plot_Name"
-#   } else {
-#     warning(paste("No plot_name column found in:", file))
-#   }
-#   
-#   out_file <- file.path(outpath, basename(file))
-#   write.csv(df, file = out_file, row.names = FALSE)
-# }
-# 
-# lapply(files, normalize_columns)
-# 
-# # Plots.csv
-# plots <- "Data/NCRN_norm/Plots.csv"
-# df <- read.csv(plots, stringsAsFactors = FALSE)
-# df <- df %>% rename(Unit_Code = l_Unit_Code)
-# outpath <- "Data/NCRN_norm"
-# out_file <- file.path(outpath, "Plots.csv")
-# write.csv(df, file = out_file, row.names=FALSE)
+#
+# Logic: if NCRN .csv files need pre-processing: move to folder `NCRN_original`, write preprocessed files back to `NCRN`
+#
+folderpath <- "Data/NCRN"
+files <- list.files(path = folderpath, pattern = "\\.csv$", full.names = TRUE)
+preprocess <- list()
+for (i in seq_along(files)) {
+  file <- files[i]
+  df <- read.csv(file, stringsAsFactors = FALSE)
+  target_columns <- c("latin_name", "tsn", "plot_name", "l_Unit_Code")
+  match <- intersect(names(df), target_columns)
+  preprocess[[i]] <- match  
+}
+
+preprocess_val <- any(sapply(preprocess, function(x) length(x) > 0))
+
+if (preprocess_val == "TRUE") {
+
+  newpath <- "Data/NCRN_original"
+  dir.create(newpath, recursive = TRUE)
+  file.rename(from = files,
+              to = file.path(newpath, basename(files)))
+  
+  normalize_columns <- function(file) {
+    df <- read.csv(file, stringsAsFactors = FALSE)
+
+    latin_match <- tolower(names(df)) == "latin_name"
+    if (any(latin_match)) {
+      names(df)[latin_match] <- "Latin_Name"
+    } else {
+      warning(paste("No latin_name column found in:", file))
+    }
+
+    tsn_match <- tolower(names(df)) == "tsn"
+    if (any(tsn_match)) {
+      names(df)[tsn_match] <- "TSN"
+    } else {
+      warning(paste("No tsn column found in:", file))
+    }
+
+    plot_name_match <- tolower(names(df)) == "plot_name"
+    if (any(plot_name_match)) {
+      names(df)[plot_name_match] <- "Plot_Name"
+    } else {
+      warning(paste("No plot_name column found in:", file))
+    }
+
+    out_file <- file.path(folderpath, basename(file))
+    write.csv(df, file = out_file, row.names = FALSE)
+  }
+
+  files <- list.files(path = newpath, pattern = "\\.csv$", full.names = TRUE)
+  lapply(files, normalize_columns)
+
+  # Plots.csv
+  plots <- "Data/NCRN_original/Plots.csv"
+  df <- read.csv(plots, stringsAsFactors = FALSE)
+  df <- df %>% rename(Unit_Code = l_Unit_Code)
+  out_file <- file.path(folderpath, "Plots.csv")
+  write.csv(df, file = out_file, row.names=FALSE)
+  
+  
+} else {}
+
 
 ### .csv Import ###
 VegData<-switch(Network,
                 ERMN=importERMN("./Data/ERMN"),
                 MIDN=importMIDN("./Data/MIDN"),
-                NCRN=importNCRN("./Data/NCRN_norm"),
+                NCRN=importNCRN("./Data/NCRN"),
                 NETN=importNETN("./Data/NETN"),
                 SHEN=list(importSHEN("./Data/SHEN"))
 )
