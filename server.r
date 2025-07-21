@@ -13,11 +13,9 @@ library(tidyr)
 
 #### Housekeeping prior to start of the server function ####
 
-# ### .csv Pre-processing ###
-#
-# Logic: if NCRN .csv files need pre-processing: move to folder `NCRN_original`, write pre-processed files back to `NCRN`
-#
-folderpath <- "Data/NCRN"
+### .csv Pre-processing ###
+
+folderpath <- file.path("Data",Network)
 files <- list.files(path = folderpath, pattern = "\\.csv$", full.names = TRUE)
 preprocess <- list()
 for (i in seq_along(files)) {
@@ -32,7 +30,8 @@ preprocess_val <- any(sapply(preprocess, function(x) length(x) > 0))
 
 if (preprocess_val == "TRUE") {
 
-  newpath <- "Data/NCRN_original"
+  np <- paste0(Network,"_original")
+  newpath <- file.path("Data",np)
   dir.create(newpath, recursive = TRUE)
   file.rename(from = files,
               to = file.path(newpath, basename(files)))
@@ -60,6 +59,13 @@ if (preprocess_val == "TRUE") {
     } else {
       warning(paste("No plot_name column found in:", file))
     }
+    
+    unit_code_match <- names(df) == "l_Unit_Code"
+    if (any(unit_code_match)) {
+      names(df)[unit_code_match] <- "Unit_Code"
+    } else {
+      warning(paste("No l_Unit_Code column found in:", file))
+    }
 
     out_file <- file.path(folderpath, basename(file))
     write.csv(df, file = out_file, row.names = FALSE)
@@ -67,14 +73,6 @@ if (preprocess_val == "TRUE") {
 
   files <- list.files(path = newpath, pattern = "\\.csv$", full.names = TRUE)
   lapply(files, normalize_columns)
-
-  # Plots.csv
-  plots <- "Data/NCRN_original/Plots.csv"
-  df <- read.csv(plots, stringsAsFactors = FALSE)
-  df <- df %>% rename(Unit_Code = l_Unit_Code)
-  out_file <- file.path(folderpath, "Plots.csv")
-  write.csv(df, file = out_file, row.names=FALSE)
-  
   
 } else {}
 
