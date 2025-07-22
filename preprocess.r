@@ -77,23 +77,20 @@ is_preprocessing_necessary <- function(folderpath, target_columns) {
 }
 
 
-
 preprocess <- function(Network) {
     
     folderpath <- file.path("Data",Network)
     x <- is_preprocessing_necessary(folderpath=folderpath, target_columns=PREPROCESSING_TARGET_COLUMNS)
-    needs_preprocessing_bool <- x[['needs_preprocessing_bool']]
-    files <- x[['files']]
     
-    if (needs_preprocessing_bool == T) {
+    if (x$needs_preprocessing_bool == T) {
         
         np <- paste0(Network,"_original")
         newpath <- file.path("Data",np)
         dir.create(newpath, recursive = TRUE)
-        file.rename(from = files,
+        file.rename(from = x$files,
                     to = file.path(newpath, basename(files)))
         files <- list.files(path = newpath, pattern = "\\.csv$", full.names = TRUE)
-        lapply(files, rename_targets(x, folderpath))
+        for (file in files){rename_targets(file, folderpath)}
         
     }    
 }
