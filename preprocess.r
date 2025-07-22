@@ -54,11 +54,30 @@ rename_targets <- function(file, folderpath) {
         warning(paste("Renamed l_Unit_Code column in:", file))
     }
     
+    # write updated dataframe 
     out_file <- file.path(folderpath, basename(file))
     write.csv(df, file = out_file, row.names = FALSE)
 }
 
 is_preprocessing_necessary <- function(folderpath, target_columns) {
+    # Check whether the column-renaming (i.e., preprocessing) procedure needs to run
+    #
+    # Args:
+    #   folderpath (chr, required): relative filepath to folder where csv should be written. E.g., 'Data/NCRN'.
+    #   target_columns(c(chr), required): a vector of character strings. Each string is the name of a column name
+    #       that the this function should search for in the csv files from `folderpath`. E.g., 'Latin_Name'.
+    #
+    # Returns:
+    #   list
+    #       A list of two elements.
+    #       1) needs_preprocessing_bool: (logical). If T, one or more columns need renaming in one or more files and
+    #           the preprocess() function should run. If F, the preprocess() function does need to run. T or F.
+    #       2) files: (c(chr)). Vector of character strings. Each string is the relative filepath to a csv
+    #           file in the directory `folderpath`.
+    #
+    # Examples:
+    #   is_preprocessing_necessary(folderpath='Data/NCRN', target_columns=c('latin_name','tsn'))
+    #
     
     
     files <- list.files(path = folderpath, pattern = "\\.csv$", full.names = TRUE)
