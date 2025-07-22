@@ -4,6 +4,44 @@
 
 PREPROCESSING_TARGET_COLUMNS <- c("latin_name", "tsn", "plot_name", "l_Unit_Code") # network-specific; these columns may not apply to non-NCRN networks
 
+preprocess <- function(Network) {
+    # Application's interface with the logic to find and correct column-name problems in source csvs
+    #
+    # Why is this necessary?
+    # As of 2025-07-22, the SQL queries that output NCRN's forest veg data csvs (e.g., Plots.csv)
+    # have some column-naming mistakes. For example, the capitalization of column "Latin_Name" is
+    # "latin_name" in one or more files. For R package NCRNForVeg to import the data properly,
+    # the column names must match those that the package expects. This pre-processing
+    # section corrects the column names and is intended to be a workaround until the queries are
+    # corrected in the database.
+    #
+    # Args:
+    #   Network (chr, required): The acronym for one of the networks served by this application. E.g., 'NCRN'
+    #
+    # Returns:
+    #   None. This function does not return an object. If necessary, the function reads, edits, and then writes csvs.
+    #
+    
+    folderpath <- file.path("Data",Network)
+    np <- paste0(Network,"_original")
+    newpath <- file.path("Data",np)
+    if (dir.exists(folderpath) & dir.exists(newpath)==F){
+        # only proceed if there is a `Data/{Network}` folder and there is not a `Data/{Network}_original` folder
+        # if the `Data/{Network}_original` folder already exists, then the data have already been pre-processed
+        x <- is_preprocessing_necessary(folderpath=folderpath, target_columns=PREPROCESSING_TARGET_COLUMNS)
+        
+        if (x$needs_preprocessing_bool == T) {
+            
+            dir.create(newpath, recursive = TRUE)
+            file.rename(from = x$files,
+                        to = file.path(newpath, basename(x$files)))
+            files <- list.files(path = newpath, pattern = "\\.csv$", full.names = TRUE)
+            for (file in files){rename_targets(file, folderpath)}
+            
+        }
+    }
+}
+
 rename_targets <- function(file, folderpath) {
     # read a csv into dataframe, find known-incorrect column names, rename incorrect columns, write dataframe to csv
     #
@@ -72,7 +110,6 @@ is_preprocessing_necessary <- function(folderpath, target_columns) {
     #   is_preprocessing_necessary(folderpath='Data/NCRN', target_columns=c('latin_name','tsn'))
     #
     
-    
     files <- list.files(path = folderpath, pattern = "\\.csv$", full.names = TRUE)
     files_with_column_name_problems <- list()
     for (file in files) { # no need for seq_along() since we can access the elements directly; we don't need the index
@@ -87,39 +124,3 @@ is_preprocessing_necessary <- function(folderpath, target_columns) {
     )
     return(x)
 }
-
-
-preprocess <- function(Network) {
-    # Application's interface with the logic to find and correct column-name problems in source csvs
-    #
-    # Why is this necessary?
-    # As of 2025-07-22, the SQL queries that output NCRN's forest veg data csvs (e.g., Plots.csv)
-    # have some column-naming mistakes. For example, the capitalization of column "Latin_Name" is
-    # "latin_name" in one or more files. For R package NCRNForVeg to import the data properly,
-    # the column names must match those that the package expects. This pre-processing
-    # section corrects the column names and is intended to be a workaround until the queries are
-    # corrected in the database.
-    #
-    # Args:
-    #   Network (chr, required): The acronym for one of the networks served by this application. E.g., 'NCRN'
-    #
-    # Returns:
-    #   None. This function does not return an object. If necessary, the function reads, edits, and then writes csvs.
-    #
-    
-    folderpath <- file.path("Data",Network)
-    x <- is_preprocessing_necessary(folderpath=folderpath, target_columns=PREPROCESSING_TARGET_COLUMNS)
-    
-    if (x$needs_preprocessing_bool == T) {
-        
-        np <- paste0(Network,"_original")
-        newpath <- file.path("Data",np)
-        dir.create(newpath, recursive = TRUE)
-        file.rename(from = x$files,
-                    to = file.path(newpath, basename(x$files)))
-        files <- list.files(path = newpath, pattern = "\\.csv$", full.names = TRUE)
-        for (file in files){rename_targets(file, folderpath)}
-        
-    }    
-}
-
