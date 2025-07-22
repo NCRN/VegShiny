@@ -8,8 +8,8 @@
 # the column names must match those that the package expects. This pre-processing
 # section corrects the column names and is intended to be a workaround until the queries are
 # corrected in the database.
-Network <- 'NCRN'
-PREPROCESSING_TARGET_COLUMNS <- c("latin_name", "tsn", "plot_name", "l_Unit_Code") # naming-convention: constants (i.e., hard-coded variables that don't change) should be upper case
+
+PREPROCESSING_TARGET_COLUMNS <- c("latin_name", "tsn", "plot_name", "l_Unit_Code") # network-specific; these columns may not apply to non-NCRN networks
 
 rename_targets <- function(file, folderpath) {
     # read a csv into dataframe, find known-incorrect column names, rename incorrect columns, write dataframe to csv
@@ -88,10 +88,10 @@ preprocess <- function(Network) {
         newpath <- file.path("Data",np)
         dir.create(newpath, recursive = TRUE)
         file.rename(from = x$files,
-                    to = file.path(newpath, basename(files)))
+                    to = file.path(newpath, basename(x$files)))
         files <- list.files(path = newpath, pattern = "\\.csv$", full.names = TRUE)
         for (file in files){rename_targets(file, folderpath)}
         
     }    
 }
-preprocess(Network=Network)
+
