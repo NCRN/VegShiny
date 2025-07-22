@@ -1,13 +1,6 @@
 #### Housekeeping prior to start of the server function ####
 
 ### .csv Pre-processing ###
-# Why is this necessary?
-# As of 2025-07-22, the SQL queries that output NCRN's forest veg data csvs (e.g., Plots.csv)
-# have some column-naming mistakes. For example, the capitalization of column "Latin_Name" is
-# "latin_name" in one or more files. For R package NCRNForVeg to import the data properly,
-# the column names must match those that the package expects. This pre-processing
-# section corrects the column names and is intended to be a workaround until the queries are
-# corrected in the database.
 
 PREPROCESSING_TARGET_COLUMNS <- c("latin_name", "tsn", "plot_name", "l_Unit_Code") # network-specific; these columns may not apply to non-NCRN networks
 
@@ -97,6 +90,22 @@ is_preprocessing_necessary <- function(folderpath, target_columns) {
 
 
 preprocess <- function(Network) {
+    # Application's interface with the logic to find and correct column-name problems in source csvs
+    #
+    # Why is this necessary?
+    # As of 2025-07-22, the SQL queries that output NCRN's forest veg data csvs (e.g., Plots.csv)
+    # have some column-naming mistakes. For example, the capitalization of column "Latin_Name" is
+    # "latin_name" in one or more files. For R package NCRNForVeg to import the data properly,
+    # the column names must match those that the package expects. This pre-processing
+    # section corrects the column names and is intended to be a workaround until the queries are
+    # corrected in the database.
+    #
+    # Args:
+    #   Network (chr, required): The acronym for one of the networks served by this application. E.g., 'NCRN'
+    #
+    # Returns:
+    #   None. This function does not return an object. If necessary, the function reads, edits, and then writes csvs.
+    #
     
     folderpath <- file.path("Data",Network)
     x <- is_preprocessing_necessary(folderpath=folderpath, target_columns=PREPROCESSING_TARGET_COLUMNS)
