@@ -17,16 +17,16 @@ preprocess(Network=Network)
 
 ### .csv Import ###
 VegData<-switch(Network,
-                ERMN=importERMN("./Data/ERMN"),
-                MIDN=importMIDN("./Data/MIDN"),
-                NCRN=importNCRN("./Data/NCRN"),
-                NETN=importNETN("./Data/NETN"),
-                SHEN=list(importSHEN("./Data/SHEN"))
+                ERMN=NPSForVeg::importERMN("./Data/ERMN"),
+                MIDN=NPSForVeg::importMIDN("./Data/MIDN"),
+                NCRN=NPSForVeg::importNCRN("./Data/NCRN"),
+                NETN=NPSForVeg::importNETN("./Data/NETN"),
+                SHEN=list(NPSForVeg::importSHEN("./Data/SHEN"))
 )
 
-names(VegData)<-getNames(VegData, name.class="code")
-ParkList<-getNames(VegData,name.class="code")
-names(ParkList)<-getNames(VegData)
+names(VegData)<-NPSForVeg::getNames(VegData, name.class="code")
+ParkList<-NPSForVeg::getNames(VegData,name.class="code")
+names(ParkList)<-NPSForVeg::getNames(VegData)
 
 ParkBounds<-read.csv("boundboxes.csv", as.is=TRUE)
 
