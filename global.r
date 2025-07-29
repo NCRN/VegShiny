@@ -55,20 +55,21 @@ ExtraLayers<-switch(Network,
   )
 
 ProjectInfo<-switch(Network,
-                    ERMN=includeHTML("./www/InformationERMN.html"),
-                    MIDN=includeHTML("./www/InformationMIDN.html"),
-                    NCRN=includeHTML("./www/Information.html"),
-                    NETN=includeHTML("./www/InformationNETN.html"),
+                    ERMN=tags$iframe("./www/InformationERMN.html"),
+                    MIDN=tags$iframe("./www/InformationMIDN.html"),
+                    NCRN=tags$iframe("./www/Information.html"),
+                    NETN=tags$iframe("./www/InformationNETN.html"),
                     SHEN=HTML("./www/InformationSHEN.html")
 )
 
 Citations<-switch(Network,
-                    ERMN=includeHTML("./www/CitationsERMN.html"),
-                    MIDN=includeHTML("./www/CitationsMIDN.html"),
-                    NCRN=includeHTML("./www/Citations.html"),
-                    NETN=includeHTML("./www/CitationsNETN.html"),
+                    ERMN=tags$iframe("./www/CitationsERMN.html"),
+                    MIDN=tags$iframe("./www/CitationsMIDN.html"),
+                    NCRN=tags$iframe("./www/Citations.html"),
+                    NETN=tags$iframe("./www/CitationsNETN.html"),
                     SHEN=HTML("./www/CitationsSHEN.html")
 )
+
 
 
 #### Colors ####

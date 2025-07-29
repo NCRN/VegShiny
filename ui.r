@@ -79,7 +79,7 @@ navbarPage(title=HTML("<div> <a href=",NetworkURL,"> <img src='ah_small_black.gi
              cursor="auto",top=80,bottom="auto",height="520",
              left=450,width="500",id="AboutMapPanel",style="padding: 0px; display:none;",
              div(class="panel-heading", h4("About the Map" )),
-             div(class="panel-body",style="height: 400px;  overflow-y: scroll",  includeHTML("./www/AboutMap.html")),
+             div(class="panel-body",style="height: 400px;  overflow-y: scroll",  tags$iframe("./www/AboutMap.html")),
              div(class="panel-footer",
                  actionButton(inputId="CloseAboutMap",class="btn btn-primary",label="Close"))  )
 ),  ## end of map page
@@ -180,7 +180,7 @@ navbarPage(title=HTML("<div> <a href=",NetworkURL,"> <img src='ah_small_black.gi
                 )
               ),
               tabPanel(tags$div(title="Explanation of the graph","About this graph..."),
-                       includeHTML("./www/DensPlot.html")
+                       tags$iframe("./www/DensPlot.html")
               )
             )
           )
@@ -352,7 +352,7 @@ navbarPage(title=HTML("<div> <a href=",NetworkURL,"> <img src='ah_small_black.gi
                               title = "Explanation of the graph"
                               ,"About this graph..."
                               )
-                          ,includeHTML("./www/IVPlot.html")
+                          ,tags$iframe("./www/IVPlot.html")
                           )
                       )
                   )
@@ -390,7 +390,7 @@ navbarPage(title=HTML("<div> <a href=",NetworkURL,"> <img src='ah_small_black.gi
             DT::dataTableOutput("SpeciesTable")
           ),
           tabPanel("About these lists...",
-            includeHTML("./www/AboutLists.html")
+            tags$iframe("./www/AboutLists.html")
           )
         )
       )
