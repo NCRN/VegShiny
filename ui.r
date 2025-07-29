@@ -197,29 +197,24 @@ navbarPage(title=HTML("<div> <a href=",NetworkURL,"> <img src='ah_small_black.gi
                 title="Choose a park to work with.",
                 uiOutput("IVParkControl")
               ),
-              br(),
+              tags$div(title="Choose the time period you want to work with.", uiOutput("IVCycleControl")),
               tags$div(
                 title="Choose the type of plant you want to work with", 
                 selectizeInput(inputId="IVGroup", label="Type of plant:",choices=IVPlantTypes)
               ),
-              br(),
               tags$div(
                 title="Toggle between common and scientific names",
                 checkboxInput(inputId="IVCommon", label="Show common names?", value=TRUE)
               ),
-              br(),
               # tags$div(
               #   title="Pick the four year period you want to graph",
               #   sliderInput(inputId="IVYear", label="Display data from the 4 years ending:", min=Years$Start+Years$Range-1, 
               #               max=Years$End, value=Years$End, sep="", step=1,ticks=T)
               # ),
-              tags$div(title="Choose the time period you want to work with.", uiOutput("IVCycleControl")),
-              br(),
               tags$div(
                 title="Show density, size and disbribution separately",
                 checkboxInput(inputId="IVPart", label="Show Components of the Importance Value?", value=FALSE)
               ),
-              br(),
               tags$div(
                 title="Chose the maximum number of species to display.",
                 sliderInput(inputId="IVTop",label="Number of species to plot (in order of IV):",min=1, max=20,
