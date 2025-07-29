@@ -188,96 +188,177 @@ navbarPage(title=HTML("<div> <a href=",NetworkURL,"> <img src='ah_small_black.gi
       ),
 
 ###############IV Plots
-      tabPanel(tags$div(title="Graph Importance Values", "Forestry Importance Values (IV)"),
-        fluidRow(
-          column(3,
-            wellPanel(class="panel panel-default",
-              h4("Data:", class="panel-heading"),
-              tags$div(
-                title="Choose a park to work with.",
-                uiOutput("IVParkControl")
-              ),
-              tags$div(title="Choose the time period you want to work with.", uiOutput("IVCycleControl")),
-              tags$div(
-                title="Choose the type of plant you want to work with", 
-                selectizeInput(inputId="IVGroup", label="Type of plant:",choices=IVPlantTypes)
-              ),
-              tags$div(
-                title="Toggle between common and scientific names",
-                checkboxInput(inputId="IVCommon", label="Show common names?", value=TRUE)
-              ),
-              # tags$div(
-              #   title="Pick the four year period you want to graph",
-              #   sliderInput(inputId="IVYear", label="Display data from the 4 years ending:", min=Years$Start+Years$Range-1, 
-              #               max=Years$End, value=Years$End, sep="", step=1,ticks=T)
-              # ),
-              tags$div(
-                title="Show density, size and disbribution separately",
-                checkboxInput(inputId="IVPart", label="Show Components of the Importance Value?", value=FALSE)
-              ),
-              tags$div(
-                title="Chose the maximum number of species to display.",
-                sliderInput(inputId="IVTop",label="Number of species to plot (in order of IV):",min=1, max=20,
-                  value=10, sep="", step=1, ticks=FALSE)),
-                conditionalPanel(
-                  condition="input.IVPanel=='Graph'",
-                  hr(),
-                  actionButton(inputId="IVGraphButton", label="Display Options", class="btn btn-primary"),
-                  br(),
-                  downloadButton(outputId="IVGraphDownload", label="Save Graph (.jpg)", class="btn btn-primary"),
-                  downloadButton(outputId="IVWmfDownload", label="Save Graph (.wmf)", class="btn btn-primary")
-                ),  
-                  conditionalPanel(
-                    condition="input.IVPanel=='Table'",
-                    hr(),
-                    flowLayout(
-                      downloadButton(outputId="IVTableDownload", label="Save Table (.csv)", class="btn btn-primary")
-                    )
-                )
-            )
-          ),
-          column(9,
-            tabsetPanel(id="IVPanel",type="pills",
-              tabPanel(value="Graph",
-                tags$div(title="Graph the data","Graph"),
-                tags$div(title="Graph of IV",plotOutput("IVPlot",height="600px")),
-              
-                  fixedPanel(class="panel panel-primary controls",draggable=TRUE,
-                             cursor="auto",top=160,bottom="auto",height="auto",
-                             left=575,width="auto",id="IVOptionsPanel",style="padding: 0px; display: none;",title="Display Options",
-                    div(class="panel-heading", h4("Display Options")),
-                    div(class="panel-body",
-                      flowLayout(
-                        selectizeInput("IVBaseColor","Base Color:",choices=ColorNames, selected="green4",width="125px"),
-                        sliderInput("IVFontSize", "Change Font Size", min=10, max=24, value=14, step=2,width="175px")
-                      ),
-                      h5("Component Colors:"),
-                      flowLayout(
-                        selectizeInput("IVDensityColor","Density Color:",choices=ColorNames, selected="green4", width="125px"),
-                        selectizeInput("IVSizeColor","Size Color:",choices=ColorNames, selected="chartreuse",width="125px"),
-                        selectizeInput("IVDistributionColor","Distribution Color:",choices=ColorNames, selected="yellow",width="125px")
-                      )
-                    ),
-                    div(class="panel-footer", actionButton(inputId="CloseIVDisplayOptions",class="btn btn-primary",label="Close"))
-                  )
-              ),
-              tabPanel(value="Table",
-                tags$div(title="See all data in a table","Data table"),
-                column(10,
-                  h3(textOutput("IVTableTitle")),
-                  dataTableOutput("IVData")
-                )
-              ),
-              tabPanel(tags$div(title="Explanation of the graph",
-                  "About this graph..."
-                ),
-                includeHTML("./www/IVPlot.html")
+      shiny::tabPanel(
+          tags$div(
+              title = "Graph Importance Values"
+              ,"Forestry Importance Values (IV)"
               )
-            )
+          ,shiny::fluidRow(
+              column(
+                  3
+                  ,shiny::wellPanel(
+                      class = "panel panel-default"
+                      ,h4("Data:", class="panel-heading")
+                      ,tags$div(
+                          title = "Choose a park to work with."
+                          ,shiny::uiOutput("IVParkControl")
+                          )
+                      ,tags$div(
+                          title = "Choose the time period you want to work with."
+                          ,shiny::uiOutput("IVCycleControl")
+                          )
+                      ,tags$div(
+                          title = "Choose the type of plant you want to work with"
+                          ,shiny::selectizeInput(inputId="IVGroup", label="Type of plant:",choices=IVPlantTypes)
+                          )
+                      ,tags$div(
+                          title = "Toggle between common and scientific names"
+                          ,shiny::checkboxInput(inputId="IVCommon", label="Show common names?", value=TRUE)
+                          )
+                      ,tags$div(
+                          title = "Show density, size and disbribution separately"
+                          ,shiny::checkboxInput(inputId="IVPart", label="Show Components of the Importance Value?", value=FALSE)
+                          )
+                      ,tags$div(
+                          title = "Chose the maximum number of species to display."
+                          ,shiny::sliderInput(
+                              inputId = "IVTop"
+                              ,label = "Number of species to plot (in order of IV):"
+                              ,min = 1
+                              ,max = 20
+                              ,value = 10
+                              ,sep = ""
+                              ,step = 1
+                              ,ticks = F
+                              )
+                          )
+                      ,shiny::conditionalPanel(
+                          condition = "input.IVPanel=='Graph'"
+                          ,hr()
+                          ,shiny::actionButton(
+                              inputId = "IVGraphButton"
+                              ,label = "Display Options"
+                              ,class = "btn btn-primary"
+                              )
+                          ,br()
+                          ,shiny::downloadButton(
+                              outputId = "IVGraphDownload"
+                              ,label = "Save Graph (.jpg)"
+                              ,class = "btn btn-primary"
+                              )
+                          ,shiny::downloadButton(
+                              outputId = "IVWmfDownload"
+                              ,label = "Save Graph (.wmf)"
+                              ,class = "btn btn-primary"
+                              )
+                          )
+                      ,shiny::conditionalPanel(
+                          condition = "input.IVPanel=='Table'"
+                          ,hr()
+                          ,shiny::flowLayout(shiny::downloadButton(outputId="IVTableDownload", label="Save Table (.csv)", class="btn btn-primary"))
+                          )
+                      )
+                  )
+              ,column(
+                  9
+                  ,shiny::tabsetPanel(
+                      id = "IVPanel"
+                      ,type = "pills"
+                      ,shiny::tabPanel(
+                          value = "Graph"
+                          ,tags$div(title="Graph the data","Graph")
+                          ,tags$div(title="Graph of IV",shiny::plotOutput("IVPlot",height="600px"))
+                          ,shiny::fixedPanel(
+                              class = "panel panel-primary controls"
+                              ,draggable=T
+                              ,cursor = "auto"
+                              ,top = 160
+                              ,bottom = "auto"
+                              ,height = "auto"
+                              ,left = 575
+                              ,width = "auto"
+                              ,id = "IVOptionsPanel"
+                              ,style = "padding: 0px; display: none;"
+                              ,title = "Display Options"
+                              ,div(class="panel-heading", h4("Display Options"))
+                              ,div(
+                                  class="panel-body"
+                                  ,shiny::flowLayout(
+                                      shiny::selectizeInput(
+                                          inputId = "IVBaseColor"
+                                          ,label="Base Color:"
+                                          ,choices = ColorNames
+                                          ,selected = "green4"
+                                          ,width = "125px"
+                                          )
+                                      ,shiny::sliderInput(
+                                          inputId = "IVFontSize"
+                                          ,label = "Change Font Size"
+                                          ,min = 10
+                                          ,max = 24
+                                          ,value = 14
+                                          ,step = 2
+                                          ,width = "175px"
+                                          )
+                                      )
+                                  ,h5("Component Colors:")
+                                  ,shiny::flowLayout(
+                                      shiny::selectizeInput(
+                                          inputId = "IVDensityColor"
+                                          ,label = "Density Color:"
+                                          ,choices = ColorNames
+                                          ,selected = "green4"
+                                          ,width = "125px"
+                                          )
+                                      ,shiny::selectizeInput(
+                                          inputId = "IVSizeColor"
+                                          ,label = "Size Color:"
+                                          ,choices = ColorNames
+                                          ,selected = "chartreuse"
+                                          ,width = "125px"
+                                          )
+                                      ,shiny::selectizeInput(
+                                          inputId = "IVDistributionColor"
+                                          ,label = "Distribution Color:"
+                                          ,choices = ColorNames
+                                          ,selected = "yellow"
+                                          ,width = "125px"
+                                          )
+                                      )
+                                  )
+                              ,div(
+                                  class = "panel-footer"
+                                  ,shiny::actionButton(
+                                      inputId = "CloseIVDisplayOptions"
+                                      ,class = "btn btn-primary"
+                                      ,label = "Close")
+                                  )
+                              )
+                          )
+                      ,shiny::tabPanel(
+                          value="Table"
+                          ,tags$div(
+                              title = "See all data in a table"
+                              ,"Data table"
+                              )
+                          ,column(
+                              10
+                              ,h3(shiny::textOutput("IVTableTitle"))
+                              ,shiny::dataTableOutput("IVData")
+                              )
+                          )
+                      ,shiny::tabPanel(
+                          tags$div(
+                              title = "Explanation of the graph"
+                              ,"About this graph..."
+                              )
+                          ,includeHTML("./www/IVPlot.html")
+                          )
+                      )
+                  )
+              )
           )
-        )
-      )
-    ),
+),
 
 ############################## Species Lists
     tabPanel(id="SpeciesPanel",
