@@ -776,21 +776,53 @@ densSpecList<-reactive({
 })
 
 output$densSpeciesControl<-renderUI({
-  switch(input$densSpeciesType,
-         Common= tags$div(title="# of species to display", 
-            sliderInput(inputId="densTop",label="Number of species to display (in order of mean value):",
-                min=1, max=10,value=5, sep="", step=1, ticks=TRUE)
-          ),
-         Pick= if(is.null(input$densPark) || nchar(input$densPark)==0) {  return()  }
-          else{
-            tags$div(title="Click here to pick the species you want to graph",
-              selectizeInput(inputId="densSpecies", label="Choose one or more species,
-              backspace to remove", choices=densSpecList(),
-                multiple=TRUE )
-            )
-          }
-  )
-})
+    # Conditionally decide what to show user on graphs.data
+    #
+    # Radio button ui.densSpeciesType is a flow-control device
+    # that determines what options the user should be shown for their next
+    # step in selecting a subset of data to view on the
+    # graphs.[Data by Park and Species] tab
+    #
+    # Params:
+    #   input$densSpeciesType (chr, required): One of c("Common","Pick","All").
+    #
+    # Returns:
+    #   tags$div()
+    
+    switch(
+        input$densSpeciesType
+        # if input$densSpeciesType == "Common"
+         ,Common = tags$div(
+             title = "# of species to display"
+             ,shiny::sliderInput(
+                 inputId = "densTop"
+                 ,label = "Number of species to display (in order of mean value):"
+                 ,min = 1
+                 ,max = 10
+                 ,value = 5
+                 ,sep = ""
+                 ,step = 1
+                 ,ticks = F # ticks = F matches format of global.IVTop
+                 )
+          )
+        # if input$densSpeciesType == "Pick"
+         ,Pick = if(is.null(input$densPark) || nchar(input$densPark)==0) {
+             tags$div()
+             } else {
+                 tags$div(
+                     title = "Click here to pick the species you want to graph"
+                     ,shiny::selectizeInput(
+                     inputId = "densSpecies"
+                     ,label = "Choose one or more species, backspace to remove"
+                     ,choices = densSpecList()
+                     ,multiple = TRUE
+                        )
+                 )
+             }
+        # if input$densSpeciesType == "All", there's no UI element to render
+        ,All = tags$div()
+         )
+    })
 
 
 #### Control for comparison ####
