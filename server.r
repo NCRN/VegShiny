@@ -15,6 +15,27 @@ library(tidyr)
 source('preprocess.r')
 preprocess(Network=Network)
 
+### Additional Pre-processing ###
+readpath <- file.path(paste0("Data/", Network, "/Shrubs.csv"))
+shrubs <- read.csv(readpath, stringsAsFactors = FALSE)
+library(stringr)
+clean_colnames <- function(names_vec) {
+  sapply(names_vec, function(name) {
+    parts <- strsplit(name, "_")[[1]]
+    parts_capitalized <- str_to_title(parts)
+    paste(parts_capitalized, collapse = "_")
+  })
+}
+colnames(shrubs) <- clean_colnames(colnames(shrubs))
+shrubs <- shrubs %>%
+  dplyr::rename(
+    TSN = Tsn,
+    SaplingVigor = Saplingvigor,
+    VigorClass = Vigorclass,
+    VigorDescription = Vigordescription
+  )
+write.csv(shrubs, file = readpath, row.names = FALSE)
+
 ### .csv Import ###
 VegData<-switch(Network,
                 ERMN=importERMN("./Data/ERMN"),
