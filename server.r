@@ -148,7 +148,7 @@ shinyServer(function(input,output,session){
     #   )
     # }
     
-    if (input$MapGroup != "herbs") {
+    if (!(input$MapGroup %in% c("herbs", "shrubs"))) {
       
       status_val <- if (input$MapGroup == "trees") {
         req(input$TreeStatus)
@@ -178,6 +178,82 @@ shinyServer(function(input,output,session){
                          species= if(input$MapSpecies=="All") NA else input$MapSpecies,
                          values=input$MapValues)$Total)#/getArea(VegData[Unit_Code], group=input$MapGroup, type="count"))
       )
+    }
+    
+    if(input$MapGroup == "shrubs"){
+      
+      group_val <- "shrubs"
+      status_val <- "alive"
+      species_val <- if (input$MapSpecies == "All") NA else input$MapSpecies
+      
+      # spec_data <- SiteXSpec(
+      #   object = VegData,
+      #   group = input$MapGroup,
+      #   years = MapYears(),
+      #   status = status_val,
+      #   species = species_val,
+      #   values = input$MapValues,
+      #   area = "ha"
+      # )
+      
+      library(data.table)
+      XPlants <- getPlants(
+        object = VegData,
+        group = group_val,
+        years = input$MapYears,
+        status = status_val,
+        species = species_val
+      )
+      
+      XPlants <- as.data.table(XPlants)
+      
+      XSubplots <- getSubplotCount(
+        object = VegData,
+        group = group_val,
+        years = input$MapYears,
+        subtype = "all",
+        plot.type = "active"
+      )
+      
+      XPlants <- merge(
+        XPlants,
+        XSubplots,
+        by.x = c("Plot_Name", "Sample_Year"),
+        by.y = c("Plot_Name", "Event_Year")
+      )
+      
+      XSpecies <- unique(XPlants$Latin_Name)
+      XPlots <- unique(XPlants$Plot_Name)
+      
+      
+      XPlants[, fPlot := factor(Plot_Name, levels = XPlots)]
+      
+      OutData <- dcast.data.table(
+        setkey(XPlants, fPlot, Latin_Name)[
+          CJ(unique(levels(fPlot)), XSpecies), .N, by = .EACHI
+        ],
+        formula = fPlot ~ Latin_Name,
+        value.var = "N"
+      )
+      
+      for (i in seq_along(OutData)) {
+        set(OutData, i = which(is.na(OutData[[i]])), j = i, value = 0)
+      }
+      
+      if ("fPlot" %in% names(OutData)) {
+        setnames(OutData, "fPlot", "Plot_Name")
+      }
+      OutData[, Plot_Name := as.character(Plot_Name)]
+      
+      OutData[, Total := rowSums(.SD), .SDcols = setdiff(names(OutData), "Plot_Name")]
+      
+      PlotSize <- XSubplots[order(XSubplots$Plot_Name), ]$SubPlotArea
+      PlotSizeVec <- XSubplots$SubPlotArea[match(OutData$Plot_Name, XSubplots$Plot_Name)]
+      OutData[, (names(OutData)[-1]) := lapply(.SD, function(x) x * (10000 / PlotSizeVec)), .SDcols = -1]
+      
+      spec_data <- as.data.frame(OutData)
+      
+      return(P %>% left_join(spec_data %>% dplyr::select(Plot_Name, Values = Total), by = "Plot_Name"))
     }
 })
   
