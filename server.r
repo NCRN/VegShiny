@@ -179,6 +179,7 @@ shinyServer(function(input,output,session){
       }
       
       species_val <- if (input$MapSpecies == "All") NA else input$MapSpecies
+      print(species_val)
       
       spec_data <- SiteXSpec(
         object = VegData,
