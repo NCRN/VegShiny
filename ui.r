@@ -3,7 +3,7 @@ library(NPSForVeg)
 library(leaflet)
 library(shinyjs)
 library(DT)
-
+library(bslib)
 
 navbarPage(title=HTML("<div> <a href=",NetworkURL,"> <img src='ah_small_black.gif',
           alt='Forest Vegetation Visualizer'> </a> Forest Vegetation Visualizer</div>"),
@@ -22,58 +22,133 @@ navbarPage(title=HTML("<div> <a href=",NetworkURL,"> <img src='ah_small_black.gi
     ),
     
 #### Side Control Panel ####    
-    fluidRow(
-      column(2, style="padding: 0 0 0 10px",
-#### Map Controls ####
-       div(id="MapControlPanel",class="panel panel-default controls",
-            h4("Map Controls", class="panel-heading"),
-            tags$div(title="Choose the type of plant you want to work with", selectInput(inputId="MapGroup", 
-              label="Type of plant:", choices=PlantTypes)),
-            tags$div(title="Choose live or dead", selectInput(inputId="TreeStatus", label="Live or dead",
-                                                              choices=c("Live"='alive',"Dead" = 'snag',"All"='all'))),
-            tags$div(title="Type of data to map",uiOutput("PlantValueControl")),
-            tags$div(title="Choose the time period you want to work with.", uiOutput("MapCycleControl")),
-            #tags$div(title="Choose the four year period you want to work with.", sliderInput(inputId="MapYear", 
-             #     label="Display data from the 4 years ending:", min=Years$Start+Years$Range-1, max=Years$End, value=Years$End,
-              #    sep="", step=1,ticks=T)),
-            tags$div(title="Toggle between common and scientific names",
-                             checkboxInput(inputId="mapCommon", label="Show common names?", value=TRUE )),
-            tags$div(title="Choose a species of plants to map", uiOutput("MapSpeciesControl")),  
-            tags$div(title="Filter the species list so only species found in a particular park are listed",
-                           uiOutput("MapParkControl")),
-            actionButton(inputId="AboutMapButton",label="About the map",class="btn btn-primary ")
-           ),
-        
-#### Zoom Controls ####
-      div(id="ZoomPanel",class="panel panel-default controls",
-          h4("Zoom to:", class="panel-heading"),
-          fluidRow(
-            column(9, tags$div(title="Choose a park and click 'Go'", uiOutput("ParkZoomControl"))),
-            column(3, actionButton(inputId="MapZoom", label="Go", class="btn btn-primary btn-sm"))
-          ),
-          hr(),
-          tags$div(title="Increases size of plots for easier viewing",
-           radioButtons(inputId="PlotSize", label="Enlarge plots: 1X = to scale", 
-            choices=c("1X"=1, "5X"=sqrt(5), "10X"=sqrt(10), "25X"=5), selected="1", inline=TRUE)
-          )
-      ),
-
-#### Add a layer control ####
-    
-      div(id="ExtraLayerPanel",class="panel panel-default controls",draggable=TRUE,cursor="auto",top="60%",bottom="auto",
-                          height="auto",right="auto",left=20,width=200,
-        h4("Additional Layers", class="panel-heading"),
-        tags$div(title="Overlay additional data onto the parks",
-           selectizeInput(inputId="MapLayer", label="Add a map layer:", 
-                    choices=ExtraLayers))
-        )
-      ), ## End of controls columns
-
-#### The Map ####
-       column(10,style="padding: 0",
-           div(leafletOutput("VegMap", height="1000px"))   
-       )
-     ),
+#     fluidRow(
+#       column(2, style="padding: 0 0 0 10px",
+# #### Map Controls ####
+#        div(id="MapControlPanel",class="panel panel-default controls",
+#             h4("Map Controls", class="panel-heading"),
+#             tags$div(title="Choose the type of plant you want to work with", selectInput(inputId="MapGroup", 
+#               label="Type of plant:", choices=PlantTypes)),
+#             tags$div(title="Choose live or dead", selectInput(inputId="TreeStatus", label="Live or dead",
+#                                                               choices=c("Live"='alive',"Dead" = 'snag',"All"='all'))),
+#             tags$div(title="Type of data to map",uiOutput("PlantValueControl")),
+#             tags$div(title="Choose the time period you want to work with.", uiOutput("MapCycleControl")),
+#             #tags$div(title="Choose the four year period you want to work with.", sliderInput(inputId="MapYear", 
+#              #     label="Display data from the 4 years ending:", min=Years$Start+Years$Range-1, max=Years$End, value=Years$End,
+#               #    sep="", step=1,ticks=T)),
+#             tags$div(title="Toggle between common and scientific names",
+#                              checkboxInput(inputId="mapCommon", label="Show common names?", value=TRUE )),
+#             tags$div(title="Choose a species of plants to map", uiOutput("MapSpeciesControl")),  
+#             tags$div(title="Filter the species list so only species found in a particular park are listed",
+#                            uiOutput("MapParkControl")),
+#             actionButton(inputId="AboutMapButton",label="About the map",class="btn btn-primary ")
+#            ),
+#         
+# #### Zoom Controls ####
+#       div(id="ZoomPanel",class="panel panel-default controls",
+#           h4("Zoom to:", class="panel-heading"),
+#           fluidRow(
+#             column(9, tags$div(title="Choose a park and click 'Go'", uiOutput("ParkZoomControl"))),
+#             column(3, actionButton(inputId="MapZoom", label="Go", class="btn btn-primary btn-sm"))
+#           ),
+#           hr(),
+#           tags$div(title="Increases size of plots for easier viewing",
+#            radioButtons(inputId="PlotSize", label="Enlarge plots: 1X = to scale", 
+#             choices=c("1X"=1, "5X"=sqrt(5), "10X"=sqrt(10), "25X"=5), selected="1", inline=TRUE)
+#           )
+#       ),
+# 
+# #### Add a layer control ####
+#     
+#       div(id="ExtraLayerPanel",class="panel panel-default controls",draggable=TRUE,cursor="auto",top="60%",bottom="auto",
+#                           height="auto",right="auto",left=20,width=200,
+#         h4("Additional Layers", class="panel-heading"),
+#         tags$div(title="Overlay additional data onto the parks",
+#            selectizeInput(inputId="MapLayer", label="Add a map layer:", 
+#                     choices=ExtraLayers))
+#         )
+#       ), ## End of controls columns
+# 
+# #### The Map ####
+#        column(10,style="padding: 0",
+#            div(leafletOutput("VegMap", height="1000px"))   
+#        )
+#      ),
+fluidRow(
+  column(2, style="padding: 0 0 0 10px",
+         
+         #### Accordion Panel Group Start ####
+         tags$div(class = "panel-group", id = "MapAccordion",
+                  
+                  #### Map Controls Panel ####
+                  tags$div(class = "panel panel-default",
+                           tags$div(class = "panel-heading",
+                                    tags$h4(class = "panel-title",
+                                            tags$a("Map Controls", `data-toggle` = "collapse", href = "#collapseMapControls")
+                                    )
+                           ),
+                           tags$div(id = "collapseMapControls", class = "panel-collapse collapse in",
+                                    tags$div(class = "panel-body",
+                                             tags$div(title="Choose the type of plant you want to work with", 
+                                                      selectInput(inputId="MapGroup", label="Type of plant:", choices=PlantTypes)),
+                                             tags$div(title="Choose live or dead", 
+                                                      selectInput(inputId="TreeStatus", label="Live or dead", choices=c("Live"='alive',"Dead" = 'snag',"All"='all'))),
+                                             tags$div(title="Type of data to map", uiOutput("PlantValueControl")),
+                                             tags$div(title="Choose the time period you want to work with.", uiOutput("MapCycleControl")),
+                                             tags$div(title="Toggle between common and scientific names",
+                                                      checkboxInput(inputId="mapCommon", label="Show common names?", value=TRUE )),
+                                             tags$div(title="Choose a species of plants to map", uiOutput("MapSpeciesControl")),  
+                                             tags$div(title="Filter the species list so only species found in a particular park are listed",
+                                                      uiOutput("MapParkControl")),
+                                             actionButton(inputId="AboutMapButton", label="About the map", class="btn btn-primary")
+                                    )
+                           )
+                  ),
+                  
+                  #### Zoom Controls Panel ####
+                  tags$div(class = "panel panel-default",
+                           tags$div(class = "panel-heading",
+                                    tags$h4(class = "panel-title",
+                                            tags$a("Zoom Controls", `data-toggle` = "collapse", href = "#collapseZoomControls")
+                                    )
+                           ),
+                           tags$div(id = "collapseZoomControls", class = "panel-collapse collapse",
+                                    tags$div(class = "panel-body",
+                                             fluidRow(
+                                               column(9, tags$div(title="Choose a park and click 'Go'", uiOutput("ParkZoomControl"))),
+                                               column(3, actionButton(inputId="MapZoom", label="Go", class="btn btn-primary btn-sm"))
+                                             ),
+                                             hr(),
+                                             tags$div(title="Increases size of plots for easier viewing",
+                                                      radioButtons(inputId="PlotSize", label="Enlarge plots: 1X = to scale", 
+                                                                   choices=c("1X"=1, "5X"=sqrt(5), "10X"=sqrt(10), "25X"=5), selected="1", inline=TRUE))
+                                    )
+                           )
+                  ),
+                  
+                  #### Extra Layers Panel ####
+                  tags$div(class = "panel panel-default",
+                           tags$div(class = "panel-heading",
+                                    tags$h4(class = "panel-title",
+                                            tags$a("Additional Layers", `data-toggle` = "collapse", href = "#collapseExtraLayers")
+                                    )
+                           ),
+                           tags$div(id = "collapseExtraLayers", class = "panel-collapse collapse",
+                                    tags$div(class = "panel-body",
+                                             tags$div(title="Overlay additional data onto the parks",
+                                                      selectizeInput(inputId="MapLayer", label="Add a map layer:", choices=ExtraLayers))
+                                    )
+                           )
+                  )
+                  
+         ) # End of Accordion Group
+  ),
+  
+  #### The Map ####
+  column(10, style="padding: 0",
+         div(leafletOutput("VegMap", height = "1000px"))
+  )
+),
 # #### Floating "About the map" Panel ####
   fixedPanel(class="panel panel-primary controls",draggable=TRUE,
              cursor="auto",top=80,bottom="auto",height="520",
