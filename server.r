@@ -1315,6 +1315,32 @@ output$IVTableDownload<-downloadHandler(
 )
 
 #### Species list ####
+
+# Reactive value to store selected view
+speciesView <- reactiveVal("table")  # default
+
+# Toggle buttons
+observeEvent(input$showSpeciesTable, {
+  speciesView("table")
+})
+
+observeEvent(input$showAboutLists, {
+  speciesView("about")
+})
+
+# Render main content
+output$speciesContent <- renderUI({
+  if (speciesView() == "table") {
+    tagList(
+      h3(textOutput("SpeciesTableTitle")),
+      DT::dataTableOutput("SpeciesTable")
+    )
+  } else {
+    includeHTML("./www/AboutLists.html")
+  }
+})
+
+
 #### Species list park control ####
 output$SpListParkControl<-renderUI({
   validate(

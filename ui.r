@@ -543,7 +543,7 @@ tabPanel(
   title = "Species",
   value = "SpeciesPanel",
   
-  # Main wrapper
+  # Flex layout
   div(
     style = "display: flex; flex-direction: row; position: relative; min-height: 1000px;",
     
@@ -552,37 +552,75 @@ tabPanel(
       id = "sidebar-container-2",
       style = "
         flex: 0 0 16.6666%;
-        padding: 0 10px 0 0;
+        padding: 0;
         transition: all 0.3s ease;
         z-index: 1;
       ",
-      wellPanel(
-        tags$div(
-          title = "Choose the type of species list", 
-          radioButtons(
-            inputId = "SpListType", 
-            label = "Choose a species list:",
-            choices = c(
-              "Vascular plants in the monitoring plots" = "Monitoring", 
-              "All vascular plants known from the park" = "NPSpecies"
-            )
-          )
-        ),
-        tags$div(
-          title = "Choose a park to work with.",
-          uiOutput("SpListParkControl")
-        ),
-        conditionalPanel(
-          condition = "input.SpListType == 'Monitoring'",
-          tags$div(
-            title = "Choose one or more plots, select and backspace to delete.",
-            uiOutput("SpListPlotControl")
-          )
-        )
+      
+      # Sidebar box
+      tags$div(class = "panel panel-default", style = "margin: 0;",
+               
+               # Header
+               tags$div(class = "panel-heading", tags$h4(class = "panel-title", "Species Filters")),
+               
+               # Body
+               tags$div(class = "panel-body",
+                        # Species List Type
+                        tags$div(
+                          title = "Choose the type of species list", 
+                          radioButtons(
+                            inputId = "SpListType", 
+                            label = "Choose a species list:",
+                            choices = c(
+                              "Vascular plants in the monitoring plots" = "Monitoring", 
+                              "All vascular plants known from the park" = "NPSpecies"
+                            )
+                          )
+                        ),
+                        
+                        # Park dropdown
+                        tags$div(
+                          title = "Choose a park to work with.",
+                          uiOutput("SpListParkControl")
+                        ),
+                        
+                        # Conditional Plot selection
+                        conditionalPanel(
+                          condition = "input.SpListType == 'Monitoring'",
+                          tags$div(
+                            title = "Choose one or more plots, select and backspace to delete.",
+                            uiOutput("SpListPlotControl")
+                          )
+                        ),
+                        
+                        # Divider
+                        tags$hr(),
+                        
+                        # Display Options Header
+                        tags$h5("Display Options", style = "font-weight: bold; margin-top: 10px;"),
+                        
+                        # Buttons
+                        div(
+                          style = "margin-top: 5px;",
+                          actionButton("showSpeciesTable", "Species Lists", 
+                                       class = "btn btn-default btn-sm",
+                                       style = "width: 100%; font-weight: normal; margin-bottom: 5px;"
+                          ),
+                          actionButton("showAboutLists", "About these lists...", 
+                                       class = "btn btn-default btn-sm",
+                                       style = "width: 100%; font-weight: normal;"
+                          )
+                        )
+               )
       )
     ),
     
-    # Toggle button (no more absolute positioning!)
+    # Spacer for toggle button (thin vertical strip)
+    div(
+      style = "width: 10px;"
+    ),
+    
+    # Toggle Button
     div(
       id = "toggle-button-container-2",
       style = "
@@ -605,23 +643,11 @@ tabPanel(
         transition: all 0.3s ease;
         z-index: 1;
       ",
-      tags$div(
-        title = "Lists of plants found in the parks",
-        h3("Species Lists")
-      ),
-      tabsetPanel(id = "SpeciesListPanel", type = "pills",
-                  tabPanel("Species Lists",
-                           h3(textOutput("SpeciesTableTitle")),
-                           DT::dataTableOutput("SpeciesTable")
-                  ),
-                  tabPanel("About these lists...",
-                           includeHTML("./www/AboutLists.html")
-                  )
-      )
+      uiOutput("speciesContent")
     )
   ),
   
-  # JavaScript toggle script
+  # Toggle Script
   tags$script(HTML("
     $(document).ready(function() {
       var isSidebarVisible2 = true;
@@ -638,7 +664,6 @@ tabPanel(
 
         isSidebarVisible2 = !isSidebarVisible2;
 
-        // Trigger resize to fix UI redraw issues
         setTimeout(function() {
           $(window).trigger('resize');
         }, 300);
