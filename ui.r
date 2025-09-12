@@ -505,40 +505,147 @@ fluidRow(
     ),
 
 ############################## Species Lists
-    tabPanel(id="SpeciesPanel",
-      tags$div(
-        title="Lists of plants found in the parks", "Species Lists"
-      ),
-      column(4,id="SpeciesControls",
-        tags$head(tags$style(HTML("#SpeciesControls{height:400px}"))),
-        wellPanel(
-          tags$div(
-            title="Choose the type of species list", 
-            radioButtons(inputId="SpListType", label="Choose a species list:",
-                choices=c("Vascular plants in the monitorng plots"= "Monitoring", "All vascular plants known from the park"="NPSpecies"))
-          ),
-          tags$div(
-            title="Choose a park to work with.",uiOutput("SpListParkControl")
-          ),
-          conditionalPanel(condition="input.SpListType=='Monitoring'",
-            tags$div(
-              title="Choose one or more plots, select and backspace to delete.", uiOutput("SpListPlotControl")
+    # tabPanel(id="SpeciesPanel",
+    #   tags$div(
+    #     title="Lists of plants found in the parks", "Species Lists"
+    #   ),
+    #   column(4,id="SpeciesControls",
+    #     tags$head(tags$style(HTML("#SpeciesControls{height:400px}"))),
+    #     wellPanel(
+    #       tags$div(
+    #         title="Choose the type of species list",
+    #         radioButtons(inputId="SpListType", label="Choose a species list:",
+    #             choices=c("Vascular plants in the monitorng plots"= "Monitoring", "All vascular plants known from the park"="NPSpecies"))
+    #       ),
+    #       tags$div(
+    #         title="Choose a park to work with.",uiOutput("SpListParkControl")
+    #       ),
+    #       conditionalPanel(condition="input.SpListType=='Monitoring'",
+    #         tags$div(
+    #           title="Choose one or more plots, select and backspace to delete.", uiOutput("SpListPlotControl")
+    #         )
+    #       )
+    #     )
+    #   ),
+    #   column(6,
+    #     tabsetPanel(id="SpeciesListPanel", type="pills",
+    #       tabPanel("Species Lists",
+    #         h3(textOutput("SpeciesTableTitle")),
+    #         DT::dataTableOutput("SpeciesTable")
+    #       ),
+    #       tabPanel("About these lists...",
+    #         includeHTML("./www/AboutLists.html")
+    #       )
+    #     )
+    #   )
+    # ),
+tabPanel(
+  title = "Species",
+  value = "SpeciesPanel",
+  
+  # Main wrapper
+  div(
+    style = "display: flex; flex-direction: row; position: relative; min-height: 1000px;",
+    
+    # Sidebar
+    div(
+      id = "sidebar-container-2",
+      style = "
+        flex: 0 0 16.6666%;
+        padding: 0 10px 0 0;
+        transition: all 0.3s ease;
+        z-index: 1;
+      ",
+      wellPanel(
+        tags$div(
+          title = "Choose the type of species list", 
+          radioButtons(
+            inputId = "SpListType", 
+            label = "Choose a species list:",
+            choices = c(
+              "Vascular plants in the monitoring plots" = "Monitoring", 
+              "All vascular plants known from the park" = "NPSpecies"
             )
           )
-        )
-      ),
-      column(6,
-        tabsetPanel(id="SpeciesListPanel", type="pills",
-          tabPanel("Species Lists",
-            h3(textOutput("SpeciesTableTitle")),
-            DT::dataTableOutput("SpeciesTable")
-          ),
-          tabPanel("About these lists...",
-            includeHTML("./www/AboutLists.html")
+        ),
+        tags$div(
+          title = "Choose a park to work with.",
+          uiOutput("SpListParkControl")
+        ),
+        conditionalPanel(
+          condition = "input.SpListType == 'Monitoring'",
+          tags$div(
+            title = "Choose one or more plots, select and backspace to delete.",
+            uiOutput("SpListPlotControl")
           )
         )
       )
     ),
+    
+    # Toggle button (no more absolute positioning!)
+    div(
+      id = "toggle-button-container-2",
+      style = "
+        flex: 0 0 30px;
+        display: flex;
+        align-items: flex-start;
+        justify-content: center;
+        padding-top: 5px;
+        z-index: 2;
+      ",
+      actionButton("toggleSidebar2", "☰", class = "btn btn-default")
+    ),
+    
+    # Main content
+    div(
+      id = "main-container-2",
+      style = "
+        flex: 1;
+        padding-left: 10px;
+        transition: all 0.3s ease;
+        z-index: 1;
+      ",
+      tags$div(
+        title = "Lists of plants found in the parks",
+        h3("Species Lists")
+      ),
+      tabsetPanel(id = "SpeciesListPanel", type = "pills",
+                  tabPanel("Species Lists",
+                           h3(textOutput("SpeciesTableTitle")),
+                           DT::dataTableOutput("SpeciesTable")
+                  ),
+                  tabPanel("About these lists...",
+                           includeHTML("./www/AboutLists.html")
+                  )
+      )
+    )
+  ),
+  
+  # JavaScript toggle script
+  tags$script(HTML("
+    $(document).ready(function() {
+      var isSidebarVisible2 = true;
+
+      $('#toggleSidebar2').on('click', function() {
+        var sidebar = $('#sidebar-container-2');
+        var main = $('#main-container-2');
+
+        if (isSidebarVisible2) {
+          sidebar.hide();
+        } else {
+          sidebar.show();
+        }
+
+        isSidebarVisible2 = !isSidebarVisible2;
+
+        // Trigger resize to fix UI redraw issues
+        setTimeout(function() {
+          $(window).trigger('resize');
+        }, 300);
+      });
+    });
+  "))
+),
 
 ##################### About
     navbarMenu(
