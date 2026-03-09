@@ -319,27 +319,97 @@ navbarPage(title=HTML("<div> <a href=",NetworkURL,"> <img src='ah_small_black.gi
         )
       )
     ),
+################## About
+tabPanel(
+  tags$div(
+    title="About the project", "About"
+    ), 
 
-##################### About
-    navbarMenu(
-      tags$div(
-        title="About the project", "About"
-        ),
+################## Sections
+  ###Disclaimer
+tags$div(
+  style = "margin-left: 20px;", #indent
+    tags$p("Updated 2026-xx-xx"), #update date
+    tags$hr(style = "border-top: 1.5px solid #000;"), #separating line
+    tags$h3("Disclaimer"), #Disclaimer heading
+    
+  #html block with links
+    HTML("
+    <p>
+      This visualizer tool allows users to explore and analyze vegetation monitoring data.
+      It uses data published on the National Park Service (NPS) platform known as the IRMA Data Store:<br>
+    <a href='https://irma.nps.gov/DataStore/Reference/2317420'>
+      DataStore - National Capital Region Network Forest Vegetation Data Package - cumulative through 2025
+    </a>
+    </p>
+    
+    <p>
+      This visualizer tool operates using R Shiny code. A static copy of the application source code is available on NPS IRMA Data Store:<br>
+    <a href='https://irma.nps.gov/DataStore/Reference/Profile/2317421'>
+      DataStore - National Capital Region Network Forest Vegetation Visualizer (R Shiny application)
+    </a>
+    </p>
 
-################################# Project Information
-    tabPanel(
-      tags$div(
-        title="Background Informaiton", "Project Information"
-      ),
-      ProjectInfo
-    ),
+    <p>
+      The development version of the source code is available at:<br>
+    <a href='https://github.com/NCRN/VegShiny/tree/ncrn'>
+      https://github.com/NCRN/VegShiny
+    </a>
+    </p>
+  "),
+    tags$hr(style = "border-top: 1.5px solid #000;"), #bottom separating line
+    tags$h3("Introduction"), #Introduction heading
+  #html block with links
+    HTML("
+    <p>
+    <a href='https://www.nps.gov/aboutus/index.htm#:~:text=Follow%20Us-,Our%20Mission,of%20this%20and%20future%20generations.'>
+      The National Park Service preserves unimpaired the natural and cultural resources and values of the National Park System.
+    </a>
+    The National Captial Region Inventory and Monitoring Network (NCRN) is part of the 
+    <a href='https://www.nps.gov/im/index.htm'>
+    National Park Service Inventory and Monitoring Division
+    </a>, 
+    which conducts science in National Parks. 
+    <a href='https://www.nps.gov/im/ncrn/index.htm'>
+    NCRN conducts science, like water quality monitoring, in the National Park Service's National Capital Region
+    </a>, 
+    which includes parts of Virginia, West Virginia, Maryland, and the District of Columbia, USA.
+    </p>
+  "),
+    tags$hr(style = "border-top: 1.5px solid #000;"), #bottom separating line
+    tags$h3("Methods"), #Methods heading
+  #html block with links
+    HTML("
+    <p>
+    <a href='https://irma.nps.gov/DataStore/Reference/Profile/2210263'>
+    Click here to view or download NCRN's water quality methods
+    </a>
+    </p>
+    <h4> Sampling locations </h4>
+    <p>
+    As of January 2026, NCRN monitors forest vegetation at 432 plots in eleven National Parks in the National Capital Region. 
+    NCRN has added and removed plots since 2005. Page 5 in NCRN's Forest Vegetation Monitoring Protocol details changes to sampling sites through time.
+    </p>
+    <h4> Sampling frequency </h4>
+    <h4> Parameters </h4>
+    <h4> Data Quality </h4>
+      <h5> Completeness </h5>
+      <h5> Accuracy </h5>
+      <h5> Validity </h5>
+    "),
+    tags$hr(style = "border-top: 1.5px solid #000;"), #bottom separating line
+    tags$h3("Bibliography"), #Bibliography heading
+    
+),#end of tags$div()
+
+# Vegetation plots are divided into 4 panels, with each panel sampled once every four years.
 
 
+ProjectInfo,
+tags$div(
+  style = "margin-left: 20px;", #indent
+  tags$hr(style = "border-top: 1.5px solid #000;")), #separating line
+Citations
 
-################ Citations 
-
-    tabPanel("Citations & References",
-     Citations
-    )
-) #end About menu
-)#end navbarPage()
+)#end About menu tabPanel()
+) #end of navbarPage
