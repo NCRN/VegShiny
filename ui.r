@@ -327,7 +327,7 @@ tabPanel(
 
 ################## Sections
 tags$div(
-  style = "margin-left: 20px;", #indent
+  style = "margin: 10px 40px;", #indent
     br(),
     tags$p("Updated 2026-03-10"), #update date
     tags$hr(style = "border-top: 1.5px solid #000;"), #separating line
@@ -374,12 +374,12 @@ tags$div(
     </a>
     The National Captial Region Inventory and Monitoring Network (NCRN) is part of the 
     <a href='https://www.nps.gov/im/index.htm'>
-    National Park Service Inventory and Monitoring Division
-    </a>, 
+    National Park Service Inventory and Monitoring Division,
+    </a>
     which conducts science in National Parks. 
     <a href='https://www.nps.gov/im/ncrn/index.htm'>
-    NCRN conducts science, like water quality monitoring, in the National Park Service's National Capital Region
-    </a>, 
+    NCRN conducts science, like water quality monitoring, in the National Park Service's National Capital Region,
+    </a> 
     which includes parts of Virginia, West Virginia, Maryland, and the District of Columbia, USA.
     </p>
   "),
@@ -397,10 +397,11 @@ tags$div(
     </a>
     </p>
     
-    <h4> Sampling locations </h4>
+    <h4> Sampling location </h4> 
+
     <p>
     As of January 2026, NCRN monitors forest vegetation at 432 plots in eleven National Parks in the National Capital Region. 
-    NCRN has added and removed plots since 2005. 
+    NCRN has added and removed plots since 2006. 
     <a href='https://irma.nps.gov/DataStore/Reference/Profile/2210263'>
     Page 5 in NCRN's Long-Term Forest Vegetation Monitoring Protocol details changes to sampling sites through time.
     </a>
@@ -410,7 +411,7 @@ tags$div(
     </p>
     <p>
       <div style='margin-left: 20px;'>
-      1. Located on park owned land that falls on a point intersection of a 250 meter square grid covering network parks <br>
+      1. Located on park owned land that falls on a point intersection of a 250-meter square grid covering network parks <br>
       2. Randomly selected using a survey design that generates spatially balanced plots (GRTS) <br>
       3. Not stratified based on vegetation or landscape features <br>
       4. Not stratified by park (there is no predetermined number of sites in each park) <br>
@@ -419,7 +420,7 @@ tags$div(
       7. Located on a slope of less than 30° <br>
       8. Safe from hazards and accessible <br>
       9. Free of concerns regarding archeological or cultural resource disturbance <br>
-      10. Does not interfere with visitors traffic or other operational concerns <br>
+      10. Does not interfere with visitor traffic or other operational concerns <br>
       </div>
     
     <h4> Sampling frequency </h4>
@@ -439,13 +440,14 @@ tags$div(
    
     <h4> Parameters </h4>
     <p>
-    As of January 2026, NCRN monitors 6 primary vegetation types. A more detailed decription of monitored vegetation is availble in
+    As of January 2026, NCRN monitors 6 primary vegetation types. A more detailed description of monitored vegetation is availble in
     <a href='https://irma.nps.gov/DataStore/Reference/Profile/2210263'>
     the NCRN forest vegetation monitoring protocol.
     </a>
     Over time, NCRN has added and removed parameters from its monitoring protocol. 
     
-      <h5> Trees </h5>
+      <div style='margin-left: 20px;'>
+      1. Trees
       <p>
       Trees are defined as woody plants that have a diameter at breast height (DBH) - diameter taken at a height of 1.37 meters or 4.5 feet - of at least 10 centimeters (~4 inches). 
       Trees are identified to species, their DBH is measured, and plant health assessments are conducted, including: 
@@ -454,42 +456,43 @@ tags$div(
       which is used as a measure of the size of the tree.
       </p>
 
-      <h5> Saplings </h5>
+      2. Saplings
       <p>
       Saplings are small trees with a DBH between 1 and 10 centimeters (0.4 - 4 inches). Like trees, saplings are identified and their diameter is measured. 
       In addition to the plant health observations for trees, NCRN assess saplings to see if their leaves have been browsed by deer.
       </p>
 
-      <h5> Shrubs </h5>
+      3. Shrubs
       <p>
       Shrubs are woody plant species that typically divide into multiple stems at the base of the plants where they emerge from the ground. 
       This differentiates them from trees, which are typically a single stem at the base. Shrubs are identified to species and assessed for evidence of deer browse.
       </p>
     
-      <h5> Tree and Shrub Seedlings </h5>
+      4. Tree and Shrub Seedlings </h5>
       <p>
-      Seedlings are trees or shrubs with a DBH of less than 1 centimeter. Data is only collected on seedlings which are at least 15 centimeters (~ 6 inches) tall. 
-      Smaller seedlings are not recorded. NCRN identifies seedlings to species, measure their height, and look for evidence of deer browse.
+      Seedlings are trees or shrubs with a DBH of less than 1 centimeter. Data is only collected on seedlings that are at least 15 centimeters (~ 6 inches) tall. 
+      Smaller seedlings are not recorded. NCRN identifies seedlings to species, measures their height, and looks for evidence of deer browse.
       </p>
 
-      <h5> Understory Plants </h5>
+      5. Understory Plants
       <p>
       Understory plants is a broad category which inlcudes a variety of species that are found on the forest floor. Only a subset of understory plant species are monitored, 
       primarily species which are either exotic invasives or are known to be preferentailly consumed by deer. Most are not woody, but a few are woody shrubs that 
       either grow as numerous small individuals (e.g. blueberries) or are found in dense thorny thickets (e.g. Japanese barberry). 
-      <a href=''>
-      The NCRN forest vegetation monitoring protocol
+      <a href='https://irma.nps.gov/DataStore/Reference/Profile/2210263'>
+      The NCRN forest vegetation monitoring protocol***
       </a>
       has a list of all species monitored as understory plants. Note that a plant can be monitored both as an understory plant and as a vine when it occurs both on 
       trees and on the forest floor (e.g. English ivy). NCRN idenitfies each plant to species and estimates its percent cover (this is done by examining a number of 1m2 
       quadrats and determining the percent of the ground covered by that species).
       </p>
 
-      <h5> Vines in Trees </h5>
+      6. Vines in Trees
       <p>
       Every tree in a monitoring plot is inspected for the presence of vines. The species of each vine is recorded. This website provides information on how many trees are hosts to vines. 
       The abundance of each vine species is estimated by the number of trees they grow on and we do not attempt to measure the size of the individual vines.
       </p>
+      </div>
     
     <h4> Data Quality </h4>
       <div style='margin-left: 20px;'>
