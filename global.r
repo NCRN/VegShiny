@@ -1,11 +1,11 @@
 #### Network specific settings ####
-Network<-"NCRN"
-NetworkURL<-switch(Network,
-                   ERMN=, MIDN=, NCRN=, NETN = paste0('https://www.nps.gov/im/',tolower(Network)),
+NETWORK<-"NCRN"
+NETWORKURL<-switch(NETWORK,
+                   ERMN=, MIDN=, NCRN=, NETN = paste0('https://www.nps.gov/im/',tolower(NETWORK)),
                    SHEN='https://www.nps.gov/shen/index.htm'
 )
 
-PlantTypes<-switch(Network,
+PLANTYPES<-switch(NETWORK,
     ERMN=list(Trees='trees',Saplings="saplings","Tree seedlings"="seedlings", "Understory plants"="herbs","Coarse Woody Debris"='cwd'),
     MIDN=list(Trees='trees',Saplings="saplings","Tree seedlings"="seedlings", "Understory plants"="herbs","Vines on Trees"="vines",
               "Coarse Woody Debris"='cwd'),
@@ -17,7 +17,7 @@ PlantTypes<-switch(Network,
                "Understory plants"="herbs")
 )
 
-PlantSlotLookup<-switch(Network,
+PLANTSLOTLOOKUP<-switch(NETWORK,
     NCRN=c(
       trees = "Trees",
       saplings = "Saplings",
@@ -30,7 +30,7 @@ PlantSlotLookup<-switch(Network,
     )
 )
 
-IVPlantTypes<-switch(Network,  #needed as not all plants have an IV
+IVPLANTTYPES<-switch(NETWORK,  #needed as not all plants have an IV
     ERMN=list(Trees="trees",Saplings="saplings","Tree seedlings"="seedlings"),
     MIDN=list(Trees="trees",Saplings="saplings","Tree seedlings"="seedlings"),
     NCRN=list(Trees="trees",Saplings="saplings","Tree seedlings"="seedlings","Shrub seedlings"="shseedlings"),
@@ -38,7 +38,7 @@ IVPlantTypes<-switch(Network,  #needed as not all plants have an IV
     SHEN=list(Trees="trees",Saplings="saplings","Tree seedlings"="seedlings","Shrub seedlings"="shseedlings")
   )
 
-Years<-switch(Network,
+YEARS<-switch(NETWORK,
              ERMN=list(Start=2007, End=2017, Range=4),
              MIDN=list(Start=2007, End=2017, Range=4),
              NCRN=list(Start=2006, End=2017, Range=4),
@@ -46,7 +46,7 @@ Years<-switch(Network,
              SHEN=list(Start=2003, End=2017, Range=4)
   )
 
-ExtraLayers<-switch(Network,
+EXTRALAYERS<-switch(NETWORK,
                     ERMN=c(None="None"),
                     MIDN=c(None="None"),
                     NCRN=c(None="None", "EcoRegions"="EcoReg","Forested Areas"="ForArea","Soil Map "="Soil"),
@@ -54,7 +54,7 @@ ExtraLayers<-switch(Network,
                     SHEN=c(None="None")
   )
 
-ProjectInfo<-switch(Network,
+PROJECTINFO<-switch(NETWORK,
                     ERMN=includeHTML("./www/InformationERMN.html"),
                     MIDN=includeHTML("./www/InformationMIDN.html"),
                     NCRN=includeHTML("./www/Information.html"),
@@ -62,7 +62,7 @@ ProjectInfo<-switch(Network,
                     SHEN=HTML("./www/InformationSHEN.html")
 )
 
-Citations<-switch(Network,
+CITATIONS<-switch(NETWORK,
                     ERMN=includeHTML("./www/CitationsERMN.html"),
                     MIDN=includeHTML("./www/CitationsMIDN.html"),
                     NCRN=includeHTML("./www/Citations.html"),
@@ -72,14 +72,14 @@ Citations<-switch(Network,
 
 
 #### Colors ####
-GraphColors<-read.csv("./Data/colors.csv", header=T, as.is=T)
-ColorNames<-GraphColors$Rcolor
-names(ColorNames)<-GraphColors$DisplayColor
-BlueOr<-colorRampPalette(c("cyan","magenta4","orangered3")) # colors for circles
-AquaYel<-colorRampPalette(c("aquamarine4","green","yellow","goldenrod4")) #colors for polygons
+GRAPHCOLORS<-read.csv("./Data/colors.csv", header=T, as.is=T)
+COLORNAMES<-GRAPHCOLORS$Rcolor
+names(COLORNAMES)<-GRAPHCOLORS$DisplayColor
+BLUEOR<-colorRampPalette(c("cyan","magenta4","orangered3")) # colors for circles
+AQUAYE1<-colorRampPalette(c("aquamarine4","green","yellow","goldenrod4")) #colors for polygons
 
 #### Legend for Map ####
-MapLegend<-list(
+MAPLEGEND<-list(
   count=list(
     trees=list(
       Title="Trees / hectare",
