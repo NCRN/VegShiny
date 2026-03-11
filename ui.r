@@ -4,20 +4,17 @@ library(leaflet)
 library(shinyjs)
 library(DT)
 
-
-navbarPage(title=HTML("<div> <a href=",NetworkURL,"> <img src='ah_small_black.gif',
-          alt='Forest Vegetation Visualizer'> </a> Forest Vegetation Visualizer</div>"),
+navbarPage(title=HTML("<div> <a href=",NetworkURL,">
+                      </a> Forest Vegetation Visualizer</div>"),
     position = "static-top", inverse=TRUE, collapsible = FALSE, fluid=TRUE, windowTitle = paste(Network, "Forest Vegetation"),
     theme="https://www.nps.gov/lib/bootstrap/3.3.2/css/nps-bootstrap.min.css", id="MainNavBar",
   ######################################### Map Panel ####################################################################
-  
   
    tabPanel(title="Map",style="padding: 0",
      useShinyjs(),
 
     div(class="outer",
       tags$head(includeCSS("./www/mapstyles.css") ), # defines css file
-      tags$head(HTML('<link rel="icon", href="AH_small_flat_4C_12x16.png", type="image/png" />')), #puts up icon on tab
       tags$head(includeScript("https://www.nps.gov/common/commonspot/templates/js/federated-analytics.js"))#,
     ),
     
@@ -87,7 +84,8 @@ navbarPage(title=HTML("<div> <a href=",NetworkURL,"> <img src='ah_small_black.gi
 
 ######################################## Graphs Panel ##########################################################
 
-    navbarMenu(tags$div(title="Graph the data","Graphs"),    
+    navbarMenu(tags$div(title="Graph the data","Graphs"),
+               
 #############  densplot() based plots
       tabPanel(tags$div(title="Graph abundance, basal area, percent cover, etc.","Data by Park and Species"), 
                
