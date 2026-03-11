@@ -323,6 +323,8 @@ navbarPage(title=HTML("<div> <a href=",NetworkURL,"> <img src='ah_small_black.gi
 tabPanel(
   tags$div(
     title="About the project", "About"
-    ), includeHTML("www/AboutTab.html")
+    ), 
+  includeHTML("www/AboutTab.html")
+  
 )#end About menu tabPanel()
 )#end of navbarPage
