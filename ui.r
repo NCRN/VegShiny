@@ -5,8 +5,7 @@ library(shinyjs)
 library(DT)
 
 
-navbarPage(title=HTML("<div> <a href=",NetworkURL,"> <img src='ah_small_black.gif',
-          alt='National Capital Region Network Forest Vegetation'> </a> National Capital Region Network <br> Forest Vegetation </div>"),
+navbarPage(title=HTML("<div> <a href=",NetworkURL,"></a> National Capital Region Network <br> Forest Vegetation </div>"),
     position = "static-top", inverse=TRUE, collapsible = FALSE, fluid=TRUE, windowTitle = paste(Network, "Forest Vegetation"),
     theme="https://www.nps.gov/lib/bootstrap/3.3.2/css/nps-bootstrap.min.css", id="MainNavBar",
     
@@ -17,13 +16,15 @@ navbarPage(title=HTML("<div> <a href=",NetworkURL,"> <img src='ah_small_black.gi
       font-size: 40px !important; 
       font-family: 'Times New Roman';
       color: #ffffff !important;                    
+      line-height: 1.0;
+      padding-left: 25px;
     }
 
     /* Increase navbar height so the two-line title has room */
     .navbar {
       min-height: 130px;}
     }}
-  "))
+  ")),
     ),
     
   ######################################### Map Panel ####################################################################
@@ -34,7 +35,6 @@ navbarPage(title=HTML("<div> <a href=",NetworkURL,"> <img src='ah_small_black.gi
 
     div(class="outer",
       tags$head(includeCSS("./www/mapstyles.css") ), # defines css file
-      tags$head(HTML('<link rel="icon", href="AH_small_flat_4C_12x16.png", type="image/png" />')), #puts up icon on tab
       tags$head(includeScript("https://www.nps.gov/common/commonspot/templates/js/federated-analytics.js"))#,
     ),
     
