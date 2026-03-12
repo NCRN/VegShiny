@@ -6,9 +6,26 @@ library(DT)
 
 
 navbarPage(title=HTML("<div> <a href=",NetworkURL,"> <img src='ah_small_black.gif',
-          alt='Forest Vegetation Visualizer'> </a> Forest Vegetation Visualizer</div>"),
+          alt='National Capital Region Network Forest Vegetation'> </a> National Capital Region Network <br> Forest Vegetation </div>"),
     position = "static-top", inverse=TRUE, collapsible = FALSE, fluid=TRUE, windowTitle = paste(Network, "Forest Vegetation"),
     theme="https://www.nps.gov/lib/bootstrap/3.3.2/css/nps-bootstrap.min.css", id="MainNavBar",
+    
+    tags$head(
+      tags$style(HTML("
+    .navbar .navbar-brand,
+    .navbar-inverse .navbar-brand {
+      font-size: 40px !important; 
+      font-family: 'Times New Roman';
+      color: #ffffff !important;                    
+    }
+
+    /* Increase navbar height so the two-line title has room */
+    .navbar {
+      min-height: 130px;}
+    }}
+  "))
+    ),
+    
   ######################################### Map Panel ####################################################################
   
   
