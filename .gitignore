@@ -8,3 +8,4 @@ renv/
 *.Rproj
 sandbox.R
 Data/
+secrets.R
