@@ -6,7 +6,7 @@ library(DT)
 
 
 shiny::navbarPage(title=htmltools::HTML("<div> <a href=",NETWORKURL,"></a> National Capital Region Network <br> Forest Vegetation </div>"),
-    position = "static-top", inverse=TRUE, collapsible = FALSE, fluid=TRUE, windowTitle = base::paste(NETWORK, "Forest Vegetation"),
+    position = "static-top", inverse=TRUE, collapsible = TRUE, fluid=TRUE, windowTitle = base::paste(NETWORK, "Forest Vegetation"),
     theme="https://www.nps.gov/lib/bootstrap/3.3.2/css/nps-bootstrap.min.css", id="MainNavBar",
     
     htmltools::tags$head(
@@ -25,8 +25,17 @@ shiny::navbarPage(title=htmltools::HTML("<div> <a href=",NETWORKURL,"></a> Natio
       min-height: 130px;}
     }}
   ")),
-      ###google analytics###
+##### google analytics #####
       htmltools::includeHTML("www/google-analytics.html"),
+      
+##### map panel - mobile scroll ***not working*** #####    
+#      tags$style(HTML("
+#    /* Let vertical gestures scroll the page even when touching the map */
+#    .leaflet-container {
+#      touch-action: pan-y !important;
+#      overscroll-behavior: contain;
+#    }
+# ")),
       ),
     
   ######################################### Map Panel ####################################################################
@@ -91,7 +100,22 @@ shiny::navbarPage(title=htmltools::HTML("<div> <a href=",NETWORKURL,"></a> Natio
 #### The Map ####
        shiny::column(10,style="padding: 0",
           htmltools::div(leaflet::leafletOutput("VegMap", height="1000px"))   
-       )
+       ),
+# CSS
+tags$head(tags$style(HTML("
+  /* Desktop default: keep your 1000px if desired */
+  #VegMapContainer { height: 1000px; }
+
+  /* On small screens, make map fill available viewport */
+  @media (max-width: 768px) {
+    #VegMapContainer {
+      height: calc(100vh - 120px); /* subtract navbar+some margin */
+    }
+    #VegMapContainer .leaflet-container {
+      height: 100% !important;
+    }
+  }")))
+
      ),
 # #### Floating "About the map" Panel ####
   shiny::fixedPanel(class="panel panel-primary controls",draggable=TRUE,

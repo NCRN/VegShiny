@@ -11,6 +11,7 @@ library(DT)
 library(sf)
 library(ritis)
 library(tidyr)
+library(htmlwidgets)
 source('secrets.R')
 source('preprocess.r')
 preprocess(NETWORK=NETWORK)
@@ -192,16 +193,58 @@ shiny::shinyServer(function(input,output,session){
   
   
 #### Render Map  ####
+  
   output$VegMap <- leaflet::renderLeaflet({
     bounds <- PARKBOUNDS[PARKBOUNDS$ParkCode == NETWORK, ]
-    leaflet::leaflet() %>%
+    
+    leaflet::leaflet(options = leafletOptions(
+      scrollWheelZoom = TRUE,  # keep OFF to avoid wheel capturing page scroll
+      touchZoom       = FALSE,  # keep OFF to avoid pinch-zoom trapping on mobile
+      dragging        = TRUE,   # allow panning
+      keyboard        = FALSE,  # optional: prevents keyboard focus hijacking
+      tap             = FALSE   # optional: avoids odd tap delays on mobile
+    )) %>%
       leaflet::fitBounds(
         lng1 = bounds$LongW, lat1 = bounds$LatS, lng2 = bounds$LongE, lat2 = bounds$LatN
-        ) %>%
+      ) %>%
       leaflet::setMaxBounds(
-        lng1 = bounds$LongW, lng2 = bounds$LongE, lat1 = bounds$LatS, lat2 = bounds$LatN
-        )
-  })
+        lng1 = bounds$LongW, lng2 = bounds$LongE, lat1 = bounds$LatS, lat2 = bounds$LatN)})
+#       %>%
+      # Optional: enable wheel zoom only while hovering (desktop), auto-disable on leave
+#      onRender("
+#      function(el, x) {
+#        var map = this;
+
+#        // Defensive: keep zoom disabled by default
+#        map.scrollWheelZoom && map.scrollWheelZoom.disable();
+#        map.touchZoom && map.touchZoom.disable();
+
+#        // Desktop: allow wheel zoom only while hovering the map
+#        el.addEventListener('mouseenter', function(){
+#          map.scrollWheelZoom && map.scrollWheelZoom.enable();
+#        }, {passive:true});
+
+#        el.addEventListener('mouseleave', function(){
+#          map.scrollWheelZoom && map.scrollWheelZoom.disable();
+#        }, {passive:true});
+
+#        // Mobile: ensure zoom capture is off when touch leaves / cancels
+#        ['touchend','pointerleave','pointercancel','blur'].forEach(function(evt){
+#          el.addEventListener(evt, function(){
+#            map.scrollWheelZoom && map.scrollWheelZoom.disable();
+#            map.touchZoom && map.touchZoom.disable();
+#          }, {passive:true});
+#        });
+
+#        // If the page starts scrolling, kill zoom capture immediately
+#        window.addEventListener('scroll', function(){
+#          map.scrollWheelZoom && map.scrollWheelZoom.disable();
+#          map.touchZoom && map.touchZoom.disable();
+#        }, {passive:true});
+#      }
+#    ")
+#  })
+  
 
 # Make Attribution
   NPSATTRIB<-htmltools::HTML("<a href='https://www.nps.gov/npmap/disclaimer/'>Disclaimer</a> | 
