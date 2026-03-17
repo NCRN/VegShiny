@@ -1,24 +1,24 @@
 #### Network specific settings ####
-Network<-"NCRN"
-NetworkURL<-switch(Network,
-                   ERMN=, MIDN=, NCRN=, NETN = paste0('https://www.nps.gov/im/',tolower(Network)),
+NETWORK<-"NCRN"
+NETWORKURL<-base::switch(NETWORK,
+                   ERMN=, MIDN=, NCRN=, NETN = base::paste0('https://www.nps.gov/im/',base::tolower(NETWORK)),
                    SHEN='https://www.nps.gov/shen/index.htm'
 )
 
-PlantTypes<-switch(Network,
-    ERMN=list(Trees='trees',Saplings="saplings","Tree seedlings"="seedlings", "Understory plants"="herbs","Coarse Woody Debris"='cwd'),
-    MIDN=list(Trees='trees',Saplings="saplings","Tree seedlings"="seedlings", "Understory plants"="herbs","Vines on Trees"="vines",
+PLANTTYPES<-base::switch(NETWORK,
+    ERMN=base::list(Trees='trees',Saplings="saplings","Tree seedlings"="seedlings", "Understory plants"="herbs","Coarse Woody Debris"='cwd'),
+    MIDN=base::list(Trees='trees',Saplings="saplings","Tree seedlings"="seedlings", "Understory plants"="herbs","Vines on Trees"="vines",
               "Coarse Woody Debris"='cwd'),
-    NCRN=list(Trees="trees",Saplings="saplings","Tree seedlings"="seedlings", Shrubs="shrubs", "Shrub seedlings"="shseedlings",
+    NCRN=base::list(Trees="trees",Saplings="saplings","Tree seedlings"="seedlings", Shrubs="shrubs", "Shrub seedlings"="shseedlings",
                 "Understory plants"="herbs","Vines on Trees"="vines"),
-    NETN=list(Trees="trees",Saplings="saplings","Tree seedlings"="seedlings", "Understory plants"="herbs","Vines on Trees"="vines", 
+    NETN=base::list(Trees="trees",Saplings="saplings","Tree seedlings"="seedlings", "Understory plants"="herbs","Vines on Trees"="vines", 
               "Coarse Woody Debris"='cwd'),
-    SHEN=list(Trees="trees",Saplings="saplings","Tree seedlings"="seedlings", Shrubs="shrubs", "Shrub seedlings"="shseedlings",
+    SHEN=base::list(Trees="trees",Saplings="saplings","Tree seedlings"="seedlings", Shrubs="shrubs", "Shrub seedlings"="shseedlings",
                "Understory plants"="herbs")
 )
 
-PlantSlotLookup<-switch(Network,
-    NCRN=c(
+PLANTSLOTLOOKUP<-base::switch(NETWORK,
+    NCRN=base::c(
       trees = "Trees",
       saplings = "Saplings",
       seedlings = "Tree seedlings",
@@ -30,108 +30,108 @@ PlantSlotLookup<-switch(Network,
     )
 )
 
-IVPlantTypes<-switch(Network,  #needed as not all plants have an IV
-    ERMN=list(Trees="trees",Saplings="saplings","Tree seedlings"="seedlings"),
-    MIDN=list(Trees="trees",Saplings="saplings","Tree seedlings"="seedlings"),
-    NCRN=list(Trees="trees",Saplings="saplings","Tree seedlings"="seedlings","Shrub seedlings"="shseedlings"),
-    NETN=list(Trees="trees",Saplings="saplings","Tree seedlings"="seedlings"),
-    SHEN=list(Trees="trees",Saplings="saplings","Tree seedlings"="seedlings","Shrub seedlings"="shseedlings")
+IVPLANTTYPES<-base::switch(NETWORK,  #needed as not all plants have an IV
+    ERMN=base::list(Trees="trees",Saplings="saplings","Tree seedlings"="seedlings"),
+    MIDN=base::list(Trees="trees",Saplings="saplings","Tree seedlings"="seedlings"),
+    NCRN=base::list(Trees="trees",Saplings="saplings","Tree seedlings"="seedlings","Shrub seedlings"="shseedlings"),
+    NETN=base::list(Trees="trees",Saplings="saplings","Tree seedlings"="seedlings"),
+    SHEN=base::list(Trees="trees",Saplings="saplings","Tree seedlings"="seedlings","Shrub seedlings"="shseedlings")
   )
 
-Years<-switch(Network,
-             ERMN=list(Start=2007, End=2017, Range=4),
-             MIDN=list(Start=2007, End=2017, Range=4),
-             NCRN=list(Start=2006, End=2017, Range=4),
-             NETN=list(Start=2006, End=2017, Range=4),
-             SHEN=list(Start=2003, End=2017, Range=4)
+YEARS<-base::switch(NETWORK,
+             ERMN=base::list(Start=2007, End=2017, Range=4),
+             MIDN=base::list(Start=2007, End=2017, Range=4),
+             NCRN=base::list(Start=2006, End=2017, Range=4),
+             NETN=base::list(Start=2006, End=2017, Range=4),
+             SHEN=base::list(Start=2003, End=2017, Range=4)
   )
 
-ExtraLayers<-switch(Network,
-                    ERMN=c(None="None"),
-                    MIDN=c(None="None"),
-                    NCRN=c(None="None", "EcoRegions"="EcoReg","Forested Areas"="ForArea","Soil Map "="Soil"),
-                    NETN=c(None="None"),
-                    SHEN=c(None="None")
+EXTRALAYERS<-base::switch(NETWORK,
+                    ERMN=base::c(None="None"),
+                    MIDN=base::c(None="None"),
+                    NCRN=base::c(None="None", "EcoRegions"="EcoReg","Forested Areas"="ForArea","Soil Map "="Soil"),
+                    NETN=base::c(None="None"),
+                    SHEN=base::c(None="None")
   )
 
-ProjectInfo<-switch(Network,
-                    ERMN=includeHTML("./www/InformationERMN.html"),
-                    MIDN=includeHTML("./www/InformationMIDN.html"),
-                    NCRN=includeHTML("./www/Information.html"),
-                    NETN=includeHTML("./www/InformationNETN.html"),
-                    SHEN=HTML("./www/InformationSHEN.html")
+PROJECTINFO<-base::switch(NETWORK,
+                    ERMN=htmltools::includeHTML("./www/InformationERMN.html"),
+                    MIDN=htmltools::includeHTML("./www/InformationMIDN.html"),
+                    NCRN=htmltools::includeHTML("./www/Information.html"),
+                    NETN=htmltools::includeHTML("./www/InformationNETN.html"),
+                    SHEN=htmltools::HTML("./www/InformationSHEN.html")
 )
 
-Citations<-switch(Network,
-                    ERMN=includeHTML("./www/CitationsERMN.html"),
-                    MIDN=includeHTML("./www/CitationsMIDN.html"),
-                    NCRN=includeHTML("./www/Citations.html"),
-                    NETN=includeHTML("./www/CitationsNETN.html"),
-                    SHEN=HTML("./www/CitationsSHEN.html")
+CITATIONS<-base::switch(NETWORK,
+                    ERMN=htmltools::includeHTML("./www/CitationsERMN.html"),
+                    MIDN=htmltools::includeHTML("./www/CitationsMIDN.html"),
+                    NCRN=htmltools::includeHTML("./www/Citations.html"),
+                    NETN=htmltools::includeHTML("./www/CitationsNETN.html"),
+                    SHEN=htmltools::HTML("./www/CitationsSHEN.html")
 )
 
 
 #### Colors ####
-GraphColors<-read.csv("./Data/colors.csv", header=T, as.is=T)
-ColorNames<-GraphColors$Rcolor
-names(ColorNames)<-GraphColors$DisplayColor
-BlueOr<-colorRampPalette(c("cyan","magenta4","orangered3")) # colors for circles
-AquaYel<-colorRampPalette(c("aquamarine4","green","yellow","goldenrod4")) #colors for polygons
+GRAPHCOLORS<-utils::read.csv("./Data/colors.csv", header=T, as.is=T)
+COLORNAMES<-GRAPHCOLORS$Rcolor
+base::names(COLORNAMES)<-GRAPHCOLORS$DisplayColor
+BLUEOR<-grDevices::colorRampPalette(base::c("cyan","magenta4","orangered3")) # colors for circles
+AQUAYEL<-grDevices::colorRampPalette(base::c("aquamarine4","green","yellow","goldenrod4")) #colors for polygons
 
 #### Legend for Map ####
-MapLegend<-list(
-  count=list(
-    trees=list(
+MAPLEGEND<-list(
+  count=base::list(
+    trees=base::list(
       Title="Trees / hectare",
-      Cuts=c(-1,0,25,50,100,200,400,600,100000),
-      Labels=c("0","0 - 25","25 - 50","50 - 100","100 - 200","200 - 400","400 - 600","600+")
+      Cuts=base::c(-1,0,25,50,100,200,400,600,100000),
+      Labels=base::c("0","0 - 25","25 - 50","50 - 100","100 - 200","200 - 400","400 - 600","600+")
     ),
-    saplings=list(
+    saplings=base::list(
       Title="Saplings / hectare",
-      Cuts=c(-1,0,150,300,600,1200,1800,2400,100000),
-      Labels=c("0","0 - 150", "150 - 300", "300 - 600","600 - 1200","1200 - 1800","1800 - 2400","2400+")
+      Cuts=base::c(-1,0,150,300,600,1200,1800,2400,100000),
+      Labels=base::c("0","0 - 150", "150 - 300", "300 - 600","600 - 1200","1200 - 1800","1800 - 2400","2400+")
     ),
-    seedlings=list(
+    seedlings=base::list(
       Title="Tree seedlings / hectare",
-      Cuts=c(-1,0,2500,5000,7500,10000,20000,40000,100000000),
-      Labels=c("0","0 - 2500","2500 - 5000","5000 - 7500","7500 - 10,000","10,000 - 20,000","20,000 - 40,000","40,000+")
+      Cuts=base::c(-1,0,2500,5000,7500,10000,20000,40000,100000000),
+      Labels=base::c("0","0 - 2500","2500 - 5000","5000 - 7500","7500 - 10,000","10,000 - 20,000","20,000 - 40,000","40,000+")
     ),
-    shrubs=list(
+    shrubs=base::list(
       Title="Shrubs / hectare",
-      Cuts=c(-1,0,250,500,1000,1500,3000,6000,100000),
-      Labels=c("0","0 - 250","250 - 500","500 - 1000","1000 - 1500", "1500 - 3000", "3000 - 6000", "6000+")
+      Cuts=base::c(-1,0,250,500,1000,1500,3000,6000,100000),
+      Labels=base::c("0","0 - 250","250 - 500","500 - 1000","1000 - 1500", "1500 - 3000", "3000 - 6000", "6000+")
     ),
-    shseedlings=list(
+    shseedlings=base::list(
       Title="Shrub seedlings / hectare",
-      Cuts=c(-1,0,2500,5000,7500,10000,20000,40000,100000000),
-      Labels=c("0","0 - 2500","2500 - 5000","5000 - 7500","7500 - 10,000","10,000 - 20,000","20,000 - 40,000","40,000+")
+      Cuts=base::c(-1,0,2500,5000,7500,10000,20000,40000,100000000),
+      Labels=base::c("0","0 - 2500","2500 - 5000","5000 - 7500","7500 - 10,000","10,000 - 20,000","20,000 - 40,000","40,000+")
     ),
-    vines=list(
+    vines=base::list(
       Title="Vines on trees / hectare",
-      Cuts=c(-1,0,25,50,100,250,500,1000,100000),
-      Labels=c("0","0 - 25","25 - 50","50 - 100","100 - 250", "250 - 500", " 500 - 1000", "1000+")
+      Cuts=base::c(-1,0,25,50,100,250,500,1000,100000),
+      Labels=base::c("0","0 - 25","25 - 50","50 - 100","100 - 250", "250 - 500", " 500 - 1000", "1000+")
     )
   ),
-  size=list(   
-    trees=list(
+  size=base::list(   
+    trees=base::list(
       Title="Basal area m2 / hectare",
-      Cuts=c(-1,0,0.5, 1.5, 7.5,15,30,45,10000000),
-      Labels=c("0","0 - 0.5","0.5 - 1.5","1.5 - 7.5","7.5 - 15","15 - 30","30 - 45","45+")
+      Cuts=base::c(-1,0,0.5, 1.5, 7.5,15,30,45,10000000),
+      Labels=base::c("0","0 - 0.5","0.5 - 1.5","1.5 - 7.5","7.5 - 15","15 - 30","30 - 45","45+")
     ),
-    saplings=list(
+    saplings=base::list(
       Title="Basal Area m2 / hectare",
-      Cuts=c(-1,0,0.25,0.5,1.0,2.0,3.0, 4.0, 10000000),
-      Labels=c("0","0 - 0.25","0.25 - 0.5","0.5 - 1.0","1.0 - 2.0", "2.0 -3.0", "3.0 - 4.0","4.0+")
+      Cuts=base::c(-1,0,0.25,0.5,1.0,2.0,3.0, 4.0, 10000000),
+      Labels=base::c("0","0 - 0.25","0.25 - 0.5","0.5 - 1.0","1.0 - 2.0", "2.0 -3.0", "3.0 - 4.0","4.0+")
     ),
-    herbs=list(
+    herbs=base::list(
       Title="Percent Cover",
-      Cuts=c(-1,0,1,5,10,25,50,75,1000),
-      Labels=c("0%","0 - 1%","1 - 5%","5 - 10%","10 - 25%","25 - 50%","50 - 75%","75%+")
+      Cuts=base::c(-1,0,1,5,10,25,50,75,1000),
+      Labels=base::c("0%","0 - 1%","1 - 5%","5 - 10%","10 - 25%","25 - 50%","50 - 75%","75%+")
     ),
-    cwd=list(
+    cwd=base::list(
       Title="Volume m3 / hectare",
-      Cuts=c(-1,0,0.5, 1.5, 7.5,15,30,45,10000000),
-      Labels=c("0","0 - 0.5","0.5 - 1.5","1.5 - 7.5","7.5 - 15","15 - 30","30 - 45","45+")
+      Cuts=base::c(-1,0,0.5, 1.5, 7.5,15,30,45,10000000),
+      Labels=base::c("0","0 - 0.5","0.5 - 1.5","1.5 - 7.5","7.5 - 15","15 - 30","30 - 45","45+")
     )
   )
 )

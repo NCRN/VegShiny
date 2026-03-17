@@ -1,12 +1,12 @@
 # create the dev environment from scratch
 
-options(download.file.method = "wininet")
+base::options(download.file.method = "wininet")
 # wd <- getwd()
-# unlink(file.path(wd, 'renv'), recursive = TRUE, force=T)
-# unlink(file.path(wd, 'renv.lock'), recursive = TRUE, force=T)
+# unlink(base::file.path(wd, 'renv'), recursive = TRUE, force=T)
+# unlink(base::file.path(wd, 'renv.lock'), recursive = TRUE, force=T)
 library(renv)
 renv::init()
-default_dependencies <- c(
+default_dependencies <- base::c(
     # packages that consistently cause problems for me
     'usethis'
     ,'fs'
