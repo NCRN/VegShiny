@@ -16,7 +16,7 @@ source('preprocess.r')
 preprocess(NETWORK=NETWORK)
 
 ### .csv Import ###
-VegData<-base::switch(NETWORK,
+VEGDATA<-base::switch(NETWORK,
                 ERMN=importERMN("./Data/ERMN"),
                 MIDN=importMIDN("./Data/MIDN"),
                 NCRN=importNCRN("./Data/NCRN"),
@@ -24,13 +24,13 @@ VegData<-base::switch(NETWORK,
                 SHEN=list(importSHEN("./Data/SHEN"))
 )
 
-base::names(VegData)<-NPSForVeg::getNames(VegData, name.class="code")
-ParkList<-NPSForVeg::getNames(VegData,name.class="code")
-base::names(ParkList)<-NPSForVeg::getNames(VegData)
+base::names(VEGDATA)<-NPSForVeg::getNames(VEGDATA, name.class="code")
+PARKLIST<-NPSForVeg::getNames(VEGDATA,name.class="code")
+base::names(PARKLIST)<-NPSForVeg::getNames(VEGDATA)
 
 PARKBOUNDS<-utils::read.csv("boundboxes.csv", as.is=TRUE)
 
-DataCycles<-NPSForVeg::getCycles(VegData[[1]])  #assumes that first park has all the cycles
+DATACYCLES<-NPSForVeg::getCycles(VEGDATA[[1]])  #assumes that first park has all the cycles
 ##### Begin Server Function ####
 
 shiny::shinyServer(function(input,output,session){
@@ -60,7 +60,7 @@ shiny::shinyServer(function(input,output,session){
   
   output$ParkZoomControl<-shiny::renderUI({
     shiny::selectInput(inputId="ParkZoom",label=NULL,selectize=FALSE,
-                choices=base::c("All Parks"=NETWORK,ParkList) )
+                choices=base::c("All Parks"=NETWORK,PARKLIST) )
   })
   
   
@@ -68,7 +68,7 @@ shiny::shinyServer(function(input,output,session){
   
   output$MapParkControl<-shiny::renderUI({
     shiny::selectInput(inputId="MapPark", label="Filter species list by park",
-                choices=base::c("All Parks"="All",ParkList)
+                choices=base::c("All Parks"="All",PARKLIST)
                 # , selected = "ANTI"
                 )
   })
@@ -107,17 +107,17 @@ shiny::shinyServer(function(input,output,session){
 #Map Cycles
 
   output$MapCycleControl<-shiny::renderUI({
-    shiny::req(DataCycles)
+    shiny::req(DATACYCLES)
     shiny::selectInput(inputId="MapCycles", label="Display data from years:", 
-      choices=base::rev(stats::setNames(base::as.character(DataCycles$Cycle), base::paste0(DataCycles$Name,": ",
-                                DataCycles$YearStart,"-",DataCycles$YearEnd)))
+      choices=base::rev(stats::setNames(base::as.character(DATACYCLES$Cycle), base::paste0(DATACYCLES$Name,": ",
+                                DATACYCLES$YearStart,"-",DATACYCLES$YearEnd)))
     )
 })
 
   MapYears<-shiny::reactive({
     shiny::req(input$MapCycles)
-    (DataCycles %>% dplyr::filter(Cycle==input$MapCycles) %>% dplyr::pull(YearStart)) : 
-      (DataCycles %>% dplyr::filter(Cycle==input$MapCycles) %>% dplyr::pull(YearEnd))
+    (DATACYCLES %>% dplyr::filter(Cycle==input$MapCycles) %>% dplyr::pull(YearStart)) : 
+      (DATACYCLES %>% dplyr::filter(Cycle==input$MapCycles) %>% dplyr::pull(YearEnd))
   })
   
 # Map MetaData
@@ -128,17 +128,17 @@ shiny::shinyServer(function(input,output,session){
   
 # Data to plot on map - always for all parks 
   MapData<-shiny::reactive({
-    shiny::req(input$MapSpecies=="All" | input$MapSpecies %in% NPSForVeg::getPlants(object=VegData, group=input$MapGroup, years=MapYears())$Latin_Name )
+    shiny::req(input$MapSpecies=="All" | input$MapSpecies %in% NPSForVeg::getPlants(object=VEGDATA, group=input$MapGroup, years=MapYears())$Latin_Name )
     shiny::req(input$MapGroup!="vines" | (input$MapGroup=="vines" & input$MapValues=="count"))
     
-    P<-dplyr::left_join(NPSForVeg::getPlots(VegData, years=MapYears(), output="dataframe", type="all") %>% 
-        dplyr::select(Plot_Name,Unit_Code, Latitude, Longitude), NPSForVeg::getEvents(object=VegData, years=MapYears(), plot.type="all") %>% 
+    P<-dplyr::left_join(NPSForVeg::getPlots(VEGDATA, years=MapYears(), output="dataframe", type="all") %>% 
+        dplyr::select(Plot_Name,Unit_Code, Latitude, Longitude), NPSForVeg::getEvents(object=VEGDATA, years=MapYears(), plot.type="all") %>% 
         dplyr::select(Plot_Name,Year=Event_Year), by="Plot_Name") %>% 
-        dplyr::mutate(Size=NPSForVeg::getArea(VegData[Unit_Code], group=input$MapGroup))
+        dplyr::mutate(Size=NPSForVeg::getArea(VEGDATA[Unit_Code], group=input$MapGroup))
     
     # if(input$MapGroup != "herbs"){
     #   base::return(P %>% 
-    #            dplyr::left_join(NPSForVeg::SiteXSpec(object=VegData, group=input$MapGroup, years=MapYears(), 
+    #            dplyr::left_join(NPSForVeg::SiteXSpec(object=VEGDATA, group=input$MapGroup, years=MapYears(), 
     #                                status=if(input$MapGroup=='trees') {
     #                                  shiny::req(input$TreeStatus)
     #                                  input$TreeStatus
@@ -160,7 +160,7 @@ shiny::shinyServer(function(input,output,session){
       species_val <- if (input$MapSpecies == "All") NA else input$MapSpecies
       
       spec_data <- NPSForVeg::SiteXSpec(
-        object = VegData,
+        object = VEGDATA,
         group = input$MapGroup,
         years = MapYears(),
         status = status_val,
@@ -174,9 +174,9 @@ shiny::shinyServer(function(input,output,session){
     
     if(input$MapGroup == "herbs"){
       base::return(P %>% 
-            dplyr::mutate(Values=NPSForVeg::SiteXSpec(object=VegData,group=input$MapGroup, years=MapYears(),
+            dplyr::mutate(Values=NPSForVeg::SiteXSpec(object=VEGDATA,group=input$MapGroup, years=MapYears(),
                          species= if(input$MapSpecies=="All") NA else input$MapSpecies,
-                         values=input$MapValues)$Total)#/getArea(VegData[Unit_Code], group=input$MapGroup, type="count"))
+                         values=input$MapValues)$Total)#/getArea(VEGDATA[Unit_Code], group=input$MapGroup, type="count"))
       )
     }
 })
@@ -204,7 +204,7 @@ shiny::shinyServer(function(input,output,session){
   })
 
 # Make Attribution
-  NPSAttrib<-htmltools::HTML("<a href='https://www.nps.gov/npmap/disclaimer/'>Disclaimer</a> | 
+  NPSATTRIB<-htmltools::HTML("<a href='https://www.nps.gov/npmap/disclaimer/'>Disclaimer</a> | 
       &copy; <a href='http://openstreetmap.org/copyright' target='_blank'>OpenStreetMap</a> contributors |
       <a class='improve-park-tiles' 
       href='http://insidemaps.nps.gov/places/editor/#background=mapbox-satellite&map=4/-95.97656/39.02772&overlays=park-tiles-overlay'
@@ -227,20 +227,16 @@ shiny::shinyServer(function(input,output,session){
     )
   })
 
-  
- 
-  
-  
-  
+
 # #Add a tile layer
   shiny::observe({
     leaflet::leafletProxy("VegMap") %>%
     leaflet::clearTiles() %>%
 
-    leaflet::addTiles(group="Map", urlTemplate=NPSBASIC, attribution=NPSAttrib, options=leaflet::tileOptions(minZoom=1))%>%
-    leaflet::addTiles(group="Imagery", urlTemplate=NPSIMAGERY,attribution=NPSAttrib, options=leaflet::tileOptions(minZoom=1)) %>%
-    leaflet::addTiles(group="Light", urlTemplate = NPSLIGHT, attribution=NPSAttrib, options=leaflet::tileOptions(minZoom=1)) %>% 
-    leaflet::addTiles(group="Slate", urlTemplate=NPSSLATE, attribution=NPSAttrib, options=leaflet::tileOptions(minZoom=1)) %>%
+    leaflet::addTiles(group="Map", urlTemplate=NPSBASIC, attribution=NPSATTRIB, options=leaflet::tileOptions(minZoom=1))%>%
+    leaflet::addTiles(group="Imagery", urlTemplate=NPSIMAGERY,attribution=NPSATTRIB, options=leaflet::tileOptions(minZoom=1)) %>%
+    leaflet::addTiles(group="Light", urlTemplate = NPSLIGHT, attribution=NPSATTRIB, options=leaflet::tileOptions(minZoom=1)) %>% 
+    leaflet::addTiles(group="Slate", urlTemplate=NPSSLATE, attribution=NPSATTRIB, options=leaflet::tileOptions(minZoom=1)) %>%
      leaflet::addLayersControl(map=., baseGroups=base::c("Map","Imagery","Light","Slate"), options=leaflet::layersControlOptions(collapsed=T))
   }) #urlTemplate comes from secrets.R file
   
@@ -305,15 +301,15 @@ shiny::shinyServer(function(input,output,session){
   #   
   #   base::return(cn_df)
   # }
-  # ### extract MapGroup input (Trees) from VegData for all Parks ###
+  # ### extract MapGroup input (Trees) from VEGDATA for all Parks ###
   # 
   selected_object <- shiny::reactive({
     # Defines a reactive function based on user inputs to MapGroup and MapPark that binds together dfs from various slots of
-    # VegData to create a data object containing relevant TSNs and Latin Names. For example, if 'Trees' and 'All parks' are
-    # selected, the trees data from all 11 slots in VegData will be bound as a single data.frame.
+    # VEGDATA to create a data object containing relevant TSNs and Latin Names. For example, if 'Trees' and 'All parks' are
+    # selected, the trees data from all 11 slots in VEGDATA will be bound as a single data.frame.
     #
     # Args:
-    #   VegData, NPSForVeg S4 object, required.
+    #   VEGDATA, NPSForVeg S4 object, required.
     #
     # Returns:
     #   vegdata_df, data.frame.
@@ -330,9 +326,9 @@ shiny::shinyServer(function(input,output,session){
     )
 
     if (input$MapPark == "All") {
-      selected_list <- VegData
+      selected_list <- VEGDATA
     } else {
-      selected_list <- base::list(VegData[[input$MapPark]])
+      selected_list <- base::list(VEGDATA[[input$MapPark]])
     }
 
     vegdata_df <- selected_list %>%
@@ -484,12 +480,12 @@ shiny::shinyServer(function(input,output,session){
     
     # output does not change based on input to MapPark because CommonNames.csv is identical for each park
     # if (input$MapPark == "All") {
-    #   selected_list <- VegData
+    #   selected_list <- VEGDATA
     # } else {
-    #   selected_list <- base::list(VegData[[input$MapPark]])
+    #   selected_list <- base::list(VEGDATA[[input$MapPark]])
     # }
     
-    selected_list <- VegData
+    selected_list <- VEGDATA
     vegdata_df <- selected_list[[1]]@Commons
     
     base::return(vegdata_df)
@@ -540,7 +536,7 @@ shiny::shinyServer(function(input,output,session){
 #List of names, elements are Latin names, names of elements are Latin or common
   MapSpecList<-shiny::reactive({
     shiny::req(input$MapPark, input$MapGroup)
-    SpecTemp<-base::unique(NPSForVeg::getPlants(object=if(input$MapPark=="All") {VegData}  else {VegData[[input$MapPark]]} , group=input$MapGroup,
+    SpecTemp<-base::unique(NPSForVeg::getPlants(object=if(input$MapPark=="All") {VEGDATA}  else {VEGDATA[[input$MapPark]]} , group=input$MapGroup,
                                years=MapYears(),common=F )$Latin_Name)
     vd_filled<-get_vd_filled()
     safeGetPlantNames <- function(object, names, in.style, out.style) {
@@ -571,7 +567,7 @@ shiny::shinyServer(function(input,output,session){
   
   # MapSpecList<-shiny::reactive({
   #   shiny::req(input$MapPark, input$MapGroup)
-  #   SpecTemp<-base::unique(NPSForVeg::getPlants(object=if(input$MapPark=="All") {VegData}  else {VegData[[input$MapPark]]} , group=input$MapGroup,
+  #   SpecTemp<-base::unique(NPSForVeg::getPlants(object=if(input$MapPark=="All") {VEGDATA}  else {VEGDATA[[input$MapPark]]} , group=input$MapGroup,
   #                              years=MapYears(),common=F )$Latin_Name)
   #   vd_filled <- get_vd_filled()
   #     
@@ -647,7 +643,7 @@ shiny::shinyServer(function(input,output,session){
         base::switch(ShapeOver$group,
                Circles= leaflet::addPopups(map=.,lat=ShapeOver$lat+.001, lng=ShapeOver$lng, layerId="MouseOverPopup",
                                   popup=base::paste0(
-                                    shiny::h5(NPSForVeg::getNames(VegData[[selectedPlot$Unit_Code]], "long")),
+                                    shiny::h5(NPSForVeg::getNames(VEGDATA[[selectedPlot$Unit_Code]], "long")),
                                    shiny::h6("Monitoring Plot:",selectedPlot$Plot_Name),
                                    shiny::h6("Year Monitored:", selectedPlot$Year),
                                    shiny::h6(base::names(MapSpecList()[MapSpecList()==input$MapSpecies]),":",base::format(base::signif(selectedPlot$Values,2),
@@ -670,7 +666,7 @@ shiny::shinyServer(function(input,output,session){
     selectedPlot <- MapData()[MapData()$Plot_Name == ShapeClick$id,]
 
     if(
-      base::class(base::try(NPSForVeg::SiteXSpec(object=VegData[[selectedPlot$Unit_Code]], group=input$MapGroup, years=selectedPlot$Year,
+      base::class(base::try(NPSForVeg::SiteXSpec(object=VEGDATA[[selectedPlot$Unit_Code]], group=input$MapGroup, years=selectedPlot$Year,
             plots=ShapeClick$id, common=input$mapCommon,
             status= if(input$MapGroup=='trees') input$TreeStatus else 'alive' 
             ), silent=TRUE))=="try-error") {
@@ -678,7 +674,7 @@ shiny::shinyServer(function(input,output,session){
     } else {
 
       tempData<- if(input$MapGroup != "herbs"){ 
-        NPSForVeg::SiteXSpec(object=VegData[[selectedPlot$Unit_Code]],group=input$MapGroup, years=selectedPlot$Year,
+        NPSForVeg::SiteXSpec(object=VEGDATA[[selectedPlot$Unit_Code]],group=input$MapGroup, years=selectedPlot$Year,
         plots=ShapeClick$id, values=input$MapValues,area="ha", common=input$mapCommon,
         status= if(input$MapGroup=='trees') input$TreeStatus else 'alive'
         )[-1]
@@ -687,13 +683,13 @@ shiny::shinyServer(function(input,output,session){
 
 
         if(input$MapGroup == "herbs"){
-            NPSForVeg::SiteXSpec(object=VegData[[selectedPlot$Unit_Code]], group=input$MapGroup, years=selectedPlot$Year,
+            NPSForVeg::SiteXSpec(object=VEGDATA[[selectedPlot$Unit_Code]], group=input$MapGroup, years=selectedPlot$Year,
             plots=ShapeClick$id,values=input$MapValues,common=input$mapCommon)[-1]
         }
     }
   
 
-    content<-base::paste0( shiny::h5(NPSForVeg::getNames(VegData[[selectedPlot$Unit_Code]],"long")),
+    content<-base::paste0( shiny::h5(NPSForVeg::getNames(VEGDATA[[selectedPlot$Unit_Code]],"long")),
                  shiny::h6("Monitoring Plot:",selectedPlot$Plot_Name),
                  shiny::h6("Year Monitored:",selectedPlot$Year),
                  shiny::h6("Species: ",MapMetaData()$Title),
@@ -724,7 +720,7 @@ shiny::shinyServer(function(input,output,session){
 
 #### Park Control for Density plot  ####
 output$densParkControl<-shiny::renderUI({
-  shiny::selectizeInput(inputId="densPark",choices=ParkList, label="Park:",
+  shiny::selectizeInput(inputId="densPark",choices=PARKLIST, label="Park:",
                  options = base::list(placeholder='Choose a park',
                                 onInitialize = base::I('function() { this.setValue(""); }') )) 
 })
@@ -732,18 +728,18 @@ output$densParkControl<-shiny::renderUI({
    
 #### Dens Cycles ####
 output$densCycleControl<-shiny::renderUI({
-     shiny::req(DataCycles)
+     shiny::req(DATACYCLES)
      shiny::selectInput(inputId="densCycles", label="Display data from years:", 
-       choices=base::rev(stats::setNames(base::as.character(DataCycles$Cycle), base::paste0(DataCycles$Name,": ",
-                                           DataCycles$YearStart,"-",DataCycles$YearEnd)))
+       choices=base::rev(stats::setNames(base::as.character(DATACYCLES$Cycle), base::paste0(DATACYCLES$Name,": ",
+                                           DATACYCLES$YearStart,"-",DATACYCLES$YearEnd)))
      )
 })
 
 #### Dens Years ####
 densYears<-shiny::reactive({
      shiny::req(input$densCycles)
-     (DataCycles %>% dplyr::filter(Cycle==input$densCycles) %>% dplyr::pull(YearStart)) : 
-       (DataCycles %>% dplyr::filter(Cycle==input$densCycles) %>% dplyr::pull(YearEnd))
+     (DATACYCLES %>% dplyr::filter(Cycle==input$densCycles) %>% dplyr::pull(YearStart)) : 
+       (DATACYCLES %>% dplyr::filter(Cycle==input$densCycles) %>% dplyr::pull(YearEnd))
 })
    
 
@@ -763,8 +759,8 @@ output$densValControl<-shiny::renderUI({
 })
 #### Species Control (top species vs list) for density plots ####
 densSpecList<-shiny::reactive({
-  SpecTemp<-base::unique(NPSForVeg::getPlants(object=VegData[[input$densPark]], group=input$densGroup,  years=densYears(),common=F )$Latin_Name)
-  SpecNames<-NPSForVeg::getPlantNames(object=VegData[[input$densPark]], names=SpecTemp, in.style="Latin",
+  SpecTemp<-base::unique(NPSForVeg::getPlants(object=VEGDATA[[input$densPark]], group=input$densGroup,  years=densYears(),common=F )$Latin_Name)
+  SpecNames<-NPSForVeg::getPlantNames(object=VEGDATA[[input$densPark]], names=SpecTemp, in.style="Latin",
                            out.style=base::ifelse(input$densCommon,"common","Latin"))
  base::names(SpecTemp)<-SpecNames  
   SpecTemp<-SpecTemp[order(base::names(SpecTemp))]
@@ -794,8 +790,8 @@ output$densSpeciesControl<-shiny::renderUI({
 #### Compare Years ####
 compYears<-shiny::reactive({
   shiny::req(input$compCycles)
-  (DataCycles %>% dplyr::filter(Cycle==input$compCycles) %>% dplyr::pull(YearStart)) : 
-    (DataCycles %>% dplyr::filter(Cycle==input$compCycles) %>% dplyr::pull(YearEnd))
+  (DATACYCLES %>% dplyr::filter(Cycle==input$compCycles) %>% dplyr::pull(YearStart)) : 
+    (DATACYCLES %>% dplyr::filter(Cycle==input$compCycles) %>% dplyr::pull(YearEnd))
 })
 
 
@@ -803,7 +799,7 @@ output$CompareSelect<-shiny::renderUI({
   base::switch(input$CompareType, 
     None=,base::return(),
     Park= htmltools::tags$div(title= "Choose a second park",
-            shiny::selectizeInput(inputId="ComparePark",choices=ParkList, label="Park:",
+            shiny::selectizeInput(inputId="ComparePark",choices=PARKLIST, label="Park:",
            options = base::list(placeholder='Choose a park',onInitialize = base::I('function() { this.setValue(""); }') ))
           ),
     
@@ -818,8 +814,8 @@ output$CompareSelect<-shiny::renderUI({
                   ),
     Time=htmltools::tags$div(title= "Choose a second range of years",
           shiny::selectInput(inputId="compCycles", label="Display data from years:", 
-            choices=base::rev(stats::setNames(base::as.character(DataCycles$Cycle), base::paste0(DataCycles$Name,": ",
-                                              DataCycles$YearStart,"-",DataCycles$YearEnd)))
+            choices=base::rev(stats::setNames(base::as.character(DATACYCLES$Cycle), base::paste0(DATACYCLES$Name,": ",
+                                              DATACYCLES$YearStart,"-",DATACYCLES$YearEnd)))
           )
     )
   )
@@ -831,9 +827,9 @@ output$CompareSelect<-shiny::renderUI({
 # CompareSpecies<-shiny::reactive({
 #   shiny::req(input$CompareType)
 #     base::switch(input$densSpeciesType,
-#       Common=NPSForVeg::getPlantNames( object=VegData[[input$densPark]], out.style="Latin", 
+#       Common=NPSForVeg::getPlantNames( object=VEGDATA[[input$densPark]], out.style="Latin", 
 #               in.style="Latin",
-#               names= base::as.character(dens(object=VegData[[input$densPark]], group=input$densGroup, years=densYears(),
+#               names= base::as.character(dens(object=VEGDATA[[input$densPark]], group=input$densGroup, years=densYears(),
 #                     values=input$densvalues, Total=F, common=F) %>% dplyr::arrange(desc(Mean)) %>% slice(1:input$densTop) %>% dplyr::pull(Latin_Name))
 #         ),
 #       Pick=input$densSpecies,
@@ -848,16 +844,16 @@ DensCompare<-shiny::reactive({base::switch(input$CompareType,
     None=base::return(NA),
     Park=  if (base::is.null(input$ComparePark) || base::nchar(input$ComparePark)==0) {base::return(NA)}
       else{
-        base::return(base::list(object=VegData[input$ComparePark], group=input$densGroup,  years=densYears(),
+        base::return(base::list(object=VEGDATA[input$ComparePark], group=input$densGroup,  years=densYears(),
                     values=input$densvalues, 
                     #species=CompareSpecies(), 
                     common=input$densCommon, area=if(input$densvalues=="size") "ha" else "plot" ) )
       },
-    "Growth Stage"=base::return(base::list(object=VegData[input$densPark], group=input$CompareGroup, years=densYears(),
+    "Growth Stage"=base::return(base::list(object=VEGDATA[input$densPark], group=input$CompareGroup, years=densYears(),
                     values=input$densvalues,
                     #species=CompareSpecies(),
                     common=input$densCommon,area=if(input$densvalues=="size") "ha" else "plot" ) ),
-    Time=base::return(base::list(object=VegData[input$densPark], group=input$densGroup, years=compYears(),
+    Time=base::return(base::list(object=VEGDATA[input$densPark], group=input$densGroup, years=compYears(),
                      values=input$densvalues, 
                      #species=CompareSpecies(),
                      common=input$densCommon,area=if(input$densvalues=="size") "ha" else "plot" ))
@@ -869,7 +865,7 @@ DENSLABELDATA<-base::data.frame(Name=base::c("trees","saplings","seedlings","shr
 DensLabels<-shiny::reactive({base::switch(input$CompareType,
     None=base::return(NA),
     Park=  if (base::is.null(input$ComparePark) || base::nchar(input$ComparePark)==0) {base::return(NA)}
-            else{base::return(base::c(NPSForVeg::getNames(object=VegData[input$densPark],"short"), NPSForVeg::getNames(object=VegData[input$ComparePark], "short") ) )},
+            else{base::return(base::c(NPSForVeg::getNames(object=VEGDATA[input$densPark],"short"), NPSForVeg::getNames(object=VEGDATA[input$ComparePark], "short") ) )},
     "Growth Stage"=if (base::is.null(input$CompareGroup) || base::nchar(input$CompareGroup)==0) {base::return(NA)}
             else{ base::return(base::c(DENSLABELDATA[DENSLABELDATA$Name==input$densGroup,]$Label,
                            DENSLABELDATA[DENSLABELDATA$Name==input$CompareGroup,]$Label))},
@@ -939,15 +935,15 @@ densTitleValues<-shiny::reactive({
 })
 DensTitle<-shiny::reactive({
   base::switch(input$CompareType,
-         None=  base::return(base::paste(NPSForVeg::getNames(VegData[input$densPark],"long"),":",densTitleGroup(),densTitleValues(), 
+         None=  base::return(base::paste(NPSForVeg::getNames(VEGDATA[input$densPark],"long"),":",densTitleGroup(),densTitleValues(), 
                base::paste0(base::as.character(base::min(densYears())),"-",base::as.character(base::max(densYears()))) )),
-         Park=base::return(base::paste(NPSForVeg::getNames(VegData[input$densPark],"long"),"vs.",NPSForVeg::getNames(VegData[input$ComparePark],"long"),":",
+         Park=base::return(base::paste(NPSForVeg::getNames(VEGDATA[input$densPark],"long"),"vs.",NPSForVeg::getNames(VEGDATA[input$ComparePark],"long"),":",
                            densTitleGroup(),densTitleValues(), 
                            base::paste0(base::as.character(base::min(densYears())),"-",base::as.character(base::max(densYears()))) )),
-         "Growth Stage"= base::return(base::paste(NPSForVeg::getNames(VegData[input$densPark],"long"),":",densTitleGroup(),"vs.",
+         "Growth Stage"= base::return(base::paste(NPSForVeg::getNames(VEGDATA[input$densPark],"long"),":",densTitleGroup(),"vs.",
                                       compareTitleGroup(), densTitleValues(), 
                                       base::paste0(base::as.character(base::min(densYears())),"-",base::as.character(base::max(densYears()))) )),
-         Time=base::return(base::paste(NPSForVeg::getNames(VegData[input$densPark],"long"),":",densTitleGroup(),densTitleValues(), 
+         Time=base::return(base::paste(NPSForVeg::getNames(VEGDATA[input$densPark],"long"),":",densTitleGroup(),densTitleValues(), 
                            base::paste0(base::as.character(base::min(densYears())),"-",base::as.character(base::max(densYears()))),"vs.",
                            base::paste0(base::as.character(base::min(compYears())),"-",base::as.character(base::max(compYears()))) ))
   )
@@ -957,7 +953,7 @@ DensTitle<-shiny::reactive({
 #### All arguments for densityPlot ####
 DensPlotArgs<-shiny::reactive({
   base::list(
-    object=VegData[[input$densPark]],
+    object=VEGDATA[[input$densPark]],
     densargs=base::list(
       group=input$densGroup,
       years=densYears(),
@@ -1027,9 +1023,9 @@ output$densWmfDownload<-shiny::downloadHandler(
 #### Tables Tab ####
 #### Title for table ####
 tempDensTableTitle<-shiny::reactive({
-  shiny::validate(shiny::need(base::try(base::paste(NPSForVeg::getNames(VegData[input$densPark],"long"),":",densTitleGroup(),densTitleValues(), 
+  shiny::validate(shiny::need(base::try(base::paste(NPSForVeg::getNames(VEGDATA[input$densPark],"long"),":",densTitleGroup(),densTitleValues(), 
                           base::paste0(base::as.character(base::min(densYears())),"-",base::as.character(base::max(densYears())),"(",densYlabel(),")") )), message=FALSE) )
-  base::paste(NPSForVeg::getNames(VegData[input$densPark],"long"),":",densTitleGroup(),densTitleValues(), 
+  base::paste(NPSForVeg::getNames(VEGDATA[input$densPark],"long"),":",densTitleGroup(),densTitleValues(), 
         base::paste0(base::as.character(base::min(densYears())),"-",base::as.character(base::max(densYears())) ," (",densYlabel(),")") )
 })
   
@@ -1079,7 +1075,7 @@ output$densTableDownload<-shiny::downloadHandler(
 #### IV Plots ####
 #### Park Control for IVPlot  ####
 output$IVParkControl<-shiny::renderUI({
-  shiny::selectizeInput(inputId="IVPark",choices=ParkList, label="Park:",
+  shiny::selectizeInput(inputId="IVPark",choices=PARKLIST, label="Park:",
                  options = base::list(placeholder='Choose a park',
                                 onInitialize = base::I('function() { this.setValue(""); }') )) 
 })
@@ -1089,17 +1085,17 @@ output$IVParkControl<-shiny::renderUI({
 #IV Cycles
 
 output$IVCycleControl<-shiny::renderUI({
-  shiny::req(DataCycles)
+  shiny::req(DATACYCLES)
   shiny::selectInput(inputId="IVCycles", label="Display data from years:", 
-    choices=base::rev(stats::setNames(base::as.character(DataCycles$Cycle), base::paste0(DataCycles$Name,": ",
-                                      DataCycles$YearStart,"-",DataCycles$YearEnd)))
+    choices=base::rev(stats::setNames(base::as.character(DATACYCLES$Cycle), base::paste0(DATACYCLES$Name,": ",
+                                      DATACYCLES$YearStart,"-",DATACYCLES$YearEnd)))
   )
 })
 
 IVYears<-shiny::reactive({
   shiny::req(input$IVCycles)
-  (DataCycles %>% dplyr::filter(Cycle==input$IVCycles) %>% dplyr::pull(YearStart)) : 
-    (DataCycles %>% dplyr::filter(Cycle==input$IVCycles) %>% dplyr::pull(YearEnd))
+  (DATACYCLES %>% dplyr::filter(Cycle==input$IVCycles) %>% dplyr::pull(YearStart)) : 
+    (DATACYCLES %>% dplyr::filter(Cycle==input$IVCycles) %>% dplyr::pull(YearEnd))
 })
 
 #### Title for IVPlot ####
@@ -1115,14 +1111,14 @@ IVTitleGroup<-shiny::reactive({
 
          
 IVTitle<-shiny::reactive({
-  base::return(base::paste(NPSForVeg::getNames(VegData[input$IVPark],"long"),":","\n", IVTitleGroup(),"Importance Values", 
+  base::return(base::paste(NPSForVeg::getNames(VEGDATA[input$IVPark],"long"),":","\n", IVTitleGroup(),"Importance Values", 
                              base::paste0(base::as.character(base::min(IVYears())),"-",base::as.character(base::max(IVYears()))) ))
          
 })
 
 IVPlotArgs<-shiny::reactive({
   base::list(
-    object=VegData[[input$IVPark]],
+    object=VEGDATA[[input$IVPark]],
     IVargs=base::list(
       group=input$IVGroup,
       years=IVYears(),
@@ -1215,9 +1211,9 @@ output$IVTableDownload<-shiny::downloadHandler(
 #### Species list park control ####
 output$SpListParkControl<-shiny::renderUI({
   shiny::validate(
-    shiny::need(ParkList, message=FALSE )
+    shiny::need(PARKLIST, message=FALSE )
   )
-  shiny::selectizeInput(inputId="SpListPark", choices=ParkList, label="Park:",
+  shiny::selectizeInput(inputId="SpListPark", choices=PARKLIST, label="Park:",
     options = base::list(placeholder='Choose a park', onInitialize = base::I('function() { this.setValue(""); }'))
   ) 
 })
@@ -1229,7 +1225,7 @@ output$SpListPlotControl <-shiny::renderUI({
   shiny::validate(
     shiny::need(input$SpListPark!="", message="Please select a Park")
   )
-  shiny::selectizeInput(inputId="SpListPlot", choices=base::c("All Plots"="All", NPSForVeg::getPlotNames(VegData[[input$SpListPark]],type="all")),
+  shiny::selectizeInput(inputId="SpListPlot", choices=base::c("All Plots"="All", NPSForVeg::getPlotNames(VEGDATA[[input$SpListPark]],type="all")),
         label="Plots (optional)", multiple=TRUE, selected="All"
     )
 })
@@ -1245,13 +1241,13 @@ LatinList<-shiny::reactive({
   shiny::need(input$SpListPark, message=FALSE)  
   )
   base::unique(base::c(
-    NPSForVeg::getPlants(object=VegData[[input$SpListPark]], group="trees", plots=SpListPlotUse())$Latin_Name,
-    NPSForVeg::getPlants(object=VegData[[input$SpListPark]], group="saplings",plots=SpListPlotUse())$Latin_Name,
-    NPSForVeg::getPlants(object=VegData[[input$SpListPark]], group="seedlings", plots=SpListPlotUse())$Latin_Name,
-    NPSForVeg::getPlants(object=VegData[[input$SpListPark]], group="shrubs", plots=SpListPlotUse())$Latin_Name,
-    NPSForVeg::getPlants(object=VegData[[input$SpListPark]], group="shseedlings", plots=SpListPlotUse())$Latin_Name,
-    NPSForVeg::getPlants(object=VegData[[input$SpListPark]], group="vines", plots=SpListPlotUse())$Latin_Name,
-    NPSForVeg::getPlants(object=VegData[[input$SpListPark]], group="herbs", plots=SpListPlotUse())$Latin_Name
+    NPSForVeg::getPlants(object=VEGDATA[[input$SpListPark]], group="trees", plots=SpListPlotUse())$Latin_Name,
+    NPSForVeg::getPlants(object=VEGDATA[[input$SpListPark]], group="saplings",plots=SpListPlotUse())$Latin_Name,
+    NPSForVeg::getPlants(object=VEGDATA[[input$SpListPark]], group="seedlings", plots=SpListPlotUse())$Latin_Name,
+    NPSForVeg::getPlants(object=VEGDATA[[input$SpListPark]], group="shrubs", plots=SpListPlotUse())$Latin_Name,
+    NPSForVeg::getPlants(object=VEGDATA[[input$SpListPark]], group="shseedlings", plots=SpListPlotUse())$Latin_Name,
+    NPSForVeg::getPlants(object=VEGDATA[[input$SpListPark]], group="vines", plots=SpListPlotUse())$Latin_Name,
+    NPSForVeg::getPlants(object=VEGDATA[[input$SpListPark]], group="herbs", plots=SpListPlotUse())$Latin_Name
     ))
 })
 
@@ -1262,7 +1258,7 @@ decapitalize <- function(string) {     ########### used to hack around sorting/e
   base::return(string)
 }
 
-CommonList<-shiny::reactive(decapitalize(NPSForVeg::getPlantNames(object=VegData[[input$SpListPark]], names=LatinList(), out.style="common",in.style="Latin")))
+CommonList<-shiny::reactive(decapitalize(NPSForVeg::getPlantNames(object=VEGDATA[[input$SpListPark]], names=LatinList(), out.style="common",in.style="Latin")))
 
 
 MonitoringList<-shiny::reactive({ 

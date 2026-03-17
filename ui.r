@@ -26,7 +26,7 @@ shiny::navbarPage(title=htmltools::HTML("<div> <a href=",NETWORKURL,"></a> Natio
     }}
   ")),
       ###google analytics###
-      htmltools::includeHTML("google-analytics.html"),
+      htmltools::includeHTML("www/google-analytics.html"),
       ),
     
   ######################################### Map Panel ####################################################################
