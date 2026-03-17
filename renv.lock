@@ -172,6 +172,7 @@
       "Encoding": "UTF-8",
       "Description": "This package is designed to analyze and display forest monitoring data for the NPS I&M program",
       "License": "Public Domain",
+      "LazyData": "true",
       "Depends": [
         "R(>= 3.1.0)"
       ],
@@ -192,8 +193,7 @@
       "RemoteRepo": "NPSForVeg",
       "RemoteUsername": "NCRN",
       "RemoteRef": "HEAD",
-      "RemoteSha": "2808f0f0e58dbe8e163b4ccddb1a0279050c67af",
-      "NeedsCompilation": "no"
+      "RemoteSha": "2808f0f0e58dbe8e163b4ccddb1a0279050c67af"
     },
     "R6": {
       "Package": "R6",
