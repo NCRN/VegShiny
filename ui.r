@@ -3,41 +3,86 @@ library(NPSForVeg)
 library(leaflet)
 library(shinyjs)
 library(DT)
+library(bslib)
+library(htmltools)
 
 
-shiny::navbarPage(title=htmltools::HTML("<div> <a href=",NETWORKURL,"></a> National Capital Region Network <br> Forest Vegetation </div>"),
-    position = "static-top", inverse=TRUE, collapsible = TRUE, fluid=TRUE, windowTitle = base::paste(NETWORK, "Forest Vegetation"),
-    theme="https://www.nps.gov/lib/bootstrap/3.3.2/css/nps-bootstrap.min.css", id="MainNavBar",
-    
-    htmltools::tags$head(
-      htmltools::tags$style(htmltools::HTML("
-    .navbar .navbar-brand,
-    .navbar-inverse .navbar-brand {
-      font-size: 40px !important; 
+shiny::navbarPage(
+  title=htmltools::HTML("<div> <a href=",NETWORKURL,"></a> National Capital Region Network Forest Vegetation </div>"),
+  position = "static-top", inverse=TRUE, collapsible = TRUE, fluid=TRUE, windowTitle = base::paste(NETWORK, "Forest Vegetation"),
+  theme="https://www.nps.gov/lib/bootstrap/3.3.2/css/nps-bootstrap.min.css", id="MainNavBar",
+                  
+  htmltools::tags$head(
+    htmltools::tags$style(
+      htmltools::HTML("
+      .navbar .navbar-brand,
+      .navbar-inverse .navbar-brand {
+      font-size: calc(1.5rem + 1.5vw);      
       font-family: 'Times New Roman';
       color: #ffffff !important;                    
       line-height: 1.0;
-      padding-left: 25px;
-    }
-
-    /* Increase navbar height so the two-line title has room */
-    .navbar {
-      min-height: 130px;}
-    }}
-  ")),
-##### google analytics #####
-      htmltools::includeHTML("www/google-analytics.html"),
+      padding-left: 1rem;
+      margin: 0;
+      }
+      .navbar {
+        min-height: auto !important;            
+        padding-top: 0.5rem;                    
+        padding-bottom: 1.5rem;
+      }
+      .navbar-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        width: 100%;
+        float: none;             /* keep brand + toggle on one line */
+        gap: clamp(0.5rem, 1vw, 1rem);
+      }
+      .navbar-header .navbar-brand {
+        order: 1;                     /* appears first (left) */
+        float: none !important;
+        text-align: left;             /* in case something centered it */
+        margin: 0;                    /* keep it tidy */
+      }
+      .navbar-header .navbar-toggle {
+        order: 2;                     /* appears second (right) */
+        float: none !important;
+        align-items: center;
+        margin-left: auto;            /* push it to the far right */
+        margin-right: clamp(0.5rem, 2vw, 2rem);  /* responsive breathing room */
+        display: block !important;           /* ensure visible at all sizes */
+      }
       
-##### map panel - mobile scroll ***not working*** #####    
-#      tags$style(HTML("
-#    /* Let vertical gestures scroll the page even when touching the map */
-#    .leaflet-container {
-#      touch-action: pan-y !important;
-#      overscroll-behavior: contain;
-#    }
-# ")),
-      ),
-    
+      .navbar-collapse.collapse {display: none !important;}
+      .navbar-collapse.in {display: block !important;}
+      .navbar-nav {float: none !important; margin: 0;}
+      .navbar-nav > li {float: none;}
+      
+      .navbar-toggle {border: none !important;}
+
+      .navbar-toggle:hover,
+      .navbar-toggle:active,
+      .navbar-toggle:focus {
+        background: transparent !important;
+        border: none !important;
+        box-shadow: none !important;
+        outline: none !important;
+      }
+      .navbar-toggle .sr-only { display: none !important; }
+      .navbar-toggle > span:not(.icon-bar) { display: none !important; }
+      .navbar-toggle::before,
+      .navbar-toggle::after { content: none !important; display: none !important; }
+ 
+      .navbar-toggle .icon-bar {
+        display: block !important;
+        width: 1.6em;
+        height: 0.15em;
+        background-color: #fff !important;
+      }
+      .navbar-toggle .icon-bar + .icon-bar { margin-top: 0.4em; }
+
+  ")),
+  ),
+  
   ######################################### Map Panel ####################################################################
   
   
@@ -364,25 +409,9 @@ tags$head(tags$style(HTML("
     ),
 
 ##################### About
-    shiny::navbarMenu(
-      htmltools::tags$div(
-        title="About the project", "About"
-        ),
-
-################################# Project Information
-    shiny::tabPanel(
-      htmltools::tags$div(
-        title="Background Informaiton", "Project Information"
-      ),
-      PROJECTINFO
-    ),
-
-
-
-################ Citations 
-
-    shiny::tabPanel("Citations & References",
-     CITATIONS
-    )
-) #end About menu
+    tabPanel(
+      tags$div(
+        title="About the project", "About"), 
+      includeHTML("www/AboutTab.html") 
+      )#end About menu
 )#end shiny::navbarPage()
