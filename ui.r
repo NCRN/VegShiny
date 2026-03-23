@@ -74,7 +74,7 @@ shiny::navbarPage(
       .navbar-toggle .icon-bar {
         display: block !important;
         width: 1.6em;
-        height: 0.15em;
+        height: 0.10em;
         background-color: #fff !important;}
       .navbar-toggle .icon-bar + .icon-bar { margin-top: 0.4em; }
       .navbar-nav {
@@ -123,10 +123,20 @@ shiny::navbarPage(
         height: 0 !important;
         padding: 0 !important;
         margin: 0 !important;}
-      .navbar-nav > li.dropdown > a.dropdown-toggle .caret {
+      .navbar.navbar-inverse .navbar-nav > li.dropdown > a.dropdown-toggle {
+        display: flex !important;
+        align-items: center !important;
+        width: 100% !important;
+        padding: 0.5rem 1 rem !important;
+        line-height: 1.2;}
+      .navbar.navbar-inverse .navbar-nav > li.dropdown > a.dropdown-toggle .caret {
+        align-self: center !important;
         margin-left: 0.35rem;
-        vertical-align: middle;
-        transform: translateY(1px);}
+        transform: none !important;}
+      .navbar-inverse .navbar-nav > li > a {
+        display: block; 
+        width: 100%;
+        padding: 0.5rem 1rem;}
   ")),
     
     htmltools::tags$script(htmltools::HTML("
@@ -142,8 +152,7 @@ shiny::navbarPage(
   
   ######################################### Map Panel ####################################################################
   
-  
-   shiny::tabPanel(title="Map",style="padding: 0",
+   shiny::tabPanel(htmltools::tags$div(title="Map the data", "Map"), style="padding: 0",
      shinyjs::useShinyjs(),
 
    htmltools::div(class="outer",
