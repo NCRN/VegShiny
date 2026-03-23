@@ -8,7 +8,7 @@ library(htmltools)
 
 
 shiny::navbarPage(
-  title=htmltools::HTML("<div> <a href=",NETWORKURL,"></a> National Capital Region Network&#8203 Forest Vegetation </div>"),
+  title=htmltools::HTML("<div> <a href=",NETWORKURL,"></a> National Capital Region Network Forest Vegetation </div>"),
   position = "static-top", inverse=TRUE, collapsible = TRUE, fluid=TRUE, windowTitle = base::paste(NETWORK, "Forest Vegetation"),
   theme="https://www.nps.gov/lib/bootstrap/3.3.2/css/nps-bootstrap.min.css", id="MainNavBar",
                   
