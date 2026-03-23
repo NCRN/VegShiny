@@ -107,7 +107,7 @@ shiny::navbarPage(
       .navbar-collapse .navbar-nav > li > a {
         font-family: 'Times New Roman' !important;
         font-size: calc(.75em + .75vw) !important;
-        color: #ffffff !important;}
+        color: #fff !important;}
       .navbar-nav .dropdown.open > li > a:hover{
         color: #fff !important;
         background-color: #916800 !important;}
@@ -136,7 +136,8 @@ shiny::navbarPage(
     $(document).on('click', '.navbar-collapse .dropdown-menu a', function () {
       $(this).closest('.navbar-collapse').collapse('hide');
     });
-  "))
+  ")),
+    htmltools::includeHTML("www/google-analytics.html")
 ),
   
   ######################################### Map Panel ####################################################################
