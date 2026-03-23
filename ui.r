@@ -8,7 +8,7 @@ library(htmltools)
 
 
 shiny::navbarPage(
-  title=htmltools::HTML("<div> <a href=",NETWORKURL,"></a> National Capital Region Network Forest Vegetation </div>"),
+  title=htmltools::HTML("<div> <a href=",NETWORKURL,"></a> National Capital Region Network&#8203 Forest Vegetation </div>"),
   position = "static-top", inverse=TRUE, collapsible = TRUE, fluid=TRUE, windowTitle = base::paste(NETWORK, "Forest Vegetation"),
   theme="https://www.nps.gov/lib/bootstrap/3.3.2/css/nps-bootstrap.min.css", id="MainNavBar",
                   
@@ -17,71 +17,127 @@ shiny::navbarPage(
       htmltools::HTML("
       .navbar .navbar-brand,
       .navbar-inverse .navbar-brand {
-      font-size: calc(1.5rem + 1.5vw);      
-      font-family: 'Times New Roman';
-      color: #ffffff !important;                    
-      line-height: 1.0;
-      padding-left: 1rem;
-      margin: 0;
-      }
+        cursor:pointer;
+        font-size: calc(1.5rem + 1.5vw);      
+        font-family: 'Times New Roman';
+        color: #fff !important;                    
+        line-height: 1.0;
+        padding-left: 1rem;
+        margin: 0;}
       .navbar {
         min-height: auto !important;            
         padding-top: 0.5rem;                    
-        padding-bottom: 1.5rem;
-      }
+        padding-bottom: 1.5rem;}
       .navbar-header {
         display: flex;
         align-items: center;
         justify-content: space-between;
         width: 100%;
-        float: none;             /* keep brand + toggle on one line */
-        gap: clamp(0.5rem, 1vw, 1rem);
-      }
+        float: none;             
+        gap: clamp(0.5rem, 1vw, 1rem);}
       .navbar-header .navbar-brand {
-        order: 1;                     /* appears first (left) */
+        order: 1;                     
         float: none !important;
-        text-align: left;             /* in case something centered it */
-        margin: 0;                    /* keep it tidy */
-      }
+        text-align: left;           
+        margin: 0;            
+        display: flex;
+        align-items: center;}
       .navbar-header .navbar-toggle {
-        order: 2;                     /* appears second (right) */
+        order: 2;                     
         float: none !important;
         align-items: center;
-        margin-left: auto;            /* push it to the far right */
-        margin-right: clamp(0.5rem, 2vw, 2rem);  /* responsive breathing room */
-        display: block !important;           /* ensure visible at all sizes */
-      }
-      
+        margin-left: auto;            
+        margin-right: clamp(0.5rem, 2vw, 2rem);  
+        display: inline-flex !important;
+        flex-direction: column;           
+        align-items: center;              
+        justify-content: center;          
+        margin-top: 0 !important;         
+        margin-bottom: 0 !important;      
+        padding: 0 !important;}
       .navbar-collapse.collapse {display: none !important;}
       .navbar-collapse.in {display: block !important;}
       .navbar-nav {float: none !important; margin: 0;}
       .navbar-nav > li {float: none;}
-      
       .navbar-toggle {border: none !important;}
-
       .navbar-toggle:hover,
       .navbar-toggle:active,
       .navbar-toggle:focus {
         background: transparent !important;
         border: none !important;
         box-shadow: none !important;
-        outline: none !important;
-      }
+        outline: none !important;}
       .navbar-toggle .sr-only { display: none !important; }
       .navbar-toggle > span:not(.icon-bar) { display: none !important; }
       .navbar-toggle::before,
       .navbar-toggle::after { content: none !important; display: none !important; }
- 
       .navbar-toggle .icon-bar {
         display: block !important;
         width: 1.6em;
         height: 0.15em;
-        background-color: #fff !important;
-      }
+        background-color: #fff !important;}
       .navbar-toggle .icon-bar + .icon-bar { margin-top: 0.4em; }
-
+      .navbar-nav {
+        display: flex;                 
+        align-items: left;
+        gap: 0.75rem;                  
+        float: none !important;        
+        margin: 0;
+        flex-direction: column;}
+      .navbar-nav > li {
+        position: relative; 
+        list-style: none;}
+      .navbar-nav > li > a {
+        display: flex; 
+        align-items: center;
+        line-height: 1;}
+      .navbar-nav .dropdown-menu {
+        position: static !important;   
+        float: none !important;
+        margin-top: 0 !important;
+        display: none;                 
+        border: none;                  
+        box-shadow: none;             
+        background: #000;              
+        margin-left: 1.5rem;}
+      .navbar-nav .dropdown.open > .dropdown-menu {
+        display: block;}
+      .navbar-nav > li > a,
+      .navbar-nav .dropdown-menu > li > a,
+      .navbar-collapse .navbar-nav > li > a {
+        font-family: 'Times New Roman' !important;
+        font-size: calc(.75em + .75vw) !important;
+        color: #ffffff !important;}
+      .navbar-nav .dropdown.open > li > a:hover{
+        color: #fff !important;
+        background-color: #916800 !important;}
+      .navbar-nav > li > a:hover {
+        color: #fff !important;
+        background-color: #916800 !important;}
+      .navbar-nav .dropdown.open > li > a:active{
+        color: #fff !important;
+        background-color: #916800 !important;}
+      .navbar-nav > li > a:empty {
+        display: none !important;
+        visibility: hidden !important;
+        height: 0 !important;
+        padding: 0 !important;
+        margin: 0 !important;}
+      .navbar-nav > li.dropdown > a.dropdown-toggle .caret {
+        margin-left: 0.35rem;
+        vertical-align: middle;
+        transform: translateY(1px);}
   ")),
-  ),
+    
+    htmltools::tags$script(htmltools::HTML("
+    $(document).on('click', '.navbar-collapse.in a:not(.dropdown-toggle)', function () {
+      $(this).closest('.navbar-collapse').collapse('hide');
+    });
+    $(document).on('click', '.navbar-collapse .dropdown-menu a', function () {
+      $(this).closest('.navbar-collapse').collapse('hide');
+    });
+  "))
+),
   
   ######################################### Map Panel ####################################################################
   
@@ -96,7 +152,7 @@ shiny::navbarPage(
     
 #### Side Control Panel ####    
     shiny::fluidRow(
-      shiny::column(2, style="padding: 0 0 0 10px",
+      shiny::column(2, class = "sidebar-col", style="padding: 0 5px 0 5px",
 #### Map Controls ####
       htmltools::div(id="MapControlPanel",class="panel panel-default controls",
             shiny::h4("Map Controls", class="panel-heading"),
@@ -143,7 +199,7 @@ shiny::navbarPage(
       ), ## End of controls columns
 
 #### The Map ####
-       shiny::column(10,style="padding: 0",
+       shiny::column(10,style="padding: 0 0 0 0px",
           htmltools::div(leaflet::leafletOutput("VegMap", height="1000px"))   
        ),
 # CSS
@@ -262,7 +318,7 @@ tags$head(tags$style(HTML("
               shiny::tabPanel(
                 htmltools::tags$div(title="See all data in a table","Data table"),
                 value="Table",
-                shiny::column(10,
+                shiny::column(10, style="padding: 5px",
                  shiny::h3(shiny::textOutput("densTableTitle")),
                  shiny::dataTableOutput("densTable")
                 )
