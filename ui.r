@@ -99,7 +99,7 @@ shiny::navbarPage(
         border: none;                  
         box-shadow: none;             
         background: #000;              
-        margin-left: 1.5rem;}
+        margin-left: 1rem;}
       .navbar-nav .dropdown.open > .dropdown-menu {
         display: block;}
       .navbar-nav > li > a,
@@ -127,7 +127,7 @@ shiny::navbarPage(
         display: flex !important;
         align-items: center !important;
         width: 100% !important;
-        padding: 0.5rem 1 rem !important;
+        padding: 0.5rem 1rem !important;
         line-height: 1.2;}
       .navbar.navbar-inverse .navbar-nav > li.dropdown > a.dropdown-toggle .caret {
         align-self: center !important;
@@ -137,6 +137,15 @@ shiny::navbarPage(
         display: block; 
         width: 100%;
         padding: 0.5rem 1rem;}
+      .navbar-inverse .navbar-nav .dropdown-menu > li > a:hover,
+      .navbar-inverse .navbar-nav .dropdown-menu > li > a:focus {
+        color: #fff !important;
+        background-color: #916800 !important;}
+      .navbar-inverse .navbar-nav .dropdown-menu > .active > a,
+      .navbar-inverse .navbar-nav .dropdown-menu > .active > a:hover,
+      .navbar-inverse .navbar-nav .dropdown-menu > .active > a:focus {
+        color: #fff !important;
+        background-color: #916800 !important;}
   ")),
     
     htmltools::tags$script(htmltools::HTML("
