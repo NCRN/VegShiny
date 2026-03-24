@@ -8,7 +8,7 @@ library(htmltools)
 
 
 shiny::navbarPage(
-  title=htmltools::HTML("<div> <a href=",NETWORKURL,"></a> National Capital Region Network Forest Vegetation </div>"),
+  title=htmltools::HTML("National&nbsp;Capital&nbsp;Region&nbsp;Network<wbr> Forest&nbsp;Vegetation"),
   position = "static-top", inverse=TRUE, collapsible = TRUE, fluid=TRUE, windowTitle = base::paste(NETWORK, "Forest Vegetation"),
   theme="https://www.nps.gov/lib/bootstrap/3.3.2/css/nps-bootstrap.min.css", id="MainNavBar",
                   
@@ -17,13 +17,13 @@ shiny::navbarPage(
       htmltools::HTML("
       .navbar .navbar-brand,
       .navbar-inverse .navbar-brand {
-        cursor:pointer;
         font-size: calc(1.5rem + 1.5vw);      
         font-family: 'Times New Roman';
         color: #fff !important;                    
         line-height: 1.0;
         padding-left: 1rem;
-        margin: 0;}
+        margin: 0;
+        pointer-events:none;}
       .navbar {
         min-height: auto !important;            
         padding-top: 0.5rem;                    
@@ -99,7 +99,7 @@ shiny::navbarPage(
         border: none;                  
         box-shadow: none;             
         background: #000;              
-        margin-left: 1rem;}
+        margin-left: 1.5rem;}
       .navbar-nav .dropdown.open > .dropdown-menu {
         display: block;}
       .navbar-nav > li > a,
@@ -156,6 +156,7 @@ shiny::navbarPage(
       $(this).closest('.navbar-collapse').collapse('hide');
     });
   ")),
+    
     htmltools::includeHTML("www/google-analytics.html")
 ),
   
@@ -250,7 +251,7 @@ tags$head(tags$style(HTML("
 
 ######################################## Graphs Panel ##########################################################
 
-    shiny::navbarMenu(htmltools::tags$div(title="Graph the data","Graphs"),    
+    shiny::navbarMenu(htmltools::tags$div(title="Graph the data", "Graphs"),    
 #############  densplot() based plots
       shiny::tabPanel(htmltools::tags$div(title="Graph abundance, basal area, percent cover, etc.","Data by Park and Species"), 
                
