@@ -15,7 +15,6 @@ shiny::navbarPage(
   htmltools::tags$head(
     htmltools::tags$style(
       htmltools::HTML("
-      .navbar .navbar-brand,
       .navbar-inverse .navbar-brand {
         font-size: calc(1.5rem + 1.5vw);      
         font-family: 'Times New Roman';
@@ -24,10 +23,12 @@ shiny::navbarPage(
         padding-left: 1rem;
         margin: 0;
         pointer-events:none;}
+      
       .navbar {
         min-height: auto !important;            
         padding-top: 0.5rem;                    
         padding-bottom: 1.5rem;}
+      
       .navbar-header {
         display: flex;
         align-items: center;
@@ -35,30 +36,37 @@ shiny::navbarPage(
         width: 100%;
         float: none;             
         gap: clamp(0.5rem, 1vw, 1rem);}
+      
       .navbar-header .navbar-brand {
         order: 1;                     
-        float: none !important;
         text-align: left;           
         margin: 0;            
         display: flex;
         align-items: center;}
+      
       .navbar-header .navbar-toggle {
         order: 2;                     
-        float: none !important;
         align-items: center;
         margin-left: auto;            
         margin-right: clamp(0.5rem, 2vw, 2rem);  
         display: inline-flex !important;
         flex-direction: column;           
-        align-items: center;              
         justify-content: center;          
         margin-top: 0 !important;         
         margin-bottom: 0 !important;      
         padding: 0 !important;}
+      
       .navbar-collapse.collapse {display: none !important;}
       .navbar-collapse.in {display: block !important;}
-      .navbar-nav {float: none !important; margin: 0;}
-      .navbar-nav > li {float: none;}
+      
+      .navbar-nav {
+        display: flex;   
+        float: none !important; 
+        align-items: left;
+        gap: 0.75rem;                  
+        flex-direction: column;
+        margin: 0;}
+      
       .navbar-toggle {border: none !important;}
       .navbar-toggle:hover,
       .navbar-toggle:active,
@@ -67,30 +75,19 @@ shiny::navbarPage(
         border: none !important;
         box-shadow: none !important;
         outline: none !important;}
-      .navbar-toggle .sr-only { display: none !important; }
+      
       .navbar-toggle > span:not(.icon-bar) { display: none !important; }
+      
       .navbar-toggle::before,
       .navbar-toggle::after { content: none !important; display: none !important; }
+      
       .navbar-toggle .icon-bar {
         display: block !important;
         width: 1.6em;
         height: 0.10em;
         background-color: #fff !important;}
       .navbar-toggle .icon-bar + .icon-bar { margin-top: 0.4em; }
-      .navbar-nav {
-        display: flex;                 
-        align-items: left;
-        gap: 0.75rem;                  
-        float: none !important;        
-        margin: 0;
-        flex-direction: column;}
-      .navbar-nav > li {
-        position: relative; 
-        list-style: none;}
-      .navbar-nav > li > a {
-        display: flex; 
-        align-items: center;
-        line-height: 1;}
+      
       .navbar-nav .dropdown-menu {
         position: static !important;   
         float: none !important;
@@ -100,52 +97,45 @@ shiny::navbarPage(
         box-shadow: none;             
         background: #000;              
         margin-left: 1.5rem;}
-      .navbar-nav .dropdown.open > .dropdown-menu {
-        display: block;}
+      
+      .navbar-nav .dropdown.open > .dropdown-menu {display: block;}
+   
       .navbar-nav > li > a,
-      .navbar-nav .dropdown-menu > li > a,
-      .navbar-collapse .navbar-nav > li > a {
+      .navbar-nav .dropdown-menu > li > a{
         font-family: 'Times New Roman' !important;
         font-size: calc(.75em + .75vw) !important;
         color: #fff !important;}
-      .navbar-nav .dropdown.open > li > a:hover{
-        color: #fff !important;
-        background-color: #916800 !important;}
-      .navbar-nav > li > a:hover {
-        color: #fff !important;
-        background-color: #916800 !important;}
-      .navbar-nav .dropdown.open > li > a:active{
-        color: #fff !important;
-        background-color: #916800 !important;}
+      
       .navbar-nav > li > a:empty {
         display: none !important;
         visibility: hidden !important;
         height: 0 !important;
         padding: 0 !important;
         margin: 0 !important;}
+      
       .navbar.navbar-inverse .navbar-nav > li.dropdown > a.dropdown-toggle {
         display: flex !important;
         align-items: center !important;
         width: 100% !important;
         padding: 0.5rem 1rem !important;
         line-height: 1.2;}
+      
       .navbar.navbar-inverse .navbar-nav > li.dropdown > a.dropdown-toggle .caret {
         align-self: center !important;
         margin-left: 0.35rem;
         transform: none !important;}
+        
       .navbar-inverse .navbar-nav > li > a {
-        display: block; 
+        display: block;
+        align-items: center;
         width: 100%;
         padding: 0.5rem 1rem;}
-      .navbar-inverse .navbar-nav .dropdown-menu > li > a:hover,
-      .navbar-inverse .navbar-nav .dropdown-menu > li > a:focus {
+      
+      .navbar-nav a:hover,
+      .navbar-nav a:active,
+      .navbar-nav a:focus{
         color: #fff !important;
-        background-color: #916800 !important;}
-      .navbar-inverse .navbar-nav .dropdown-menu > .active > a,
-      .navbar-inverse .navbar-nav .dropdown-menu > .active > a:hover,
-      .navbar-inverse .navbar-nav .dropdown-menu > .active > a:focus {
-        color: #fff !important;
-        background-color: #916800 !important;}
+        background-color: #916800 !important;
   ")),
     
     htmltools::tags$script(htmltools::HTML("
@@ -155,8 +145,9 @@ shiny::navbarPage(
     $(document).on('click', '.navbar-collapse .dropdown-menu a', function () {
       $(this).closest('.navbar-collapse').collapse('hide');
     });
-  ")),
     
+  ")),
+
     htmltools::includeHTML("www/google-analytics.html")
 ),
   
