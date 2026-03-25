@@ -26,7 +26,7 @@ shiny::navbarPage(
       
       .navbar {
         min-height: auto !important;            
-        padding-top: 0.5rem;                    
+        padding-top: 1.5rem;                    
         padding-bottom: 1.5rem;}
       
       .navbar-header {
@@ -121,15 +121,9 @@ shiny::navbarPage(
         display: flex !important;
         align-items: center !important;
         width: 100% !important;
-        padding: 0.5rem 1rem !important;
-        line-height: 1.2;}
+        padding: 0.75rem 1.25rem !important;}
         
-      .navbar-inverse .navbar-nav > li > a {
-        display: block;
-        align-items: center;
-        width: 100%;
-        padding: 0.5rem 1rem;}
-      
+      .navbar-inverse .navbar-nav > li > a {padding: 0.75rem 125rem;}
       .navbar-nav a:hover,
       .navbar-nav a:active,
       .navbar-nav a:focus{
@@ -149,6 +143,17 @@ shiny::navbarPage(
       $(this).closest('.navbar-collapse').collapse('hide');
     });
     
+    $(function(){
+      $('.navbar-nav li.dropdown').each(function(){
+        var $a = $(this).find('> a.dropdown-toggle');
+        var $t = $a.find('[title]');
+        var title = $t.attr('title');
+        if (title) {
+          $(this).attr('title', title); 
+          $t.attr('title','');}
+      });
+    });
+
     (function () {function getSelectize(el) { return el && el.selectize ? el.selectize : null; }
 
     $(document).on('shiny:bound', function (ev) {
@@ -274,7 +279,7 @@ tags$head(tags$style(HTML("
              cursor="auto",top=80,bottom="auto",height="520",
              left=450,width="500",id="AboutMapPanel",style="padding: 0px; display:none;",
             htmltools::div(class="panel-heading", shiny::h4("About the Map" )),
-            htmltools::div(class="panel-body",style="height: 400px;  overflow-y: scroll",  htmltools::includeHTML("./www/AboutMap.html")),
+            htmltools::div(class="panel-body",style="height: 400px;  overflow-y: scroll",  htmltools::includeHTML("www/AboutMap.html")),
             htmltools::div(class="panel-footer",
                  shiny::actionButton(inputId="CloseAboutMap",class="btn btn-primary",label="Close"))  )
 ),  ## end of map page
@@ -371,11 +376,11 @@ tags$head(tags$style(HTML("
                 value="Table",
                 shiny::column(10, style="padding: 5px",
                  shiny::h3(shiny::textOutput("densTableTitle")),
-                 shiny::dataTableOutput("densTable")
+                 DT::dataTableOutput("densTable")
                 )
               ),
               shiny::tabPanel(htmltools::tags$div(title="Explanation of the graph","About this graph..."),
-                       htmltools::includeHTML("./www/DensPlot.html")
+                       htmltools::includeHTML("www/DensPlot.html")
               )
             )
           )
@@ -465,13 +470,13 @@ tags$head(tags$style(HTML("
                 htmltools::tags$div(title="See all data in a table","Data table"),
                 shiny::column(10,
                   shiny::h3(shiny::textOutput("IVTableTitle")),
-                 shiny::dataTableOutput("IVData")
+                 DT::dataTableOutput("IVData")
                 )
               ),
               shiny::tabPanel(htmltools::tags$div(title="Explanation of the graph",
                   "About this graph..."
                 ),
-                htmltools::includeHTML("./www/IVPlot.html")
+                htmltools::includeHTML("www/IVPlot.html")
               )
             )
           )
@@ -509,7 +514,7 @@ tags$head(tags$style(HTML("
             DT::dataTableOutput("SpeciesTable")
           ),
           shiny::tabPanel("About these lists...",
-            htmltools::includeHTML("./www/AboutLists.html")
+            htmltools::includeHTML("www/AboutLists.html")
           )
         )
       )

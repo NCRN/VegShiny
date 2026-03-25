@@ -55,18 +55,18 @@ EXTRALAYERS<-base::switch(NETWORK,
   )
 
 PROJECTINFO<-base::switch(NETWORK,
-                    ERMN=htmltools::includeHTML("./www/InformationERMN.html"),
-                    MIDN=htmltools::includeHTML("./www/InformationMIDN.html"),
-                    NCRN=htmltools::includeHTML("./www/Information.html"),
-                    NETN=htmltools::includeHTML("./www/InformationNETN.html"),
+                    ERMN=htmltools::includeHTML("www/InformationERMN.html"),
+                    MIDN=htmltools::includeHTML("www/InformationMIDN.html"),
+                    NCRN=htmltools::includeHTML("www/Information.html"),
+                    NETN=htmltools::includeHTML("www/InformationNETN.html"),
                     SHEN=htmltools::HTML("./www/InformationSHEN.html")
 )
 
 CITATIONS<-base::switch(NETWORK,
-                    ERMN=htmltools::includeHTML("./www/CitationsERMN.html"),
-                    MIDN=htmltools::includeHTML("./www/CitationsMIDN.html"),
-                    NCRN=htmltools::includeHTML("./www/Citations.html"),
-                    NETN=htmltools::includeHTML("./www/CitationsNETN.html"),
+                    ERMN=htmltools::includeHTML("www/CitationsERMN.html"),
+                    MIDN=htmltools::includeHTML("www/CitationsMIDN.html"),
+                    NCRN=htmltools::includeHTML("www/Citations.html"),
+                    NETN=htmltools::includeHTML("www/CitationsNETN.html"),
                     SHEN=htmltools::HTML("./www/CitationsSHEN.html")
 )
 
