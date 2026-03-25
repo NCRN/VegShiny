@@ -136,6 +136,10 @@ shiny::navbarPage(
       .navbar-nav a:focus{
         color: #fff !important;
         background-color: #916800 !important;
+
+.selectize-dropdown { z-index: 10000; }
+.selectize-control .selectize-input .caret { pointer-events: none; }
+
   ")),
     
     htmltools::tags$script(htmltools::HTML("
@@ -145,6 +149,43 @@ shiny::navbarPage(
     $(document).on('click', '.navbar-collapse .dropdown-menu a', function () {
       $(this).closest('.navbar-collapse').collapse('hide');
     });
+    
+    (function () {function getSelectize(el) { return el && el.selectize ? el.selectize : null; }
+
+    $(document).on('shiny:bound', function (ev) {
+      var $el = $(ev.target);
+      if (!$el.is('select') || !$el.hasClass('selectized')) return;
+
+      var sel = getSelectize($el[0]);
+      if (!sel) return;
+      sel.settings.openOnFocus = false;
+      var $control = $el.next('.selectize-control').find('.selectize-input');
+    
+  //close menu upon selecting toggle  
+      $control.on('pointerdown.selectizeToggle', function (e) {
+        if ($(e.target).is('input, textarea')) return;
+
+        e.preventDefault();
+        e.stopImmediatePropagation();
+
+        if (sel.isOpen) {sel.close(); sel.blur();} 
+        else {sel.open();sel.focus();}
+      });
+
+  //close menu upon item selection
+      sel.on('item_select', function () { sel.close(); sel.blur(); });
+      sel.on('dropdown_close', function () { sel.blur(); });
+    });
+
+  //close menu when clicking anywhere outside menu 
+    $(document).on('pointerdown.selectizeOutside', function (e) {
+      var $t = $(e.target);
+      if ($t.closest('.selectize-control').length) return;
+      $('.selectized').each(function () {
+        var sel = getSelectize(this);
+        if (sel && sel.isOpen) sel.close();});
+    });
+    })();
     
   ")),
 
