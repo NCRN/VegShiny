@@ -113,17 +113,16 @@ shiny::navbarPage(
         padding: 0 !important;
         margin: 0 !important;}
       
+      .navbar.navbar-inverse .navbar-nav li.dropdown.open a.dropdown-toggle .caret {
+        transform: scaleY(-1);
+        align-self: center !important;
+        margin-left: 0.35rem;}
       .navbar.navbar-inverse .navbar-nav > li.dropdown > a.dropdown-toggle {
         display: flex !important;
         align-items: center !important;
         width: 100% !important;
         padding: 0.5rem 1rem !important;
         line-height: 1.2;}
-      
-      .navbar.navbar-inverse .navbar-nav > li.dropdown > a.dropdown-toggle .caret {
-        align-self: center !important;
-        margin-left: 0.35rem;
-        transform: none !important;}
         
       .navbar-inverse .navbar-nav > li > a {
         display: block;
@@ -135,10 +134,10 @@ shiny::navbarPage(
       .navbar-nav a:active,
       .navbar-nav a:focus{
         color: #fff !important;
-        background-color: #916800 !important;
+        background-color: #916800 !important;}
 
-.selectize-dropdown { z-index: 10000; }
-.selectize-control .selectize-input .caret { pointer-events: none; }
+      .selectize-dropdown { z-index: 10000; }
+      .selectize-control .selectize-input .caret { pointer-events: none; }
 
   ")),
     
