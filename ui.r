@@ -129,22 +129,17 @@ shiny::navbarPage(
       .navbar-nav a:focus{
         color: #fff !important;
         background-color: #916800 !important;}
-        
 
-.selectize-control .selectize-input::after {
-  margin-top: 0 !important;
-  margin-right: 0 !important;}
-  
+      .selectize-control .selectize-input::after {
+        margin-top: 0 !important;
+        margin-right: 0 !important;}
 
-.selectize-control .selectize-input {
-  position: relative;}
-.selectize-control .selectize-input::after {
-  position: absolute;
-  right: 1rem !important;
-  transform: translateY(-50%);
-}
-
-
+      .selectize-control .selectize-input {
+        position: relative;}
+      .selectize-control .selectize-input::after {
+        position: absolute;
+        right: 1rem !important;
+        transform: translateY(-50%);}
   ")),
     
     htmltools::tags$script(htmltools::HTML("
@@ -155,7 +150,7 @@ shiny::navbarPage(
     $(document).on('click', '.navbar-collapse .dropdown-menu a', function () {
       $(this).closest('.navbar-collapse').collapse('hide');
     });
-
+    
     $(function(){
       $('.navbar-nav li.dropdown').each(function(){
         var $a = $(this).find('> a.dropdown-toggle');
@@ -163,12 +158,11 @@ shiny::navbarPage(
         var title = $t.attr('title');
         if (title) {
           $(this).attr('title', title); 
-          $t.attr('title','');}
-      });
+          $t.attr('title','');}});
     });
- 
+
     (function () {function getSelectize(el) { return el && el.selectize ? el.selectize : null; }
- 
+
     $(document).on('shiny:bound', function (ev) {
       var $el = $(ev.target);
       if (!$el.is('select') || !$el.hasClass('selectized')) return;
@@ -177,27 +171,27 @@ shiny::navbarPage(
       sel.settings.openOnFocus = false;
       var $control = $el.next('.selectize-control').find('.selectize-input');
 
-  //close menu upon selecting toggle  
-      $control.on('pointerdown.selectizeToggle', function (e) {
-        if ($(e.target).is('input, textarea')) return;
-        e.preventDefault();
-        e.stopImmediatePropagation();
-        if (sel.isOpen) {sel.close(); sel.blur();} 
-        else {sel.open();sel.focus();}
-      });
- 
-  //close menu upon item selection
-      sel.on('item_select', function () { sel.close(); sel.blur(); });
-      sel.on('dropdown_close', function () { sel.blur(); });
+  //close menu upon selecting toggle
+    $control.on('pointerdown.selectizeToggle', function (e) {
+      if ($(e.target).is('input, textarea')) return;
+      e.preventDefault();
+      e.stopImmediatePropagation();
+      if (sel.isOpen) {sel.close(); sel.blur();} 
+      else {sel.open();sel.focus();}
     });
- 
+
+  //close menu upon item selection
+    sel.on('item_select', function () { sel.close(); sel.blur(); });
+    sel.on('dropdown_close', function () { sel.blur(); });
+    });
+
   //close menu when clicking anywhere outside menu 
     $(document).on('pointerdown.selectizeOutside', function (e) {
       var $t = $(e.target);
       if ($t.closest('.selectize-control').length) return;
-      $('.selectized').each(function () {
-        var sel = getSelectize(this);
-        if (sel && sel.isOpen) sel.close();});
+    $('.selectized').each(function () {
+      var sel = getSelectize(this);
+      if (sel && sel.isOpen) sel.close();});
     });
     })();
   ")),
@@ -288,7 +282,7 @@ tags$head(tags$style(HTML("
              cursor="auto",top=80,bottom="auto",height="520",
              left=450,width="500",id="AboutMapPanel",style="padding: 0px; display:none;",
             htmltools::div(class="panel-heading", shiny::h4("About the Map" )),
-            htmltools::div(class="panel-body",style="height: 400px;  overflow-y: scroll",  htmltools::includeHTML("./www/AboutMap.html")),
+            htmltools::div(class="panel-body",style="height: 400px;  overflow-y: scroll",  htmltools::includeHTML("www/AboutMap.html")),
             htmltools::div(class="panel-footer",
                  shiny::actionButton(inputId="CloseAboutMap",class="btn btn-primary",label="Close"))  )
 ),  ## end of map page
@@ -385,11 +379,11 @@ tags$head(tags$style(HTML("
                 value="Table",
                 shiny::column(10, style="padding: 5px",
                  shiny::h3(shiny::textOutput("densTableTitle")),
-                 shiny::dataTableOutput("densTable")
+                 DT::dataTableOutput("densTable")
                 )
               ),
               shiny::tabPanel(htmltools::tags$div(title="Explanation of the graph","About this graph..."),
-                       htmltools::includeHTML("./www/DensPlot.html")
+                       htmltools::includeHTML("www/DensPlot.html")
               )
             )
           )
@@ -479,13 +473,13 @@ tags$head(tags$style(HTML("
                 htmltools::tags$div(title="See all data in a table","Data table"),
                 shiny::column(10,
                   shiny::h3(shiny::textOutput("IVTableTitle")),
-                 shiny::dataTableOutput("IVData")
+                 DT::dataTableOutput("IVData")
                 )
               ),
               shiny::tabPanel(htmltools::tags$div(title="Explanation of the graph",
                   "About this graph..."
                 ),
-                htmltools::includeHTML("./www/IVPlot.html")
+                htmltools::includeHTML("www/IVPlot.html")
               )
             )
           )
@@ -523,7 +517,7 @@ tags$head(tags$style(HTML("
             DT::dataTableOutput("SpeciesTable")
           ),
           shiny::tabPanel("About these lists...",
-            htmltools::includeHTML("./www/AboutLists.html")
+            htmltools::includeHTML("www/AboutLists.html")
           )
         )
       )
