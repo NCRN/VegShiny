@@ -140,6 +140,20 @@ shiny::navbarPage(
         position: absolute;
         right: 1rem !important;
         transform: translateY(-50%);}
+        
+
+.sidebar-col button.btn,
+.sidebar-col .btn,
+.sidebar-col .btn.btn-sm {
+  display: block;               /* ensures full-width can apply */
+  width: 100% !important;       /* force full width */
+  white-space: normal !important;/* override Bootstrap's nowrap */
+  text-align: center;           /* nice wrap behavior */
+  padding: 0.40rem 0.60rem !important;  /* reduce horizontal padding */
+  box-sizing: border-box;       /* padding doesn't push width */
+}
+
+
   ")),
     
     htmltools::tags$script(htmltools::HTML("
@@ -205,7 +219,25 @@ shiny::navbarPage(
      shinyjs::useShinyjs(),
 
    htmltools::div(class="outer",
-      htmltools::tags$head(shiny::includeCSS("./www/mapstyles.css") ), # defines css file
+      htmltools::tags$head(shiny::includeCSS("./www/mapstyles.css"), # defines css file
+                           htmltools::tags$style(
+                             htmltools::HTML("@media (min-width: 678px) and (max-width: 1309px) {
+                                                #ZoomPanel .row > [class*='col-'] {
+                                                  float: none !important;
+                                                  width: 100% !important;}
+                                                #ZoomPanel .btn.action-button {
+                                                  width: 100% !important;}}
+                                              @media (min-width: 1309px) {                
+                                                #ZoomPanel .col-sm-3 {
+                                                  padding-left: 6px !important;
+                                                  padding-right: 15px !important;}
+                                                #ZoomPanel .col-sm-9 { 
+                                                  padding-left: 15px !important; 
+                                                  padding-right: 6px !important; }}
+                                              .action-button {
+                                                white-space: normal !important;
+                                                word-wrap: break-word !important;}"))
+                           ), 
       htmltools::tags$head(shiny::includeScript("https://www.nps.gov/common/commonspot/templates/js/federated-analytics.js"))#,
     ),
     
@@ -229,7 +261,7 @@ shiny::navbarPage(
             htmltools::tags$div(title="Choose a species of plants to map", shiny::uiOutput("MapSpeciesControl")),  
             htmltools::tags$div(title="Filter the species list so only species found in a particular park are listed",
                            shiny::uiOutput("MapParkControl")),
-            shiny::actionButton(inputId="AboutMapButton",label="About the map",class="btn btn-primary ")
+            shiny::actionButton(inputId="AboutMapButton",label="About the map",class="btn btn-primary")
            ),
         
 #### Zoom Controls ####
@@ -237,13 +269,29 @@ shiny::navbarPage(
           shiny::h4("Zoom to:", class="panel-heading"),
           shiny::fluidRow(
             shiny::column(9, htmltools::tags$div(title="Choose a park and click 'Go'", shiny::uiOutput("ParkZoomControl"))),
-            shiny::column(3, shiny::actionButton(inputId="MapZoom", label="Go", class="btn btn-primary btn-sm"))
+            shiny::column(3, shiny::actionButton(inputId="MapZoom", label="Go", class="btn btn-primary btn-block action-button"))
           ),
           shiny::hr(),
           htmltools::tags$div(title="Increases size of plots for easier viewing",
            shiny::radioButtons(inputId="PlotSize", label="Enlarge plots: 1X = to scale", 
              choices=base::c("1X"=1, "5X"=base::sqrt(5), "10X"=base::sqrt(10), "25X"=5), selected="1", inline=TRUE)
-          )
+          ),
+          
+          htmltools::tags$style(htmltools::HTML("
+            @media (min-width: 678px) and (max-width: 1309px) {
+              #ZoomPanel .row > [class*='col-'] {
+                float: none !important;
+                width: 100% !important;}
+              #ZoomPanel .btn.action-button {
+                width: 100% !important;}}
+            @media (min-width: 1309px) {                
+              #ZoomPanel .col-sm-3 {
+                padding-left: 6px !important;
+                padding-right: 15px !important;}
+              #ZoomPanel .col-sm-9 { 
+                padding-left: 15px !important; 
+                padding-right: 6px !important; }}
+          "))
       ),
 
 #### Add a layer control ####
@@ -290,13 +338,17 @@ tags$head(tags$style(HTML("
 
 ######################################## Graphs Panel ##########################################################
 
-    shiny::navbarMenu(htmltools::tags$div(title="Graph the data", "Graphs"),    
+    shiny::navbarMenu(htmltools::tags$div(title="Graph the data", "Graphs"),
+                      
 #############  densplot() based plots
-      shiny::tabPanel(htmltools::tags$div(title="Graph abundance, basal area, percent cover, etc.","Data by Park and Species"), 
-               
+      shiny::tabPanel(htmltools::tags$div(title="Graph abundance, basal area, percent cover, etc.","Data by Park and Species"),
                shinyjs::useShinyjs(),
         shiny::fluidRow(
           shiny::column(3,
+                        htmltools::tags$head(htmltools::tags$style(
+                          htmltools::HTML(".action-button {
+                                              white-space: normal !important;
+                                              word-wrap: break-word !important;}"))),
             shiny::wellPanel(class="panel panel-default",
               shiny::h4("Data:", class="panel-heading"),
               htmltools::tags$div(title="Choose a park to work with.",
@@ -325,14 +377,15 @@ tags$head(tags$style(HTML("
               ),
               shiny::conditionalPanel(
                 condition="input.densPanel=='Graph'",
-                shiny::actionButton(inputId="densGraphButton", label="Display Options", class="btn btn-primary"),
-               htmltools::div(shiny::downloadButton(outputId="densGraphDownload", label="Save Graph (.jpg)", class="btn btn-primary"),
-                shiny::downloadButton(outputId="densWmfDownload", label="Save Graph (.png)", class="btn btn-primary"))
+                shiny::actionButton(inputId="densGraphButton", label="Display Options", class="btn btn-primary btn-block action-button"),
+                br(),
+               htmltools::div(shiny::downloadButton(outputId="densGraphDownload", label="Save Graph (.jpg)", class="btn btn-primary btn-block action-button"),
+                shiny::downloadButton(outputId="densWmfDownload", label="Save Graph (.png)", class="btn btn-primary btn-block action-button"))
               ),
               shiny::conditionalPanel(
                 condition="input.densPanel=='Table'",
                 shiny::hr(),
-                shiny::downloadButton(outputId="densTableDownload", label="Save Table (.csv)", class="btn btn-primary")
+                shiny::downloadButton(outputId="densTableDownload", label="Save Table (.csv)", class="btn btn-primary btn-block action-button")
               )
             ),
             shiny::conditionalPanel(
@@ -394,6 +447,10 @@ tags$head(tags$style(HTML("
       shiny::tabPanel(htmltools::tags$div(title="Graph Importance Values", "Forestry Importance Values (IV)"),
         shiny::fluidRow(
           shiny::column(3,
+                        htmltools::tags$head(htmltools::tags$style(
+                          htmltools::HTML(".action-button {
+                                              white-space: normal !important;
+                                              word-wrap: break-word !important;}"))),
             shiny::wellPanel(class="panel panel-default",
               shiny::h4("Data:", class="panel-heading"),
               htmltools::tags$div(
@@ -430,17 +487,16 @@ tags$head(tags$style(HTML("
                 shiny::conditionalPanel(
                   condition="input.IVPanel=='Graph'",
                   shiny::hr(),
-                  shiny::actionButton(inputId="IVGraphButton", label="Display Options", class="btn btn-primary"),
+                  shiny::actionButton(inputId="IVGraphButton", label="Display Options", class="btn btn-primary btn-block action-button"),
                   shiny::br(),
-                  shiny::downloadButton(outputId="IVGraphDownload", label="Save Graph (.jpg)", class="btn btn-primary"),
-                  shiny::downloadButton(outputId="IVWmfDownload", label="Save Graph (.wmf)", class="btn btn-primary")
+                  shiny::downloadButton(outputId="IVGraphDownload", label="Save Graph (.jpg)", class="btn btn-primary btn-block action-button"),
+                  shiny::downloadButton(outputId="IVWmfDownload", label="Save Graph (.wmf)", class="btn btn-primary btn-block action-button")
                 ),  
                   shiny::conditionalPanel(
                     condition="input.IVPanel=='Table'",
                     shiny::hr(),
-                    shiny::flowLayout(
-                      shiny::downloadButton(outputId="IVTableDownload", label="Save Table (.csv)", class="btn btn-primary")
-                    )
+                    shiny::downloadButton(outputId="IVTableDownload", label="Save Table (.csv)", class="btn btn-primary btn-block action-button")
+                    
                 )
             )
           ),
