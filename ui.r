@@ -23,10 +23,12 @@ shiny::navbarPage(
         padding-left: 1rem;
         margin: 0;
         pointer-events:none;}
+
       .navbar {
         min-height: auto !important;            
         padding-top: 1.5rem;                    
         padding-bottom: 1.5rem;}
+        
       .navbar-header {
         display: flex;
         align-items: center;
@@ -34,12 +36,14 @@ shiny::navbarPage(
         width: 100%;
         float: none;             
         gap: clamp(0.5rem, 1vw, 1rem);}
+
       .navbar-header .navbar-brand {
         order: 1;                     
         text-align: left;           
         margin: 0;            
         display: flex;
         align-items: center;}
+
       .navbar-header .navbar-toggle {
         order: 2;                     
         align-items: center;
@@ -51,8 +55,10 @@ shiny::navbarPage(
         margin-top: 0 !important;         
         margin-bottom: 0 !important;      
         padding: 0 !important;}
+
       .navbar-collapse.collapse {display: none !important;}
       .navbar-collapse.in {display: block !important;}
+
       .navbar-nav {
         display: flex;   
         float: none !important; 
@@ -60,6 +66,7 @@ shiny::navbarPage(
         gap: 0.75rem;                  
         flex-direction: column;
         margin: 0;}
+
       .navbar-toggle {border: none !important;}
       .navbar-toggle:hover,
       .navbar-toggle:active,
@@ -68,15 +75,19 @@ shiny::navbarPage(
         border: none !important;
         box-shadow: none !important;
         outline: none !important;}
+
       .navbar-toggle > span:not(.icon-bar) { display: none !important; }
+
       .navbar-toggle::before,
       .navbar-toggle::after { content: none !important; display: none !important; }
+
       .navbar-toggle .icon-bar {
         display: block !important;
         width: 1.6em;
         height: 0.10em;
         background-color: #fff !important;}
       .navbar-toggle .icon-bar + .icon-bar { margin-top: 0.4em; }
+
       .navbar-nav .dropdown-menu {
         position: static !important;   
         float: none !important;
@@ -86,46 +97,65 @@ shiny::navbarPage(
         box-shadow: none;             
         background: #000;              
         margin-left: 1.5rem;}
+        
       .navbar-nav .dropdown.open > .dropdown-menu {display: block;}
+
       .navbar-nav > li > a,
       .navbar-nav .dropdown-menu > li > a{
         font-family: 'Times New Roman' !important;
         font-size: calc(.75em + .75vw) !important;
         color: #fff !important;}
+
       .navbar-nav > li > a:empty {
         display: none !important;
         visibility: hidden !important;
         height: 0 !important;
         padding: 0 !important;
         margin: 0 !important;}
+
       .navbar.navbar-inverse .navbar-nav li.dropdown.open a.dropdown-toggle .caret {
-        transform: scaleY(-1);
+        transform: scaleY(-1) translateX(-2px);
         align-self: center !important;
         margin-left: 0.35rem;}
       .navbar.navbar-inverse .navbar-nav > li.dropdown > a.dropdown-toggle {
         display: flex !important;
         align-items: center !important;
         width: 100% !important;
-        padding: 0.75rem 1.25rem !important;}
-      .navbar-inverse .navbar-nav > li > a {padding: 0.75rem 125rem;}
+        padding: 1rem 1.5rem !important;}
+
+      .navbar-inverse .navbar-nav > li > a {padding: 0.75rem 1.25rem;}
       .navbar-nav a:hover,
       .navbar-nav a:active,
       .navbar-nav a:focus{
         color: #fff !important;
         background-color: #916800 !important;}
- 
-      .selectize-dropdown { z-index: 10000; }
-      .selectize-control .selectize-input .caret { pointer-events: none; }
- 
+        
+
+.selectize-control .selectize-input::after {
+  margin-top: 0 !important;
+  margin-right: 0 !important;}
+  
+
+.selectize-control .selectize-input {
+  position: relative;}
+.selectize-control .selectize-input::after {
+  position: absolute;
+  right: 1rem !important;
+  transform: translateY(-50%);
+}
+
+
   ")),
     
     htmltools::tags$script(htmltools::HTML("
     $(document).on('click', '.navbar-collapse.in a:not(.dropdown-toggle)', function () {
       $(this).closest('.navbar-collapse').collapse('hide');
     });
+
     $(document).on('click', '.navbar-collapse .dropdown-menu a', function () {
       $(this).closest('.navbar-collapse').collapse('hide');
     });
+
     $(function(){
       $('.navbar-nav li.dropdown').each(function(){
         var $a = $(this).find('> a.dropdown-toggle');
@@ -142,18 +172,16 @@ shiny::navbarPage(
     $(document).on('shiny:bound', function (ev) {
       var $el = $(ev.target);
       if (!$el.is('select') || !$el.hasClass('selectized')) return;
- 
       var sel = getSelectize($el[0]);
       if (!sel) return;
       sel.settings.openOnFocus = false;
       var $control = $el.next('.selectize-control').find('.selectize-input');
+
   //close menu upon selecting toggle  
       $control.on('pointerdown.selectizeToggle', function (e) {
         if ($(e.target).is('input, textarea')) return;
- 
         e.preventDefault();
         e.stopImmediatePropagation();
- 
         if (sel.isOpen) {sel.close(); sel.blur();} 
         else {sel.open();sel.focus();}
       });
@@ -173,7 +201,7 @@ shiny::navbarPage(
     });
     })();
   ")),
-
+    
     htmltools::includeHTML("www/google-analytics.html")
 ),
   
