@@ -121,14 +121,22 @@ shiny::navbarPage(
         display: flex !important;
         align-items: center !important;
         width: 100% !important;
-        padding: 1rem 1.5rem !important;}
+        padding: 0.75rem 1.25rem !important;}
 
       .navbar-inverse .navbar-nav > li > a {padding: 0.75rem 1.25rem;}
-      .navbar-nav a:hover,
-      .navbar-nav a:active,
-      .navbar-nav a:focus{
+      .navbar-inverse .navbar-nav > li > a:hover,
+      .navbar-nav .dropdown-menu > li > a:hover {
         color: #fff !important;
         background-color: #916800 !important;}
+
+      .navbar-nav .dropdown-menu > li > a:focus,
+      .navbar-nav .dropdown-menu > li > a:active {
+        outline: 0 !important;}
+      .navbar-nav .dropdown-menu > .active > a,
+      .navbar-nav .dropdown-menu > .active > a:hover,
+      .navbar-nav .dropdown-menu > .active > a:focus {
+        background-color: transparent;
+        color: #fff !important;}
 
       .selectize-control .selectize-input::after {
         margin-top: 0 !important;
@@ -140,19 +148,6 @@ shiny::navbarPage(
         position: absolute;
         right: 1rem !important;
         transform: translateY(-50%);}
-        
-
-.sidebar-col button.btn,
-.sidebar-col .btn,
-.sidebar-col .btn.btn-sm {
-  display: block;               /* ensures full-width can apply */
-  width: 100% !important;       /* force full width */
-  white-space: normal !important;/* override Bootstrap's nowrap */
-  text-align: center;           /* nice wrap behavior */
-  padding: 0.40rem 0.60rem !important;  /* reduce horizontal padding */
-  box-sizing: border-box;       /* padding doesn't push width */
-}
-
 
   ")),
     
@@ -219,25 +214,7 @@ shiny::navbarPage(
      shinyjs::useShinyjs(),
 
    htmltools::div(class="outer",
-      htmltools::tags$head(shiny::includeCSS("./www/mapstyles.css"), # defines css file
-                           htmltools::tags$style(
-                             htmltools::HTML("@media (min-width: 678px) and (max-width: 1309px) {
-                                                #ZoomPanel .row > [class*='col-'] {
-                                                  float: none !important;
-                                                  width: 100% !important;}
-                                                #ZoomPanel .btn.action-button {
-                                                  width: 100% !important;}}
-                                              @media (min-width: 1309px) {                
-                                                #ZoomPanel .col-sm-3 {
-                                                  padding-left: 6px !important;
-                                                  padding-right: 15px !important;}
-                                                #ZoomPanel .col-sm-9 { 
-                                                  padding-left: 15px !important; 
-                                                  padding-right: 6px !important; }}
-                                              .action-button {
-                                                white-space: normal !important;
-                                                word-wrap: break-word !important;}"))
-                           ), 
+      htmltools::tags$head(shiny::includeCSS("./www/mapstyles.css")), # defines css file
       htmltools::tags$head(shiny::includeScript("https://www.nps.gov/common/commonspot/templates/js/federated-analytics.js"))#,
     ),
     
@@ -276,22 +253,21 @@ shiny::navbarPage(
            shiny::radioButtons(inputId="PlotSize", label="Enlarge plots: 1X = to scale", 
              choices=base::c("1X"=1, "5X"=base::sqrt(5), "10X"=base::sqrt(10), "25X"=5), selected="1", inline=TRUE)
           ),
-          
-          htmltools::tags$style(htmltools::HTML("
-            @media (min-width: 678px) and (max-width: 1309px) {
-              #ZoomPanel .row > [class*='col-'] {
-                float: none !important;
-                width: 100% !important;}
-              #ZoomPanel .btn.action-button {
-                width: 100% !important;}}
-            @media (min-width: 1309px) {                
-              #ZoomPanel .col-sm-3 {
-                padding-left: 6px !important;
-                padding-right: 15px !important;}
-              #ZoomPanel .col-sm-9 { 
-                padding-left: 15px !important; 
-                padding-right: 6px !important; }}
-          "))
+          htmltools::tags$style(
+            htmltools::HTML("@media (min-width: 678px) and (max-width: 1597px) {
+                                #ZoomPanel .row > [class*='col-'] {
+                                  float: none !important;
+                                  width: 100% !important;}
+                                #ZoomPanel .btn.action-button {
+                                  width: 100% !important;}}
+                              @media (min-width: 1598px) {                
+                                #ZoomPanel .col-sm-3 {
+                                  padding-left: 6px !important;
+                                  padding-right: 15px !important;}
+                                #ZoomPanel .col-sm-9 { 
+                                  padding-left: 15px !important; 
+                                  padding-right: 6px !important; }}
+                                .action-button {white-space: normal !important;}"))
       ),
 
 #### Add a layer control ####
