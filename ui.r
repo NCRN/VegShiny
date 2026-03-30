@@ -152,40 +152,113 @@ shiny::navbarPage(
         transform: translateY(-50%);}
         
       @media (max-width: 630px) {
-        #AboutMapPanel{
+        #AboutMapPanel {
           top: 85px;
           right: 30px;
           width: 250px !important;
           height: 500px !important}
-        #AboutMapPanel .panel-body {height: 375px !important; overflow-y: scroll;}}
+        #AboutMapPanel .panel-body {height: 375px !important; overflow-y: scroll;}
+        #GraphOptionsPanel {
+          top: 85px;
+          right: 3px;
+          width: 375px !important;
+          height: 350px !important}
+        #GraphOptionsPanel .panel-body {height: 225px !important; overflow-y: auto;}
+        
+        
+        
+        
+        #IVOptionsPanel{
+          top: 85px;
+          right: 15px;
+          width: 240px !important;
+          height: 575px !important}
+        #IVOptionsPanel .panel-body {height: 450px !important; overflow-y: auto;}}
+
+     
+     
+     
+     
+     
       @media (min-width: 631px) and (max-width: 767px) {
-        #AboutMapPanel{
+        #AboutMapPanel {
           top: 85px;
           right: 30px;
           width: 300px !important;
           height: 500px !important;}
-        #AboutMapPanel .panel-body {height: 375px !important; overflow-y: scroll;}}
+        #AboutMapPanel .panel-body {height: 375px !important; overflow-y: scroll;}
+        #GraphOptionsPanel {
+          top: 85px;
+          right: 30px;
+          width: 375px !important;
+          height: 350px !important}
+        #GraphOptionsPanel .panel-body {height: 225px !important; overflow-y: auto;}
+        #IVOptionsPanel{
+          top: 85px;
+          right: 30px;
+          width: 500px !important;
+          height: 450px !important}
+        #IVOptionsPanel .panel-body {height: 325px !important; overflow-y: auto;}}
+        
       @media (min-width: 768px) and (max-width: 1000px) {
-        #AboutMapPanel{
+        #AboutMapPanel {
           top: 85px;
           left: 25vw;
           width: 450px !important;
           height: 675px !important;}
-        #AboutMapPanel .panel-body {height: 550px !important; overflow-y: scroll;}}
+        #AboutMapPanel .panel-body {height: 550px !important; overflow-y: scroll;}
+        #GraphOptionsPanel {
+          top: 150px;
+          left: 27vw;
+          width: 375px !important;
+          height: 350px !important}
+        #GraphOptionsPanel .panel-body {height: 225px !important; overflow-y: auto;}
+        #IVOptionsPanel{
+          top: 150px;
+          left: 27vw;
+          width: 550px !important;
+          height: 450px !important}
+        #IVOptionsPanel .panel-body {height: 325px !important; overflow-y: auto;}}
+      
       @media (min-width: 1001px) and (max-width: 1597px) {
-        #AboutMapPanel{
+        #AboutMapPanel {
           top: 85px;
           left: 22vw;
           width: 450px !important;
           height: 500px !important;}
-        #AboutMapPanel .panel-body {height: 375px !important; overflow-y: scroll;}}
+        #AboutMapPanel .panel-body {height: 375px !important; overflow-y: scroll;}
+        #GraphOptionsPanel {
+          top: 150px;
+          left: 26.25vw;
+          width: 375px !important;
+          height: 350px !important}
+        #GraphOptionsPanel .panel-body {height: 225px !important; overflow-y: auto;}
+        #IVOptionsPanel{
+          top: 150px;
+          left: 26.25vw;
+          width: 600px !important;
+          height: 450px !important}
+        #IVOptionsPanel .panel-body {height: 325px !important; overflow-y: auto;}}
+      
       @media (min-width: 1598px) {
-        #AboutMapPanel{
+        #AboutMapPanel {
           top: 85px;
           left: 20vw;
           width: 600px !important;
           height: 825px !important;}
-        #AboutMapPanel .panel-body {height: 700px !important; overflow-y: scroll;}}
+        #AboutMapPanel .panel-body {height: 700px !important; overflow-y: scroll;}
+        #GraphOptionsPanel {
+          top: 150px;
+          left: 25.75vw;
+          width: 375px !important;
+          height: 350px !important}
+        #GraphOptionsPanel .panel-body {height: 225px !important; overflow-y: auto;}
+        #IVOptionsPanel{
+          top: 150px;
+          left: 25.75vw;
+          width: 600px !important;
+          height: 450px !important}
+        #IVOptionsPanel .panel-body {height: 325px !important; overflow-y: auto;}}
   ")),
     
     htmltools::tags$script(htmltools::HTML("
@@ -414,8 +487,7 @@ tags$head(tags$style(HTML("
                   shiny::plotOutput(outputId="DensPlot", height="600px")),
              
                     shiny::fixedPanel(class="panel panel-primary controls",draggable=TRUE,
-                               cursor="auto",top=160,bottom="auto",height="auto",
-                               left=575,width="auto",id="GraphOptionsPanel",style="padding: 0px; display: none;",
+                               cursor="auto",id="GraphOptionsPanel",style="padding: 0px; display: none; z-index: 1995;",
                       title="Display Options",
                    htmltools::div(class="panel-heading", shiny::h4("Display Options")),
                    htmltools::div(class="panel-body",
@@ -514,8 +586,7 @@ tags$head(tags$style(HTML("
                 htmltools::tags$div(title="Graph of IV",shiny::plotOutput("IVPlot",height="600px")),
               
                   shiny::fixedPanel(class="panel panel-primary controls",draggable=TRUE,
-                             cursor="auto",top=160,bottom="auto",height="auto",
-                             left=575,width="auto",id="IVOptionsPanel",style="padding: 0px; display: none;",title="Display Options",
+                             cursor="auto",id="IVOptionsPanel",style="padding: 0px; display: none; z-index: 1995;",title="Display Options",
                    htmltools::div(class="panel-heading", shiny::h4("Display Options")),
                    htmltools::div(class="panel-body",
                       shiny::flowLayout(
