@@ -12,7 +12,8 @@ shiny::navbarPage(
   position = "static-top", inverse=TRUE, collapsible = TRUE, fluid=TRUE, windowTitle = base::paste(NETWORK, "Forest Vegetation"),
   theme="https://www.nps.gov/lib/bootstrap/3.3.2/css/nps-bootstrap.min.css", id="MainNavBar",
                   
-  htmltools::tags$head(
+  htmltools::tags$head(shiny::includeCSS("./www/mapstyles.css"), # defines css file
+    shiny::includeScript("https://www.nps.gov/common/commonspot/templates/js/federated-analytics.js"),
     htmltools::tags$style(
       htmltools::HTML("
       .navbar-inverse .navbar-brand {
@@ -25,6 +26,7 @@ shiny::navbarPage(
         pointer-events:none;}
 
       .navbar {
+        z-index: 2000;
         min-height: auto !important;            
         padding-top: 1.5rem;                    
         padding-bottom: 1.5rem;}
@@ -148,7 +150,42 @@ shiny::navbarPage(
         position: absolute;
         right: 1rem !important;
         transform: translateY(-50%);}
-
+        
+      @media (max-width: 630px) {
+        #AboutMapPanel{
+          top: 85px;
+          right: 30px;
+          width: 250px !important;
+          height: 500px !important}
+        #AboutMapPanel .panel-body {height: 375px !important; overflow-y: scroll;}}
+      @media (min-width: 631px) and (max-width: 767px) {
+        #AboutMapPanel{
+          top: 85px;
+          right: 30px;
+          width: 300px !important;
+          height: 500px !important;}
+        #AboutMapPanel .panel-body {height: 375px !important; overflow-y: scroll;}}
+      @media (min-width: 768px) and (max-width: 1000px) {
+        #AboutMapPanel{
+          top: 85px;
+          left: 25vw;
+          width: 450px !important;
+          height: 675px !important;}
+        #AboutMapPanel .panel-body {height: 550px !important; overflow-y: scroll;}}
+      @media (min-width: 1001px) and (max-width: 1597px) {
+        #AboutMapPanel{
+          top: 85px;
+          left: 22vw;
+          width: 450px !important;
+          height: 500px !important;}
+        #AboutMapPanel .panel-body {height: 375px !important; overflow-y: scroll;}}
+      @media (min-width: 1598px) {
+        #AboutMapPanel{
+          top: 85px;
+          left: 20vw;
+          width: 600px !important;
+          height: 825px !important;}
+        #AboutMapPanel .panel-body {height: 700px !important; overflow-y: scroll;}}
   ")),
     
     htmltools::tags$script(htmltools::HTML("
@@ -212,11 +249,6 @@ shiny::navbarPage(
   
    shiny::tabPanel(htmltools::tags$div(title="Map the data", "Map"), style="padding: 0",
      shinyjs::useShinyjs(),
-
-   htmltools::div(class="outer",
-      htmltools::tags$head(shiny::includeCSS("./www/mapstyles.css")), # defines css file
-      htmltools::tags$head(shiny::includeScript("https://www.nps.gov/common/commonspot/templates/js/federated-analytics.js"))#,
-    ),
     
 #### Side Control Panel ####    
     shiny::fluidRow(
@@ -303,12 +335,11 @@ tags$head(tags$style(HTML("
      ),
 # #### Floating "About the map" Panel ####
   shiny::fixedPanel(class="panel panel-primary controls",draggable=TRUE,
-             cursor="auto",top=80,bottom="auto",height="520",
-             left=450,width="500",id="AboutMapPanel",style="padding: 0px; display:none;",
+             cursor="auto", id="AboutMapPanel",style="padding: 0px; display:none; z-index: 1995;",
             htmltools::div(class="panel-heading", shiny::h4("About the Map" )),
-            htmltools::div(class="panel-body",style="height: 400px;  overflow-y: scroll",  htmltools::includeHTML("www/AboutMap.html")),
+            htmltools::div(class="panel-body",  htmltools::includeHTML("www/AboutMap.html")),
             htmltools::div(class="panel-footer",
-                 shiny::actionButton(inputId="CloseAboutMap",class="btn btn-primary",label="Close"))  )
+                 shiny::actionButton(inputId="CloseAboutMap",class="btn btn-primary",label="Close")))
 ),  ## end of map page
 
 
