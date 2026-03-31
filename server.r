@@ -621,6 +621,8 @@ shiny::shinyServer(function(input,output,session){
   # })
 
   output$MapSpeciesControl<-shiny::renderUI({
+    print(paste0('input$MapPark:', input$MapPark))
+    print(paste0('input$MapGroup:', input$MapGroup))
     shiny::req(input$MapPark, input$MapGroup)
     shiny::selectInput(inputId="MapSpecies", label="Choose a species", choices=base::c(MapSpecList() ))
 
@@ -1034,7 +1036,7 @@ tempDensPlot<-shiny::reactive({
         base::do.call(densplot,DensPlotArgs() )),
        "There is no data for this combination of choices. The type of plant you selected was not found in the park during those years."
        ))
-      lattice::update(base::do.call(densplot, DensPlotArgs()), par.settings=base::list(fontsize=base::list(text=input$densFontSize,
+      stats::update(base::do.call(densplot, DensPlotArgs()), par.settings=base::list(fontsize=base::list(text=input$densFontSize,
                                                                                 points=input$densPointSize )))
     }
 })
@@ -1186,7 +1188,7 @@ tempIVPlot<-shiny::reactive({
       base::do.call(IVplot,IVPlotArgs() )),
       "There is no data for this combination of choices. The type of plant you selected was not found in the park during those years."
     ))
-    lattice::update(base::do.call(IVplot, IVPlotArgs()), scales=base::list(cex=1.04))
+    stats::update(base::do.call(IVplot, IVPlotArgs()), scales=base::list(cex=1.04))
   }
 })
 

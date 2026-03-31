@@ -164,12 +164,22 @@ shiny::navbarPage(
           width: 375px !important;
           height: 350px !important}
         #GraphOptionsPanel .panel-body {height: 225px !important; overflow-y: auto;}
+        
+        
+        
+        
         #IVOptionsPanel{
           top: 85px;
           right: 15px;
           width: 240px !important;
           height: 575px !important}
         #IVOptionsPanel .panel-body {height: 450px !important; overflow-y: auto;}}
+
+     
+     
+     
+     
+     
       @media (min-width: 631px) and (max-width: 767px) {
         #AboutMapPanel {
           top: 85px;
@@ -189,6 +199,7 @@ shiny::navbarPage(
           width: 500px !important;
           height: 450px !important}
         #IVOptionsPanel .panel-body {height: 325px !important; overflow-y: auto;}}
+        
       @media (min-width: 768px) and (max-width: 1000px) {
         #AboutMapPanel {
           top: 85px;
@@ -208,25 +219,27 @@ shiny::navbarPage(
           width: 550px !important;
           height: 450px !important}
         #IVOptionsPanel .panel-body {height: 325px !important; overflow-y: auto;}}
+      
       @media (min-width: 1001px) and (max-width: 1597px) {
         #AboutMapPanel {
           top: 85px;
           left: 22vw;
           width: 450px !important;
-          height: 500px !important;}
-        #AboutMapPanel .panel-body {height: 375px !important; overflow-y: scroll;}
+          height: 450px !important;}
+        #AboutMapPanel .panel-body {height: 327px !important; overflow-y: scroll;}
         #GraphOptionsPanel {
           top: 150px;
           left: 26.25vw;
           width: 375px !important;
           height: 350px !important}
-        #GraphOptionsPanel .panel-body {height: 225px !important; overflow-y: auto;}
+        #GraphOptionsPanel .panel-body {height: 227px !important; overflow-y: auto;}
         #IVOptionsPanel{
-          top: 150px;
+          top: 140px;
           left: 26.25vw;
-          width: 600px !important;
-          height: 450px !important}
-        #IVOptionsPanel .panel-body {height: 325px !important; overflow-y: auto;}}
+          width: 725px !important;
+          height: 345px !important}
+        #IVOptionsPanel .panel-body {height: 223px !important; overflow-y: none;}}
+      
       @media (min-width: 1598px) {
         #AboutMapPanel {
           top: 85px;
@@ -366,7 +379,9 @@ shiny::navbarPage(
     
      htmltools::div(id="ExtraLayerPanel",class="panel panel-default controls",draggable=TRUE,cursor="auto",top="60%",bottom="auto",
                           height="auto",right="auto",left=20,width=200,
-        shiny::h4("Additional Layers", class="panel-heading"),
+        shiny::h4("Additional Layers", class="panel-heading", style="
+      overflow: visible !important;  /* avoid clipping */
+      overflow-wrap: break-word;     /* modern word breaking */"),
         htmltools::tags$div(title="Overlay additional data onto the parks",
            shiny::selectizeInput(inputId="MapLayer", label="Add a map layer:", 
                     choices=EXTRALAYERS))
