@@ -7,6 +7,7 @@ library(shinyjs)
 library(jsonlite,pos=100)
 library(httr)
 library(dplyr)
+library(plotly)
 library(DT)
 library(sf)
 library(ritis)
@@ -761,6 +762,16 @@ shiny::shinyServer(function(input,output,session){
 
   })
 
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
 #### Plots Tab ####
 
 #### Park Control for Density plot  ####
@@ -1027,23 +1038,111 @@ DensPlotArgs<-shiny::reactive({
 
 
 #### Density Plot Function ####
-
- 
-tempDensPlot<-shiny::reactive({
-  if (base::is.null(input$densPark) || base::nchar(input$densPark)==0) {base::return()}
-    else{
-      shiny::validate(shiny::need(base::try(
-        base::do.call(densplot,DensPlotArgs() )),
-       "There is no data for this combination of choices. The type of plant you selected was not found in the park during those years."
-       ))
-      stats::update(base::do.call(densplot, DensPlotArgs()), par.settings=base::list(fontsize=base::list(text=input$densFontSize,
-                                                                                points=input$densPointSize )))
-    }
+output$DensPlotly <- plotly::renderPlotly({
+  #require the inputs needed
+  shiny::req(input$densPark, input$densGroup, input$densvalues)
+  shiny::req(densYears())
+  
+  #assign park object
+  veg_obj <- VEGDATA[[input$densPark]]
+  shiny::req(veg_obj)
+  
+  #pull density data
+  df_raw <- NPSForVeg::dens(
+    object = veg_obj,
+    group  = input$densGroup,
+    years  = densYears(),
+    values = input$densvalues,
+    common = FALSE,
+    area   = if (input$densvalues == "size") "ha" else "plot",
+    Total  = FALSE
+  )
+  shiny::validate(shiny::need(nrow(df_raw) > 0,
+  "There is no data for this combination of choices. The type of plant you selected was not found in the park during those years."
+  ))
+  
+  #species naming
+  species_col <- if (isTRUE(input$densCommon)) "Common_Name" else "Latin_Name"
+  if (isTRUE(input$densCommon) && !("Common_Name" %in% names(df_raw))) {
+    df_raw$Common_Name <- NPSForVeg::getPlantNames(
+      object    = veg_obj,
+      names     = df_raw$Latin_Name,
+      in.style  = "Latin",
+      out.style = "common"
+    )
+  }
+  
+  #transform data
+  df <- df_raw %>%
+    dplyr::transmute(
+      Species = .data[[species_col]],
+      Mean    = .data$Mean,
+      err_up  = .data$Upper.95 - .data$Mean,
+      err_dn  = .data$Mean - .data$Lower.95
+    ) %>%
+    dplyr::filter(!tolower(Species) %in% c("total", "all species"))
+  
+  #species selection radiobutton
+  if (identical(input$densSpeciesType, "Pick")) {
+    shiny::req(input$densSpecies)
+    df <- df %>% dplyr::filter(Species %in% input$densSpecies)
+  } else if (identical(input$densSpeciesType, "Common")) {
+    shiny::req(input$densTop)
+    df <- df %>%
+      dplyr::arrange(dplyr::desc(Mean)) %>%
+      dplyr::slice(1:input$densTop)
+  }
+    df <- df %>%
+    dplyr::arrange(Mean) %>%
+    dplyr::mutate(Species = factor(Species, levels = Species))
+  
+  #plot in plotly
+  plotly::plot_ly(
+    data = df,
+    y = ~Species,
+    x = ~Mean,
+    type = "scatter",
+    mode = "markers",
+    marker = list(size = 10, color = "#1f77b4"),
+    text = ~sprintf(
+      "Species: %s<br>Mean: %.2f<br>Lower 95%%: %.2f<br>Upper 95%%: %.2f",
+      as.character(Species),
+      Mean,
+      Mean - err_dn,
+      Mean + err_up
+    ),
+    hoverinfo = "text",
+      error_x = list(
+        type = "data",
+        array = df$err_up,
+        arrayminus = df$err_dn,
+        color = "#1f77b4",
+        thickness = 1.5
+      )) %>%
+    plotly::layout(
+      title = DensTitle(),
+      xaxis = list(title = densYlabel()),
+      yaxis = list(
+        title = list(
+          text = "Species",
+          standoff = 15))
+    )
 })
+ 
+#tempDensPlot<-shiny::reactive({
+#  if (base::is.null(input$densPark) || base::nchar(input$densPark)==0) {base::return()}
+#    else{
+#      shiny::validate(shiny::need(base::try(
+#        base::do.call(densplot,DensPlotArgs() )),
+#       "There is no data for this combination of choices. The type of plant you selected was not found in the park during those years."
+#       ))
+#      stats::update(base::do.call(densplot, DensPlotArgs()), par.settings=base::list(fontsize=base::list(text=input$densFontSize,
+#                                                                                points=input$densPointSize )))
+#    }
+#})
 
-output$DensPlot<-shiny::renderPlot(base::print(tempDensPlot()))
-
-
+#output$DensPlot<-shiny::renderPlot(base::print(tempDensPlot()))
+  parse(file = "C:/Users/charlotteclark/OneDrive - DOI/Documents/VegShiny/server.R")
 
 ##### jpeg Plot download ####
 output$densGraphDownload<-shiny::downloadHandler(
@@ -1064,6 +1163,16 @@ output$densWmfDownload<-shiny::downloadHandler(
     grDevices::dev.off()
   }
 )
+
+
+
+
+
+
+
+
+
+
 
 #### Tables Tab ####
 #### Title for table ####
