@@ -451,7 +451,7 @@ tags$head(tags$style(HTML("
               htmltools::tags$div(title="Graph the most common species, species you choose, or all species combined.",
                 shiny::radioButtons(inputId="densSpeciesType", label="Which species?", 
                  choices=base::c("Most common species"="Common","Pick individual species"="Pick",
-                          "All species combined"="All"), selected = "Common", inline=FALSE)
+                          "All species combined"="All"), inline=FALSE)
               ),
               shiny::uiOutput(outputId="densSpeciesControl"),
               htmltools::tags$div(title="Type of data to graph",
@@ -486,7 +486,7 @@ tags$head(tags$style(HTML("
             shiny::tabsetPanel(id="densPanel",type="pills",
                 shiny::tabPanel(title=htmltools::tags$div(title="Graph the data", "Graph"),value="Graph",
                   htmltools::tags$div(title="Mean and 95% Confidence interval",
-                  plotly::plotlyOutput(outputId="DensPlotly", height="600px")),
+                  shiny::plotOutput(outputId="DensPlot", height="600px")),
              
                     shiny::fixedPanel(class="panel panel-primary controls",draggable=TRUE,
                                cursor="auto",id="GraphOptionsPanel",style="padding: 0px; display: none; z-index: 1995;",
