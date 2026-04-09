@@ -1073,6 +1073,7 @@ output$DensPlotly <- plotly::renderPlotly({
   }
   
   #transform data
+  densDF <- reactive({
   df <- df_raw %>%
     dplyr::transmute(
       Species = .data[[species_col]],
@@ -1083,18 +1084,13 @@ output$DensPlotly <- plotly::renderPlotly({
     dplyr::filter(!tolower(Species) %in% c("total", "all species"))
   
   #species selection radiobutton
-  if (identical(input$densSpeciesType, "Pick")) {
-    shiny::req(input$densSpecies)
-    df <- df %>% dplyr::filter(Species %in% input$densSpecies)
-  } else if (identical(input$densSpeciesType, "Common")) {
-    shiny::req(input$densTop)
-    df <- df %>%
-      dplyr::arrange(dplyr::desc(Mean)) %>%
-      dplyr::slice(1:input$densTop)
-  }
-    df <- df %>%
-    dplyr::arrange(Mean) %>%
-    dplyr::mutate(Species = factor(Species, levels = Species))
+  if (input$densSpeciesType == "Pick") {
+    req(input$densSpecies)
+    df <- df %>% filter(Species %in% input$densSpecies)}
+  if (input$densSpeciesType == "Common") {
+    req(input$densTop)
+    df <- df %>% arrange(desc(Mean)) %>% slice(1:input$densTop)}
+  })
   
   #plot in plotly
   plotly::plot_ly(
@@ -1109,26 +1105,37 @@ output$DensPlotly <- plotly::renderPlotly({
       as.character(Species),
       Mean,
       Mean - err_dn,
-      Mean + err_up
-    ),
+      Mean + err_up),
     hoverinfo = "text",
       error_x = list(
         type = "data",
         array = df$err_up,
         arrayminus = df$err_dn,
         color = "#1f77b4",
-        thickness = 1.5
-      )) %>%
+        thickness = 1.5)) %>%
     plotly::layout(
-      title = DensTitle(),
-      xaxis = list(title = densYlabel()),
+      title = list(
+        text = DensTitle(),
+        font = list(size = 22),
+        y = 1,
+        yanchor = "top",
+        pad = list(t = 20)),
+      xaxis = list(
+        title = list(
+          text = densYlabel(),
+          font = list(size = 18),
+          standoff = 20)),
       yaxis = list(
         title = list(
           text = "Species",
-          standoff = 15))
-    )
+          font = list(size = 18),
+          standoff = 15)),
+      margin = list(
+        l = 140, r = 40),
+      font = list(size = 12))
 })
  
+####### original graphs #######
 #tempDensPlot<-shiny::reactive({
 #  if (base::is.null(input$densPark) || base::nchar(input$densPark)==0) {base::return()}
 #    else{
@@ -1140,9 +1147,8 @@ output$DensPlotly <- plotly::renderPlotly({
 #                                                                                points=input$densPointSize )))
 #    }
 #})
-
 #output$DensPlot<-shiny::renderPlot(base::print(tempDensPlot()))
-  parse(file = "C:/Users/charlotteclark/OneDrive - DOI/Documents/VegShiny/server.R")
+
 
 ##### jpeg Plot download ####
 output$densGraphDownload<-shiny::downloadHandler(

@@ -451,7 +451,7 @@ tags$head(tags$style(HTML("
               htmltools::tags$div(title="Graph the most common species, species you choose, or all species combined.",
                 shiny::radioButtons(inputId="densSpeciesType", label="Which species?", 
                  choices=base::c("Most common species"="Common","Pick individual species"="Pick",
-                          "All species combined"="All"),inline=FALSE)
+                          "All species combined"="All"), selected = "Common", inline=FALSE)
               ),
               shiny::uiOutput(outputId="densSpeciesControl"),
               htmltools::tags$div(title="Type of data to graph",
