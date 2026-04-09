@@ -833,12 +833,21 @@ output$densSpeciesControl<-shiny::renderUI({
             htmltools::tags$div(title="Click here to pick the species you want to graph",
               shiny::selectizeInput(inputId="densSpecies", label="Choose one or more species,
               backspace to remove", choices=densSpecList(),
-                multiple=TRUE )
+                multiple=TRUE, selected = input$densSpecies)
             )
           }
   )
 })
 
+### keep species selction when toggling between common/latin names ###
+observeEvent(input$densCommon, {
+  req(input$densSpeciesType == "Pick")
+  current <- isolate(input$densSpecies)
+  updateSelectizeInput(
+    session, "densSpecies",
+    choices  = densSpecList(),
+    selected = current)
+})
 
 #### Control for comparison ####
 
@@ -900,16 +909,16 @@ DensCompare<-shiny::reactive({base::switch(input$CompareType,
     None=base::return(NA),
     Park=  if (base::is.null(input$ComparePark) || base::nchar(input$ComparePark)==0) {base::return(NA)}
       else{
-        base::return(base::list(object=VEGDATA[input$ComparePark], group=input$densGroup,  years=densYears(),
+        base::return(base::list(object=VEGDATA[[input$ComparePark]], group=input$densGroup,  years=densYears(),
                     values=input$densvalues, 
                     #species=CompareSpecies(), 
                     common=input$densCommon, area=if(input$densvalues=="size") "ha" else "plot" ) )
       },
-    "Growth Stage"=base::return(base::list(object=VEGDATA[input$densPark], group=input$CompareGroup, years=densYears(),
+    "Growth Stage"=base::return(base::list(object=VEGDATA[[input$densPark]], group=input$CompareGroup, years=densYears(),
                     values=input$densvalues,
                     #species=CompareSpecies(),
                     common=input$densCommon,area=if(input$densvalues=="size") "ha" else "plot" ) ),
-    Time=base::return(base::list(object=VEGDATA[input$densPark], group=input$densGroup, years=compYears(),
+    Time=base::return(base::list(object=VEGDATA[[input$densPark]], group=input$densGroup, years=compYears(),
                      values=input$densvalues, 
                      #species=CompareSpecies(),
                      common=input$densCommon,area=if(input$densvalues=="size") "ha" else "plot" ))
@@ -1036,61 +1045,172 @@ DensPlotArgs<-shiny::reactive({
   )
 })
 
-
-#### Density Plot Function ####
-output$DensPlotly <- plotly::renderPlotly({
-  #require the inputs needed
-  shiny::req(input$densPark, input$densGroup, input$densvalues)
-  shiny::req(densYears())
-  
-  #assign park object
-  veg_obj <- VEGDATA[[input$densPark]]
-  shiny::req(veg_obj)
-  
-  #pull density data
-  df_raw <- NPSForVeg::dens(
-    object = veg_obj,
+#### Base Density Plot Function ####
+densData <- reactive({
+  req(input$densPark, input$densGroup, input$densvalues, densYears())
+  veg <- VEGDATA[[input$densPark]]; req(veg)
+  NPSForVeg::dens(
+    object = veg,
     group  = input$densGroup,
     years  = densYears(),
     values = input$densvalues,
     common = FALSE,
     area   = if (input$densvalues == "size") "ha" else "plot",
-    Total  = FALSE
-  )
-  shiny::validate(shiny::need(nrow(df_raw) > 0,
-  "There is no data for this combination of choices. The type of plant you selected was not found in the park during those years."
-  ))
+    Total  = FALSE)
+})
   
-  #species naming
-  species_col <- if (isTRUE(input$densCommon)) "Common_Name" else "Latin_Name"
-  if (isTRUE(input$densCommon) && !("Common_Name" %in% names(df_raw))) {
-    df_raw$Common_Name <- NPSForVeg::getPlantNames(
-      object    = veg_obj,
-      names     = df_raw$Latin_Name,
+#### common names checkbox ####
+species_col <- reactive(if (isTRUE(input$densCommon)) "Common_Name" else "Latin_Name")
+
+#### create plotting df #####
+densDf <- reactive({
+  raw <- densData()
+  
+  ### add common names if requested ###
+  if (isTRUE(input$densCommon) && !("Common_Name" %in% names(raw))) {
+    raw$Common_Name <- NPSForVeg::getPlantNames(
+      object    = VEGDATA[[input$densPark]],
+      names     = raw$Latin_Name,
       in.style  = "Latin",
-      out.style = "common"
-    )
-  }
+      out.style = "common")}
   
-  #transform data
-  densDF <- reactive({
-  df <- df_raw %>%
+  df <- raw %>%
     dplyr::transmute(
-      Species = .data[[species_col]],
+      Species = .data[[species_col()]],
       Mean    = .data$Mean,
       err_up  = .data$Upper.95 - .data$Mean,
       err_dn  = .data$Mean - .data$Lower.95
     ) %>%
     dplyr::filter(!tolower(Species) %in% c("total", "all species"))
   
-  #species selection radiobutton
-  if (input$densSpeciesType == "Pick") {
+  ### radioButton: Pick ###
+  if (identical(input$densSpeciesType, "Pick")) {
     req(input$densSpecies)
-    df <- df %>% filter(Species %in% input$densSpecies)}
-  if (input$densSpeciesType == "Common") {
+    chosen <- if (species_col() == "Latin_Name") {
+      input$densSpecies
+    } else {
+      NPSForVeg::getPlantNames(
+        object    = VEGDATA[[input$densPark]],
+        names     = input$densSpecies,
+        in.style  = "Latin",
+        out.style = "common")}
+    df <- df %>% dplyr::filter(Species %in% chosen)}
+  
+  ### radioButton: Common ###
+  if (identical(input$densSpeciesType, "Common")) {
     req(input$densTop)
-    df <- df %>% arrange(desc(Mean)) %>% slice(1:input$densTop)}
-  })
+    df <- df %>% dplyr::arrange(dplyr::desc(Mean)) %>% dplyr::slice(1:input$densTop)}
+  
+  ### radioButton: All ###
+  if (identical(input$densSpeciesType, "All")) {
+    agg_fun <- if (input$densvalues %in% c("count","size")) sum else mean
+    df <- df %>%
+      dplyr::summarise(
+        Species = if (isTRUE(input$densCommon)) "All species" else "All species",
+        Mean    = agg_fun(Mean,   na.rm = TRUE),
+        err_up  = agg_fun(err_up, na.rm = TRUE),
+        err_dn  = agg_fun(err_dn, na.rm = TRUE))}
+  
+  ### plot order ###
+  df %>%
+    dplyr::arrange(Mean) %>%
+    dplyr::mutate(Species = factor(Species, levels = Species))
+})
+
+#### Control for comparison ####
+
+
+#### Compare Years ####
+compYears<-shiny::reactive({
+  shiny::req(input$compCycles)
+  (DATACYCLES %>% dplyr::filter(Cycle==input$compCycles) %>% dplyr::pull(YearStart)) : 
+    (DATACYCLES %>% dplyr::filter(Cycle==input$compCycles) %>% dplyr::pull(YearEnd))
+})
+
+
+output$CompareSelect<-shiny::renderUI({
+  base::switch(input$CompareType, 
+    None=,base::return(),
+    Park= htmltools::tags$div(title= "Choose a second park",
+            shiny::selectizeInput(inputId="ComparePark",choices=PARKLIST, label="Park:",
+           options = base::list(placeholder='Choose a park',onInitialize = base::I('function() { this.setValue(""); }') ))
+          ),
+    
+    "Growth Stage"=htmltools::tags$div(title="Choose an additional growth stage",
+                    shiny::selectizeInput(inputId="CompareGroup", label="Growth Stage:", 
+                      choices=base::switch(input$densGroup,
+                      trees=,saplings=,seedlings=base::c(Trees="trees", Saplings="saplings", "Tree Seedlings"="seedlings"),
+                      shrubs=, shseedlings=base::c(Shrubs="shrubs", "Shrub Seedlings"="shseedlings"),
+                      vines=,herbs=base::c('Only one growth stage monitored.'=NA)
+                      )
+                    )
+                  ),
+    Time=htmltools::tags$div(title= "Choose a second range of years",
+          shiny::selectInput(inputId="compCycles", label="Display data from years:", 
+            choices=base::rev(stats::setNames(base::as.character(DATACYCLES$Cycle), base::paste0(DATACYCLES$Name,": ",
+                                              DATACYCLES$YearStart,"-",DATACYCLES$YearEnd)))
+          )
+    )
+  )
+})
+
+
+#### This is currently disabled while the output of dens() for all 0s is reconsidered
+#### Need Compare species to keep the number of species to display to accepted number ####
+# CompareSpecies<-shiny::reactive({
+#   shiny::req(input$CompareType)
+#     base::switch(input$densSpeciesType,
+#       Common=NPSForVeg::getPlantNames( object=VEGDATA[[input$densPark]], out.style="Latin", 
+#               in.style="Latin",
+#               names= base::as.character(dens(object=VEGDATA[[input$densPark]], group=input$densGroup, years=densYears(),
+#                     values=input$densvalues, Total=F, common=F) %>% dplyr::arrange(desc(Mean)) %>% slice(1:input$densTop) %>% dplyr::pull(Latin_Name))
+#         ),
+#       Pick=input$densSpecies,
+#       All=NA
+#     )
+# })
+
+
+#### make compare and labels arguments for densplot() ####
+
+DensCompare<-shiny::reactive({base::switch(input$CompareType,
+    None=base::return(NA),
+    Park=  if (base::is.null(input$ComparePark) || base::nchar(input$ComparePark)==0) {base::return(NA)}
+      else{
+        base::return(base::list(object=VEGDATA[input$ComparePark], group=input$densGroup,  years=densYears(),
+                    values=input$densvalues, 
+                    #species=CompareSpecies(), 
+                    common=input$densCommon, area=if(input$densvalues=="size") "ha" else "plot" ) )
+      },
+    "Growth Stage"=base::return(base::list(object=VEGDATA[input$densPark], group=input$CompareGroup, years=densYears(),
+                    values=input$densvalues,
+                    #species=CompareSpecies(),
+                    common=input$densCommon,area=if(input$densvalues=="size") "ha" else "plot" ) ),
+    Time=base::return(base::list(object=VEGDATA[input$densPark], group=input$densGroup, years=compYears(),
+                     values=input$densvalues, 
+                     #species=CompareSpecies(),
+                     common=input$densCommon,area=if(input$densvalues=="size") "ha" else "plot" ))
+    )
+})
+
+DENSLABELDATA<-base::data.frame(Name=base::c("trees","saplings","seedlings","shrubs","shseedlings","herbs","vines"), Label=base::c("Trees","Saplings","Tree Seedlings", "Shrubs","Shrub Seedlings","Understory Plants","Vines in Trees"), stringsAsFactors=FALSE)
+
+DensLabels<-shiny::reactive({base::switch(input$CompareType,
+    None=base::return(NA),
+    Park=  if (base::is.null(input$ComparePark) || base::nchar(input$ComparePark)==0) {base::return(NA)}
+            else{base::return(base::c(NPSForVeg::getNames(object=VEGDATA[input$densPark],"short"), NPSForVeg::getNames(object=VEGDATA[input$ComparePark], "short") ) )},
+    "Growth Stage"=if (base::is.null(input$CompareGroup) || base::nchar(input$CompareGroup)==0) {base::return(NA)}
+            else{ base::return(base::c(DENSLABELDATA[DENSLABELDATA$Name==input$densGroup,]$Label,
+                           DENSLABELDATA[DENSLABELDATA$Name==input$CompareGroup,]$Label))},
+    Time=if (base::is.null(input$compCycles) || base::nchar(input$compCycles)==0) {base::return(NA)}
+              else{ base::return( 
+                base::c( base::paste0(base::as.character(base::min(densYears())),"-",base::as.character(base::max(densYears()))),
+                  base::paste0(base::as.character(base::min(compYears())),"-",base::as.character(base::max(compYears()))))
+                  )}
+  ) 
+})
+output$DensPlotly <- plotly::renderPlotly({
+  df <- densDf()
   
   #plot in plotly
   plotly::plot_ly(
@@ -1135,7 +1255,7 @@ output$DensPlotly <- plotly::renderPlotly({
       font = list(size = 12))
 })
  
-####### original graphs #######
+####### original graphs and file downloads #######
 #tempDensPlot<-shiny::reactive({
 #  if (base::is.null(input$densPark) || base::nchar(input$densPark)==0) {base::return()}
 #    else{
@@ -1151,24 +1271,24 @@ output$DensPlotly <- plotly::renderPlotly({
 
 
 ##### jpeg Plot download ####
-output$densGraphDownload<-shiny::downloadHandler(
-  filename=function(){base::paste(DensTitle(), ".jpeg", sep="")}, 
-  content=function (file){
-    grDevices::jpeg(file,width=15,height=6,units="in",res=300, quality=100)
-    base::print(tempDensPlot())
-    grDevices::dev.off()
-  }
-)
+#output$densGraphDownload<-shiny::downloadHandler(
+#  filename=function(){base::paste(DensTitle(), ".jpeg", sep="")}, 
+#  content=function (file){
+#    grDevices::jpeg(file,width=15,height=6,units="in",res=300, quality=100)
+#    base::print(tempDensPlot())
+#    grDevices::dev.off()
+#  }
+#)
 
 ##### wmf plot download ####
-output$densWmfDownload<-shiny::downloadHandler(
-  filename=function(){base::paste(DensTitle(), ".wmf", sep="")}, 
-  content=function (file){
-    grDevices::win.metafile(file,width=15,height=6)
-    base::print(tempDensPlot())
-    grDevices::dev.off()
-  }
-)
+#output$densWmfDownload<-shiny::downloadHandler(
+#  filename=function(){base::paste(DensTitle(), ".wmf", sep="")}, 
+#  content=function (file){
+#    grDevices::win.metafile(file,width=15,height=6)
+#    base::print(tempDensPlot())
+#    grDevices::dev.off()
+#  }
+#)
 
 
 

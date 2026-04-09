@@ -460,9 +460,9 @@ tags$head(tags$style(HTML("
               shiny::conditionalPanel(
                 condition="input.densPanel=='Graph'",
                 shiny::actionButton(inputId="densGraphButton", label="Display Options", class="btn btn-primary btn-block action-button"),
-                br(),
-               htmltools::div(shiny::downloadButton(outputId="densGraphDownload", label="Save Graph (.jpg)", class="btn btn-primary btn-block action-button"),
-                shiny::downloadButton(outputId="densWmfDownload", label="Save Graph (.png)", class="btn btn-primary btn-block action-button"))
+              #  br(),
+              # htmltools::div(shiny::downloadButton(outputId="densGraphDownload", label="Save Graph (.jpg)", class="btn btn-primary btn-block action-button"),
+              #  shiny::downloadButton(outputId="densWmfDownload", label="Save Graph (.png)", class="btn btn-primary btn-block action-button"))
               ),
               shiny::conditionalPanel(
                 condition="input.densPanel=='Table'",
