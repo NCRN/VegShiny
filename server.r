@@ -927,20 +927,6 @@ DensCompare<-shiny::reactive({base::switch(input$CompareType,
 
 DENSLABELDATA<-base::data.frame(Name=base::c("trees","saplings","seedlings","shrubs","shseedlings","herbs","vines"), Label=base::c("Trees","Saplings","Tree Seedlings", "Shrubs","Shrub Seedlings","Understory Plants","Vines in Trees"), stringsAsFactors=FALSE)
 
-DensLabels<-shiny::reactive({base::switch(input$CompareType,
-    None=base::return(NA),
-    Park=  if (base::is.null(input$ComparePark) || base::nchar(input$ComparePark)==0) {base::return(NA)}
-            else{base::return(base::c(NPSForVeg::getNames(object=VEGDATA[input$densPark],"short"), NPSForVeg::getNames(object=VEGDATA[input$ComparePark], "short") ) )},
-    "Growth Stage"=if (base::is.null(input$CompareGroup) || base::nchar(input$CompareGroup)==0) {base::return(NA)}
-            else{ base::return(base::c(DENSLABELDATA[DENSLABELDATA$Name==input$densGroup,]$Label,
-                           DENSLABELDATA[DENSLABELDATA$Name==input$CompareGroup,]$Label))},
-    Time=if (base::is.null(input$compCycles) || base::nchar(input$compCycles)==0) {base::return(NA)}
-              else{ base::return( 
-                base::c( base::paste0(base::as.character(base::min(densYears())),"-",base::as.character(base::max(densYears()))),
-                  base::paste0(base::as.character(base::min(compYears())),"-",base::as.character(base::max(compYears()))))
-                  )}
-  ) 
-})
 
 #### Y axis labels for density plot ####
 densYlabel<-shiny::reactive({
@@ -954,9 +940,9 @@ densYlabel<-shiny::reactive({
       vines="Vines on Trees / ha"
     ),
     size=base::switch(input$densGroup,
-      trees=,saplings="Basal area m2/ ha",
+      trees=,saplings="Basal area m\u00B2/ ha",
       herbs="Percent Cover",
-      cwd='m3 / ha'
+      cwd='m\u00B3 / ha'
     ),
     presab="Proportion of Plots Occupied"
   )
@@ -969,10 +955,10 @@ densTitleGroup<-shiny::reactive({
          saplings="Sapling",
          seedlings="Tree Seedling",
          shrubs="Shrub",
-         shseedlings="Shrub Seedlings",
+         shseedlings="Shrub Seedling",
          herbs="Understory Plant",
          vines="Vines on Trees",
-         cwd='Coarse Woody Debrs'
+         cwd='Coarse Woody Debris'
          )  
 })
 compareTitleGroup<-shiny::reactive({
@@ -1000,15 +986,15 @@ densTitleValues<-shiny::reactive({
 })
 DensTitle<-shiny::reactive({
   base::switch(input$CompareType,
-         None=  base::return(base::paste(NPSForVeg::getNames(VEGDATA[input$densPark],"long"),":",densTitleGroup(),densTitleValues(), 
+         None=  base::return(base::paste(NPSForVeg::getNames(VEGDATA[[input$densPark]],"long"),":",densTitleGroup(),densTitleValues(), 
                base::paste0(base::as.character(base::min(densYears())),"-",base::as.character(base::max(densYears()))) )),
-         Park=base::return(base::paste(NPSForVeg::getNames(VEGDATA[input$densPark],"long"),"vs.",NPSForVeg::getNames(VEGDATA[input$ComparePark],"long"),":",
+         Park=base::return(base::paste(NPSForVeg::getNames(VEGDATA[[input$densPark]],"long"),"vs.",NPSForVeg::getNames(VEGDATA[[input$ComparePark]],"long"),":",
                            densTitleGroup(),densTitleValues(), 
                            base::paste0(base::as.character(base::min(densYears())),"-",base::as.character(base::max(densYears()))) )),
-         "Growth Stage"= base::return(base::paste(NPSForVeg::getNames(VEGDATA[input$densPark],"long"),":",densTitleGroup(),"vs.",
+         "Growth Stage"= base::return(base::paste(NPSForVeg::getNames(VEGDATA[[input$densPark]],"long"),":",densTitleGroup(),"vs.",
                                       compareTitleGroup(), densTitleValues(), 
                                       base::paste0(base::as.character(base::min(densYears())),"-",base::as.character(base::max(densYears()))) )),
-         Time=base::return(base::paste(NPSForVeg::getNames(VEGDATA[input$densPark],"long"),":",densTitleGroup(),densTitleValues(), 
+         Time=base::return(base::paste(NPSForVeg::getNames(VEGDATA[[input$densPark]],"long"),":",densTitleGroup(),densTitleValues(), 
                            base::paste0(base::as.character(base::min(densYears())),"-",base::as.character(base::max(densYears()))),"vs.",
                            base::paste0(base::as.character(base::min(compYears())),"-",base::as.character(base::max(compYears()))) ))
   )
@@ -1117,43 +1103,6 @@ densDf <- reactive({
     dplyr::mutate(Species = factor(Species, levels = Species))
 })
 
-#### Control for comparison ####
-
-
-#### Compare Years ####
-compYears<-shiny::reactive({
-  shiny::req(input$compCycles)
-  (DATACYCLES %>% dplyr::filter(Cycle==input$compCycles) %>% dplyr::pull(YearStart)) : 
-    (DATACYCLES %>% dplyr::filter(Cycle==input$compCycles) %>% dplyr::pull(YearEnd))
-})
-
-
-output$CompareSelect<-shiny::renderUI({
-  base::switch(input$CompareType, 
-    None=,base::return(),
-    Park= htmltools::tags$div(title= "Choose a second park",
-            shiny::selectizeInput(inputId="ComparePark",choices=PARKLIST, label="Park:",
-           options = base::list(placeholder='Choose a park',onInitialize = base::I('function() { this.setValue(""); }') ))
-          ),
-    
-    "Growth Stage"=htmltools::tags$div(title="Choose an additional growth stage",
-                    shiny::selectizeInput(inputId="CompareGroup", label="Growth Stage:", 
-                      choices=base::switch(input$densGroup,
-                      trees=,saplings=,seedlings=base::c(Trees="trees", Saplings="saplings", "Tree Seedlings"="seedlings"),
-                      shrubs=, shseedlings=base::c(Shrubs="shrubs", "Shrub Seedlings"="shseedlings"),
-                      vines=,herbs=base::c('Only one growth stage monitored.'=NA)
-                      )
-                    )
-                  ),
-    Time=htmltools::tags$div(title= "Choose a second range of years",
-          shiny::selectInput(inputId="compCycles", label="Display data from years:", 
-            choices=base::rev(stats::setNames(base::as.character(DATACYCLES$Cycle), base::paste0(DATACYCLES$Name,": ",
-                                              DATACYCLES$YearStart,"-",DATACYCLES$YearEnd)))
-          )
-    )
-  )
-})
-
 
 #### This is currently disabled while the output of dens() for all 0s is reconsidered
 #### Need Compare species to keep the number of species to display to accepted number ####
@@ -1173,32 +1122,10 @@ output$CompareSelect<-shiny::renderUI({
 
 #### make compare and labels arguments for densplot() ####
 
-DensCompare<-shiny::reactive({base::switch(input$CompareType,
-    None=base::return(NA),
-    Park=  if (base::is.null(input$ComparePark) || base::nchar(input$ComparePark)==0) {base::return(NA)}
-      else{
-        base::return(base::list(object=VEGDATA[input$ComparePark], group=input$densGroup,  years=densYears(),
-                    values=input$densvalues, 
-                    #species=CompareSpecies(), 
-                    common=input$densCommon, area=if(input$densvalues=="size") "ha" else "plot" ) )
-      },
-    "Growth Stage"=base::return(base::list(object=VEGDATA[input$densPark], group=input$CompareGroup, years=densYears(),
-                    values=input$densvalues,
-                    #species=CompareSpecies(),
-                    common=input$densCommon,area=if(input$densvalues=="size") "ha" else "plot" ) ),
-    Time=base::return(base::list(object=VEGDATA[input$densPark], group=input$densGroup, years=compYears(),
-                     values=input$densvalues, 
-                     #species=CompareSpecies(),
-                     common=input$densCommon,area=if(input$densvalues=="size") "ha" else "plot" ))
-    )
-})
-
-DENSLABELDATA<-base::data.frame(Name=base::c("trees","saplings","seedlings","shrubs","shseedlings","herbs","vines"), Label=base::c("Trees","Saplings","Tree Seedlings", "Shrubs","Shrub Seedlings","Understory Plants","Vines in Trees"), stringsAsFactors=FALSE)
-
 DensLabels<-shiny::reactive({base::switch(input$CompareType,
     None=base::return(NA),
     Park=  if (base::is.null(input$ComparePark) || base::nchar(input$ComparePark)==0) {base::return(NA)}
-            else{base::return(base::c(NPSForVeg::getNames(object=VEGDATA[input$densPark],"short"), NPSForVeg::getNames(object=VEGDATA[input$ComparePark], "short") ) )},
+            else{base::return(base::c(NPSForVeg::getNames(object=VEGDATA[[input$densPark]],"short"), NPSForVeg::getNames(object=VEGDATA[[input$ComparePark]], "short") ) )},
     "Growth Stage"=if (base::is.null(input$CompareGroup) || base::nchar(input$CompareGroup)==0) {base::return(NA)}
             else{ base::return(base::c(DENSLABELDATA[DENSLABELDATA$Name==input$densGroup,]$Label,
                            DENSLABELDATA[DENSLABELDATA$Name==input$CompareGroup,]$Label))},
