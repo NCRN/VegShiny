@@ -1048,7 +1048,7 @@ densData <- reactive({
 #### common names checkbox ####
 species_col <- reactive(if (isTRUE(input$densCommon)) "Common_Name" else "Latin_Name")
 
-#### create plotting df #####
+#### create base plotting df #####
 densDf <- reactive({
   raw <- densData()
   
@@ -1103,6 +1103,84 @@ densDf <- reactive({
     dplyr::mutate(Species = factor(Species, levels = Species))
 })
 
+#### create compare plotting df #####
+
+compareDf <- shiny::reactive({
+  cmp <- DensCompare()
+  
+  if (is.null(cmp) || (is.atomic(cmp) && is.na(cmp))) return(NULL)
+  shiny::req(is.list(cmp), cmp$object, cmp$group, cmp$years, cmp$values)
+  
+  raw <- NPSForVeg::dens(
+    object = cmp$object,
+    group  = cmp$group,
+    years  = cmp$years,
+    values = cmp$values,
+    common = FALSE,
+    area   = if (cmp$values == "size") "ha" else "plot",
+    Total  = FALSE)
+  
+  ### add common names if requested ###
+  if (isTRUE(input$densCommon) && !("Common_Name" %in% names(raw))) {
+    raw$Common_Name <- NPSForVeg::getPlantNames(
+      object    = cmp$object,
+      names     = raw$Latin_Name,
+      in.style  = "Latin",
+      out.style = "common")}
+  
+  species_col <- species_col()
+  
+  df <- raw %>%
+    dplyr::transmute(
+      Species = .data[[species_col]],
+      Mean    = .data$Mean,
+      err_up  = .data$Upper.95 - .data$Mean,
+      err_dn  = .data$Mean - .data$Lower.95
+    ) %>%
+    dplyr::filter(!tolower(Species) %in% c("total", "all species"))
+  
+###selection rules
+  # Pick
+  if (identical(input$densSpeciesType, "Pick")) {
+    req(input$densSpecies)
+    chosen <- if (species_col == "Latin_Name") {
+      input$densSpecies
+    } else {
+      NPSForVeg::getPlantNames(
+        object    = cmp$object,
+        names     = input$densSpecies,
+        in.style  = "Latin",
+        out.style = "common")
+    }
+    df <- df %>% dplyr::filter(Species %in% chosen)
+  }
+  
+  # Common = top N from BASE (important!)
+  if (identical(input$densSpeciesType, "Common")) {
+    base_species <- densDf()$Species
+    df <- df %>% dplyr::filter(Species %in% base_species)
+  }
+  
+  # All species combined
+  if (identical(input$densSpeciesType, "All")) {
+    agg_fun <- if (cmp$values %in% c("count","size")) sum else mean
+    df <- df %>%
+      dplyr::summarise(
+        Species = "All species",
+        Mean    = agg_fun(Mean,   na.rm = TRUE),
+        err_up  = agg_fun(err_up, na.rm = TRUE),
+        err_dn  = agg_fun(err_dn, na.rm = TRUE))
+  }
+  
+  # match ordering of base df
+  if (!identical(input$densSpeciesType, "All")) {
+    base_levels <- densDf()$Species
+    df$Species <- factor(df$Species, levels = base_levels)
+  }
+  
+  df
+})
+
 
 #### This is currently disabled while the output of dens() for all 0s is reconsidered
 #### Need Compare species to keep the number of species to display to accepted number ####
@@ -1122,25 +1200,33 @@ densDf <- reactive({
 
 #### make compare and labels arguments for densplot() ####
 
-DensLabels<-shiny::reactive({base::switch(input$CompareType,
-    None=base::return(NA),
-    Park=  if (base::is.null(input$ComparePark) || base::nchar(input$ComparePark)==0) {base::return(NA)}
-            else{base::return(base::c(NPSForVeg::getNames(object=VEGDATA[[input$densPark]],"short"), NPSForVeg::getNames(object=VEGDATA[[input$ComparePark]], "short") ) )},
-    "Growth Stage"=if (base::is.null(input$CompareGroup) || base::nchar(input$CompareGroup)==0) {base::return(NA)}
-            else{ base::return(base::c(DENSLABELDATA[DENSLABELDATA$Name==input$densGroup,]$Label,
-                           DENSLABELDATA[DENSLABELDATA$Name==input$CompareGroup,]$Label))},
-    Time=if (base::is.null(input$compCycles) || base::nchar(input$compCycles)==0) {base::return(NA)}
-              else{ base::return( 
-                base::c( base::paste0(base::as.character(base::min(densYears())),"-",base::as.character(base::max(densYears()))),
-                  base::paste0(base::as.character(base::min(compYears())),"-",base::as.character(base::max(compYears()))))
-                  )}
-  ) 
+DensTitle <- shiny::reactive({
+  shiny::req(input$densPark)
+  base_obj <- VEGDATA[[input$densPark]]; shiny::req(base_obj)
+  
+  base_name <- NPSForVeg::getNames(base_obj, "long")
+  period1   <- paste0(as.character(min(densYears())), "-", as.character(max(densYears())))
+  grp_title <- densTitleGroup()
+  val_title <- densTitleValues()
+  
+  base::switch(input$CompareType,
+    None = base::return(paste(base_name, ":", grp_title, val_title, period1)),
+    Park = {if (is.null(input$ComparePark) || !nzchar(input$ComparePark)) {base::return(paste(base_name, ":", grp_title, val_title, period1))}
+    cmp_obj <- VEGDATA[[input$ComparePark]]
+    if (is.null(cmp_obj)) {
+      base::return(paste(base_name, ":", grp_title, val_title, period1))}
+    cmp_name <- NPSForVeg::getNames(cmp_obj, "long") 
+    base::return(paste(base_name, "vs.", cmp_name, ":", grp_title, val_title, period1))},
+    "Growth Stage" = base::return(paste(base_name, ":", grp_title, "vs.", compareTitleGroup(), val_title, period1)),
+    Time = base::return(paste(base_name, ":", grp_title, val_title, period1, "vs.",paste0(as.character(min(compYears())), "-", as.character(max(compYears()))))))
 })
+  
+  
 output$DensPlotly <- plotly::renderPlotly({
   df <- densDf()
   
   #plot in plotly
-  plotly::plot_ly(
+  p <- plotly::plot_ly(
     data = df,
     y = ~Species,
     x = ~Mean,
@@ -1159,8 +1245,32 @@ output$DensPlotly <- plotly::renderPlotly({
         array = df$err_up,
         arrayminus = df$err_dn,
         color = "#1f77b4",
-        thickness = 1.5)) %>%
-    plotly::layout(
+        thickness = 1.5))
+  
+  df_cmp <- compareDf()
+  if (!is.null(df_cmp) && nrow(df_cmp) > 0) {
+    p <- p %>% plotly::add_trace(
+        data   = df_cmp,
+        y      = ~Species,
+        x      = ~Mean,
+        type   = "scatter",
+        mode   = "markers",
+        marker = list(size = 10, color = "#d62728"),
+        text   = ~sprintf(
+          "Species: %s<br>Mean (Compare): %.2f<br>Lower 95%%: %.2f<br>Upper 95%%: %.2f",
+          as.character(Species),
+          Mean,
+          Mean - err_dn,
+          Mean + err_up),
+        hoverinfo = "text",
+        error_x = list(
+          type       = "data",
+          array      = df_cmp$err_up,
+          arrayminus = df_cmp$err_dn,
+          color      = "#d62728",
+          thickness  = 1.5))}
+      
+      p <- p %>% plotly::layout(
       title = list(
         text = DensTitle(),
         font = list(size = 22),
@@ -1180,6 +1290,7 @@ output$DensPlotly <- plotly::renderPlotly({
       margin = list(
         l = 140, r = 40),
       font = list(size = 12))
+      p
 })
  
 ####### original graphs and file downloads #######
