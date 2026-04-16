@@ -23,7 +23,7 @@ VEGDATA<-base::switch(NETWORK,
                 MIDN=importMIDN("./Data/MIDN"),
                 NCRN=importNCRN("./Data/NCRN"),
                 NETN=importNETN("./Data/NETN"),
-                SHEN=list(importSHEN("./Data/SHEN"))
+                SHEN=base::list(importSHEN("./Data/SHEN"))
 )
 
 base::names(VEGDATA)<-NPSForVeg::getNames(VEGDATA, name.class="code")
@@ -742,8 +742,8 @@ shiny::shinyServer(function(input,output,session){
                   htmltools::tagList(htmltools::tags$table(
                     base::mapply(FUN=function(Name,Value){
                       htmltools::tags$tr(
-                        htmltools::tags$td(sprintf("%s:  ", Name)),
-                        htmltools::tags$td(align="right",sprintf("%s", base::format(base::signif(Value,2), big.mark=",")))
+                        htmltools::tags$td(base::sprintf("%s:  ", Name)),
+                        htmltools::tags$td(align="right",base::sprintf("%s", base::format(base::signif(Value,2), big.mark=",")))
                       )
                     },
                     Name=base::names(tempData),
@@ -1198,7 +1198,7 @@ DensTitle <- shiny::reactive({
   
   base::switch(input$CompareType,
     None = base::return(base::paste(base_name, ":", grp_title, val_title, period1)),
-    Park = {if (base::is.null(input$ComparePark) || !nzchar(input$ComparePark)) {base::return(base::paste(base_name, ":", grp_title, val_title, period1))}
+    Park = {if (base::is.null(input$ComparePark) || !base::nzchar(input$ComparePark)) {base::return(base::paste(base_name, ":", grp_title, val_title, period1))}
     cmp_obj <- VEGDATA[[input$ComparePark]]
     if (base::is.null(cmp_obj)) {
       base::return(base::paste(base_name, ":", grp_title, val_title, period1))}
@@ -1207,75 +1207,115 @@ DensTitle <- shiny::reactive({
     "Growth Stage" = base::return(base::paste(base_name, ":", grp_title, "vs.", compareTitleGroup(), val_title, period1)),
     Time = base::return(base::paste(base_name, ":", grp_title, val_title, period1, "vs.", base::paste0(base::as.character(base::min(compYears())), "-", base::as.character(base::max(compYears()))))))
 })
-  
+
 output$DensPlotly <- plotly::renderPlotly({
   df <- densDf()
+  df_cmp <- compareDf()
+  
+  #offset compare data from base data on plot
+  species_levels <- base::unique(base::c(df$Species, if(!base::is.null(df_cmp)) df_cmp$Species))
+  species_idx <- stats::setNames(base::seq_along(species_levels), species_levels)
+  
+  offset <- 0.25
+  
+  df$y_base <- species_idx[df$Species]
+  if (!base::is.null(df_cmp) && base::nrow(df_cmp) > 0) {
+    df_cmp$y_cmp <- species_idx[df_cmp$Species] - offset}
+  
+  #wire legend to selections
+  base_legend <- base::paste(
+    "Park:", input$densPark, 
+    "| Cycle:", input$densCycles, 
+    "| Plant Type:", input$densGroup)
+  cmp_legend <- base::switch(input$CompareType,
+    None = "Compare",
+    Park = base::paste(
+      "Park:", input$ComparePark, 
+      "| Cycle:", input$densCycles,
+      "| Plant Type:", input$densGroup),
+    "Growth Stage" = base::paste(
+      "Park:", input$densPark, 
+      "| Cycle:", input$densCycles,
+      "| Growth Stage:", input$CompareGroup),
+    Time = base::paste(
+      "Park:", input$densPark, 
+      "| Cycle:", input$compCycles,
+      "| Plant Type:", input$densGroup))
   
   #plot in plotly
   p <- plotly::plot_ly(
     data = df,
-    y = ~Species,
+    y = ~y_base,
     x = ~Mean,
     type = "scatter",
     mode = "markers",
-    marker = list(size = 10, color = "#1f77b4"),
-    text = ~sprintf(
+    name = base_legend,   
+    showlegend = TRUE,        
+    marker = base::list(size = 10, color = "#1f77b4"),
+    text = ~base::sprintf(
       "Species: %s<br>Mean: %.2f<br>Lower 95%%: %.2f<br>Upper 95%%: %.2f",
       base::as.character(Species),
       Mean,
       Mean - err_dn,
       Mean + err_up),
     hoverinfo = "text",
-      error_x = list(
+      error_x = base::list(
         type = "data",
         array = df$err_up,
         arrayminus = df$err_dn,
         color = "#1f77b4",
         thickness = 1.5))
   
-  df_cmp <- compareDf()
-  if (!base::is.null(df_cmp) && nrow(df_cmp) > 0) {
+  if (!base::is.null(df_cmp) && base::nrow(df_cmp) > 0) {
+    df_cmp$y_off <- species_idx[df_cmp$Species] + offset
+    
     p <- p %>% plotly::add_trace(
-        data   = df_cmp,
-        y      = ~Species,
-        x      = ~Mean,
-        type   = "scatter",
-        mode   = "markers",
-        marker = list(size = 10, color = "#d62728"),
-        text   = ~sprintf(
+        data = df_cmp,
+        y = ~y_cmp,
+        x = ~Mean,
+        type = "scatter",
+        mode = "markers",
+        name = cmp_legend,
+        showlegend = TRUE,
+        marker = base::list(size = 10, color = "#d62728"),
+        text = ~base::sprintf(
           "Species: %s<br>Mean (Compare): %.2f<br>Lower 95%%: %.2f<br>Upper 95%%: %.2f",
           base::as.character(Species),
           Mean,
           Mean - err_dn,
           Mean + err_up),
         hoverinfo = "text",
-        error_x = list(
-          type       = "data",
-          array      = df_cmp$err_up,
+        error_x = base::list(
+          type = "data",
+          array = df_cmp$err_up,
           arrayminus = df_cmp$err_dn,
-          color      = "#d62728",
-          thickness  = 1.5))}
-      
-      p <- p %>% plotly::layout(
-      title = list(
+          color = "#d62728",
+          thickness = 1.5))}
+  
+   p <- p %>% plotly::layout(
+      title = base::list(
         text = DensTitle(),
-        font = list(size = 22),
+        font = base::list(size = 22),
         y = 1,
         yanchor = "top",
-        pad = list(t = 20)),
-      xaxis = list(
-        title = list(
+        pad = base::list(t = 20)),
+      xaxis = base::list(
+        title = base::list(
           text = densYlabel(),
-          font = list(size = 18),
+          font = base::list(size = 18),
           standoff = 20)),
-      yaxis = list(
-        title = list(
+      yaxis = base::list(
+        title = base::list(
           text = "Species",
-          font = list(size = 18),
-          standoff = 15)),
-      margin = list(
+          font = base::list(size = 18),
+          standoff = 15),
+        tickmode = "array",
+        tickvals = base::seq_along(species_levels),
+        ticktext = species_levels),
+      margin = base::list(
         l = 140, r = 40),
-      font = list(size = 12))
+      font = base::list(size = 12),
+      autosize = TRUE)
       p
 })
  
