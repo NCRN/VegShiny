@@ -1035,6 +1035,9 @@ densData <- shiny::reactive({
 #### common names checkbox ####
 species_col <- shiny::reactive(if (base::isTRUE(input$densCommon)) "Common_Name" else "Latin_Name")
 
+### summary statistics checkbox ###
+text_on <- shiny::reactive(base::isTRUE(input$plotlyText))
+
 #### create base plotting df #####
 densDf <- shiny::reactive({
   raw <- densData()
@@ -1212,15 +1215,28 @@ output$DensPlotly <- plotly::renderPlotly({
   df <- densDf()
   df_cmp <- compareDf()
   
+### for scatter plot plotly ###  
   #offset compare data from base data on plot
-  species_levels <- base::unique(base::c(df$Species, if(!base::is.null(df_cmp)) df_cmp$Species))
-  species_idx <- stats::setNames(base::seq_along(species_levels), species_levels)
+#  species_levels <- base::unique(base::c(df$Species, if(!base::is.null(df_cmp)) df_cmp$Species))
+#  species_idx <- stats::setNames(base::seq_along(species_levels), species_levels)
   
-  offset <- 0.25
+#  offset <- 0.25
+
+#  df$y_base <- species_idx[df$Species]
+#  if (!base::is.null(df_cmp) && base::nrow(df_cmp) > 0) {
+#    df_cmp$y_cmp <- species_idx[df_cmp$Species] - offset}
   
-  df$y_base <- species_idx[df$Species]
+  
+  species_levels <- if (!base::is.null(df) && base::nrow(df) > 0) {
+    base::as.character(df$Species)} else {
+    base::unique(base::c(df$Species, if (!base::is.null(df_cmp)) df_cmp$Species))}
+  species_levels <- base::unique(species_levels)
+  
+  if (!base::is.null(df) && base::nrow(df) > 0) {
+    df$Species <- base::factor(df$Species, levels = species_levels)}
   if (!base::is.null(df_cmp) && base::nrow(df_cmp) > 0) {
-    df_cmp$y_cmp <- species_idx[df_cmp$Species] - offset}
+    df_cmp$Species <- base::factor(df_cmp$Species, levels = species_levels)}
+  
   
   #wire legend to selections
   base_legend <- base::paste(
@@ -1242,57 +1258,80 @@ output$DensPlotly <- plotly::renderPlotly({
       "| Cycle:", input$compCycles,
       "| Plant Type:", input$densGroup))
   
+### for bar chart plotly ###  
+  n_species   <- length(species_levels)
+  
+  row_px      <- 100                 # pixels per species row (adjust to taste)
+  top_pad_px  <- 50                # room for title, legend, etc.
+  bottom_pad_px <- 50
+  fig_height  <- top_pad_px + n_species * row_px + bottom_pad_px
+  
   #plot in plotly
   p <- plotly::plot_ly(
     data = df,
-    y = ~y_base,
+    y = ~Species,
     x = ~Mean,
-    type = "scatter",
-    mode = "markers",
+    type = "bar",
+    orientation = "h",
+    #mode = "markers", ##for scatter plot
     name = base_legend,   
     showlegend = TRUE,        
     marker = base::list(size = 10, color = "#1f77b4"),
-    text = ~base::sprintf(
+    hovertext = ~base::sprintf(
       "Species: %s<br>Mean: %.2f<br>Lower 95%%: %.2f<br>Upper 95%%: %.2f",
       base::as.character(Species),
       Mean,
       Mean - err_dn,
       Mean + err_up),
-    hoverinfo = "text",
+    text = if (text_on()) {
+      ~base::sprintf(
+        "Mean: %.2f<br>Lower 95%%: %.2f<br>Upper 95%%: %.2f",
+        Mean,
+        Mean - err_dn,
+        Mean + err_up)} else {""},
+    hoverinfo = if (text_on()) "none" else "text",
       error_x = base::list(
         type = "data",
         array = df$err_up,
         arrayminus = df$err_dn,
-        color = "#1f77b4",
+        color = "#185a88",
         thickness = 1.5))
   
   if (!base::is.null(df_cmp) && base::nrow(df_cmp) > 0) {
-    df_cmp$y_off <- species_idx[df_cmp$Species] + offset
-    
+#    df_cmp$y_off <- species_idx[df_cmp$Species] + offset
+  
     p <- p %>% plotly::add_trace(
         data = df_cmp,
-        y = ~y_cmp,
+        y = ~Species,
         x = ~Mean,
-        type = "scatter",
-        mode = "markers",
+        type = "bar",
+        orientation = "h",
+        #mode = "markers", ##for scatter plot
         name = cmp_legend,
         showlegend = TRUE,
         marker = base::list(size = 10, color = "#d62728"),
-        text = ~base::sprintf(
-          "Species: %s<br>Mean (Compare): %.2f<br>Lower 95%%: %.2f<br>Upper 95%%: %.2f",
+        hovertext = ~base::sprintf(
+          "Species: %s<br>Mean: %.2f<br>Lower 95%%: %.2f<br>Upper 95%%: %.2f",
           base::as.character(Species),
           Mean,
           Mean - err_dn,
           Mean + err_up),
-        hoverinfo = "text",
+        text = if (text_on()) {
+          ~base::sprintf(
+            "Mean: %.2f<br>Lower 95%%: %.2f<br>Upper 95%%: %.2f",
+            Mean,
+            Mean - err_dn,
+            Mean + err_up)} else {""},
+        hoverinfo = if (text_on()) "none" else "text",
         error_x = base::list(
           type = "data",
           array = df_cmp$err_up,
           arrayminus = df_cmp$err_dn,
-          color = "#d62728",
+          color = "#ab1f20",
           thickness = 1.5))}
   
    p <- p %>% plotly::layout(
+     barmode = "group",
       title = base::list(
         text = DensTitle(),
         font = base::list(size = 22),
@@ -1305,20 +1344,20 @@ output$DensPlotly <- plotly::renderPlotly({
           font = base::list(size = 18),
           standoff = 20)),
       yaxis = base::list(
+        type = "category", categoryorder = "array", categoryarray = species_levels,
         title = base::list(
           text = "Species",
           font = base::list(size = 18),
           standoff = 15),
-        tickmode = "array",
-        tickvals = base::seq_along(species_levels),
-        ticktext = species_levels),
-      margin = base::list(
-        l = 140, r = 40),
+        ticks = "outside",
+        ticklabelposition = "outside"),
+      margin = base::list(t = 40, l = 140, r = 40),
+      height = fig_height,
       font = base::list(size = 12),
       autosize = TRUE)
       p
 })
- 
+
 ####### original graphs and file downloads #######
 #tempDensPlot<-shiny::reactive({
 #  if (base::is.null(input$densPark) || base::nchar(input$densPark)==0) {base::return()}

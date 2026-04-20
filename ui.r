@@ -448,6 +448,9 @@ tags$head(tags$style(HTML("
               htmltools::tags$div(title="Toggle between common and scientific names",
                        shiny::checkboxInput(inputId="densCommon", label="Show common names?", value=TRUE )
               ),
+              htmltools::tags$div(title="Toggle text on",
+                                  shiny::checkboxInput(inputId="plotlyText", label="Show summary statistics?", value=FALSE )
+              ),
               htmltools::tags$div(title="Graph the most common species, species you choose, or all species combined.",
                 shiny::radioButtons(inputId="densSpeciesType", label="Which species?", 
                  choices=base::c("Most common species"="Common","Pick individual species"="Pick",
