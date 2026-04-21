@@ -1043,7 +1043,8 @@ densDf <- shiny::reactive({
   raw <- densData()
   
   ### add common names if requested ###
-  if (base::isTRUE(input$densCommon) && !("Common_Name" %in% base::names(raw))) {
+  # Always add Common_Name — not only when densCommon is TRUE
+  if (!("Common_Name" %in% names(raw))) {
     raw$Common_Name <- NPSForVeg::getPlantNames(
       object    = VEGDATA[[input$densPark]],
       names     = raw$Latin_Name,
@@ -1053,10 +1054,11 @@ densDf <- shiny::reactive({
   df <- raw %>%
     dplyr::transmute(
       Species = .data[[species_col()]],
+      Latin   = .data$Latin_Name,
+      Common  = if ("Common_Name" %in% names(raw)) .data$Common_Name else NA_character_,
       Mean    = .data$Mean,
       err_up  = .data$Upper.95 - .data$Mean,
-      err_dn  = .data$Mean - .data$Lower.95
-    ) %>%
+      err_dn  = .data$Mean - .data$Lower.95) %>%
     dplyr::filter(!base::tolower(Species) %in% base::c("total", "all species"))
   
   ### radioButton: Pick ###
@@ -1087,6 +1089,17 @@ densDf <- shiny::reactive({
         err_up  = agg_fun(err_up, na.rm = TRUE),
         err_dn  = agg_fun(err_dn, na.rm = TRUE))}
   
+  df <- df %>%
+    dplyr::mutate(
+      LabelOpp = dplyr::case_when(
+        isTRUE(input$densCommon) ~ Latin,   # axis = Common → hover/text = Latin
+        !isTRUE(input$densCommon) ~ dplyr::coalesce(Common, Latin)))
+  
+  df <- df %>% dplyr::mutate(
+    LabelOpp = dplyr::case_when(
+      isTRUE(input$densCommon) ~ Latin,   # axis = Common → hover/text = Latin
+      !isTRUE(input$densCommon) ~ dplyr::coalesce(Common, Latin)))
+  
   ### plot order ###
   df %>%
     dplyr::arrange(Mean) %>%
@@ -1111,21 +1124,23 @@ compareDf <- shiny::reactive({
     Total  = FALSE)
   
   ### add common names if requested ###
-  if (base::isTRUE(input$densCommon) && !("Common_Name" %in% base::names(raw))) {
+  # Always add Common_Name — not only when densCommon is TRUE
+  if (!("Common_Name" %in% names(raw))) {
     raw$Common_Name <- NPSForVeg::getPlantNames(
-      object    = cmp$object,
+      object    = VEGDATA[[input$densPark]],
       names     = raw$Latin_Name,
       in.style  = "Latin",
       out.style = "common")}
   
   species_col <- species_col()
   
-  df <- raw %>%
-    dplyr::transmute(
-      Species = .data[[species_col]],
-      Mean    = .data$Mean,
-      err_up  = .data$Upper.95 - .data$Mean,
-      err_dn  = .data$Mean - .data$Lower.95
+  df <- raw %>% dplyr::transmute(
+    Species = .data[[species_col]],
+    Latin   = .data$Latin_Name,
+    Common  = if ("Common_Name" %in% names(raw)) .data$Common_Name else NA_character_,
+    Mean    = .data$Mean,
+    err_up  = .data$Upper.95 - .data$Mean,
+    err_dn  = .data$Mean - .data$Lower.95
     ) %>%
     dplyr::filter(!base::tolower(Species) %in% base::c("total", "all species"))
   
@@ -1161,6 +1176,11 @@ compareDf <- shiny::reactive({
         err_up  = agg_fun(err_up, na.rm = TRUE),
         err_dn  = agg_fun(err_dn, na.rm = TRUE))
   }
+  
+  df <- df %>% dplyr::mutate(
+    LabelOpp = dplyr::case_when(
+      isTRUE(input$densCommon) ~ Latin,   # axis = Common → hover/text = Latin
+      !isTRUE(input$densCommon) ~ dplyr::coalesce(Common, Latin)))
   
   # match ordering of base df
   if (!base::identical(input$densSpeciesType, "All")) {
@@ -1241,30 +1261,33 @@ output$DensPlotly <- plotly::renderPlotly({
   #wire legend to selections
   base_legend <- base::paste(
     "Park:", input$densPark, 
-    "| Cycle:", input$densCycles, 
-    "| Plant Type:", input$densGroup)
+    "<br>Cycle:", input$densCycles, 
+    "<br>Plant Type:", input$densGroup)
   cmp_legend <- base::switch(input$CompareType,
     None = "Compare",
     Park = base::paste(
-      "Park:", input$ComparePark, 
-      "| Cycle:", input$densCycles,
-      "| Plant Type:", input$densGroup),
+      "<b>Park:", input$ComparePark, "</b>", 
+      "<br>Cycle:", input$densCycles,
+      "<br>Plant Type:", input$densGroup),
     "Growth Stage" = base::paste(
       "Park:", input$densPark, 
-      "| Cycle:", input$densCycles,
-      "| Growth Stage:", input$CompareGroup),
+      "<br>Cycle:", input$densCycles,
+      "<b><br>Growth Stage:", input$CompareGroup), "</b>",
     Time = base::paste(
       "Park:", input$densPark, 
-      "| Cycle:", input$compCycles,
-      "| Plant Type:", input$densGroup))
+      "<b><br>Cycle:", input$compCycles, "</b>",
+      "<br>Plant Type:", input$densGroup))
+
   
 ### for bar chart plotly ###  
   n_species   <- length(species_levels)
   
-  row_px      <- 100                 # pixels per species row (adjust to taste)
-  top_pad_px  <- 50                # room for title, legend, etc.
+  
+  bars_per_species <- if (!is.null(df_cmp) && nrow(df_cmp) > 0) 2 else 1
+  row_px <- 100 * bars_per_species
+  top_pad_px  <- 50
   bottom_pad_px <- 50
-  fig_height  <- top_pad_px + n_species * row_px + bottom_pad_px
+  fig_height <- top_pad_px + n_species * row_px + bottom_pad_px
   
   #plot in plotly
   p <- plotly::plot_ly(
@@ -1276,16 +1299,17 @@ output$DensPlotly <- plotly::renderPlotly({
     #mode = "markers", ##for scatter plot
     name = base_legend,   
     showlegend = TRUE,        
-    marker = base::list(size = 10, color = "#1f77b4"),
+    marker = base::list(size = 10, color = "#2385ca"),
     hovertext = ~base::sprintf(
       "Species: %s<br>Mean: %.2f<br>Lower 95%%: %.2f<br>Upper 95%%: %.2f",
-      base::as.character(Species),
+      LabelOpp,
       Mean,
       Mean - err_dn,
       Mean + err_up),
     text = if (text_on()) {
       ~base::sprintf(
-        "Mean: %.2f<br>Lower 95%%: %.2f<br>Upper 95%%: %.2f",
+        "Species: %s<br>Mean: %.2f<br>Lower 95%%: %.2f<br>Upper 95%%: %.2f",
+        LabelOpp,
         Mean,
         Mean - err_dn,
         Mean + err_up)} else {""},
@@ -1294,7 +1318,7 @@ output$DensPlotly <- plotly::renderPlotly({
         type = "data",
         array = df$err_up,
         arrayminus = df$err_dn,
-        color = "#185a88",
+        color = "#144c73",
         thickness = 1.5))
   
   if (!base::is.null(df_cmp) && base::nrow(df_cmp) > 0) {
@@ -1309,16 +1333,17 @@ output$DensPlotly <- plotly::renderPlotly({
         #mode = "markers", ##for scatter plot
         name = cmp_legend,
         showlegend = TRUE,
-        marker = base::list(size = 10, color = "#d62728"),
+        marker = base::list(size = 10, color = "#db3b3c"),
         hovertext = ~base::sprintf(
           "Species: %s<br>Mean: %.2f<br>Lower 95%%: %.2f<br>Upper 95%%: %.2f",
-          base::as.character(Species),
+          LabelOpp,
           Mean,
           Mean - err_dn,
           Mean + err_up),
         text = if (text_on()) {
           ~base::sprintf(
-            "Mean: %.2f<br>Lower 95%%: %.2f<br>Upper 95%%: %.2f",
+            "Species: %s<br>Mean: %.2f<br>Lower 95%%: %.2f<br>Upper 95%%: %.2f",
+            LabelOpp,
             Mean,
             Mean - err_dn,
             Mean + err_up)} else {""},
@@ -1327,11 +1352,11 @@ output$DensPlotly <- plotly::renderPlotly({
           type = "data",
           array = df_cmp$err_up,
           arrayminus = df_cmp$err_dn,
-          color = "#ab1f20",
+          color = "#951b1c",
           thickness = 1.5))}
-  
    p <- p %>% plotly::layout(
      barmode = "group",
+     legend = base::list(traceorder = "reversed", font = base::list(size = 15)),
       title = base::list(
         text = DensTitle(),
         font = base::list(size = 22),
