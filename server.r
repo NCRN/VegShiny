@@ -878,6 +878,14 @@ output$CompareSelect<-shiny::renderUI({
                                               DATACYCLES$YearStart,"-",DATACYCLES$YearEnd))))))
 })
 
+#### empty graph panel note ####
+output$GraphValidationNote <- shiny::renderUI({
+  if (is.null(input$densPark) || !base::nzchar(input$densPark)) {
+    htmltools::div(class = "shiny-output-error-validation", "Select a park to display the graph.")
+  } else {htmltools::HTML("")
+  }})
+
+
 
 #### This is currently disabled while the output of dens() for all 0s is reconsidered
 #### Need Compare species to keep the number of species to display to accepted number ####
@@ -894,10 +902,19 @@ output$CompareSelect<-shiny::renderUI({
 #     )
 # })
 
+#### Guard: only certain groups support Growth Stage comparison ####
+growthStageGuard <- shiny::reactive({
+  expr = {shiny::validate(shiny::need(base::ifelse(
+        base::identical(input$CompareType, "Growth Stage"),
+        input$densGroup %in% base::c("trees","saplings","seedlings","shrubs","shseedlings"),
+        TRUE),
+      "Only one growth stage is monitored for this plant type; 'Growth Stage' comparison is not available. Try 'Park' or 'Time' comparisons or select a different plant type."))
+    base::return(TRUE)}})
 
 #### make compare and labels arguments for densplot() ####
 
-DensCompare<-shiny::reactive({base::switch(input$CompareType,
+DensCompare<-shiny::reactive({shiny::req(growthStageGuard())
+  base::switch(input$CompareType,
     None=base::return(NA),
     Park=  if (base::is.null(input$ComparePark) || base::nchar(input$ComparePark)==0) {base::return(NA)}
       else{
@@ -927,9 +944,9 @@ densYlabel<-shiny::reactive({
       vines="Vines on Trees / ha"
     ),
     size=base::switch(input$densGroup,
-      trees=,saplings="Basal area m\u00B2/ ha",
+      trees=,saplings="Basal area (m\u00B2) / ha",
       herbs="Percent Cover",
-      cwd='m\u00B3 / ha'
+      cwd='(m\u00B3) / ha'
     ),
     presab="Proportion of Plots Occupied"
   )
@@ -1087,18 +1104,12 @@ densDf <- shiny::reactive({
         Species = if (base::isTRUE(input$densCommon)) "All species" else "All species",
         Mean    = agg_fun(Mean,   na.rm = TRUE),
         err_up  = agg_fun(err_up, na.rm = TRUE),
-        err_dn  = agg_fun(err_dn, na.rm = TRUE))}
-  
-  df <- df %>%
-    dplyr::mutate(
-      LabelOpp = dplyr::case_when(
-        isTRUE(input$densCommon) ~ Latin,   # axis = Common → hover/text = Latin
-        !isTRUE(input$densCommon) ~ dplyr::coalesce(Common, Latin)))
-  
-  df <- df %>% dplyr::mutate(
-    LabelOpp = dplyr::case_when(
-      isTRUE(input$densCommon) ~ Latin,   # axis = Common → hover/text = Latin
-      !isTRUE(input$densCommon) ~ dplyr::coalesce(Common, Latin)))
+        err_dn  = agg_fun(err_dn, na.rm = TRUE))
+      df <- df %>% dplyr::mutate(LabelOpp = "All species")} else {
+      df <- df %>% dplyr::mutate(
+        LabelOpp = dplyr::case_when(
+          isTRUE(input$densCommon) ~ Latin,
+          !isTRUE(input$densCommon) ~ dplyr::coalesce(Common, Latin)))}
   
   ### plot order ###
   df %>%
@@ -1124,7 +1135,6 @@ compareDf <- shiny::reactive({
     Total  = FALSE)
   
   ### add common names if requested ###
-  # Always add Common_Name — not only when densCommon is TRUE
   if (!("Common_Name" %in% names(raw))) {
     raw$Common_Name <- NPSForVeg::getPlantNames(
       object    = VEGDATA[[input$densPark]],
@@ -1175,12 +1185,11 @@ compareDf <- shiny::reactive({
         Mean    = agg_fun(Mean,   na.rm = TRUE),
         err_up  = agg_fun(err_up, na.rm = TRUE),
         err_dn  = agg_fun(err_dn, na.rm = TRUE))
-  }
-  
-  df <- df %>% dplyr::mutate(
-    LabelOpp = dplyr::case_when(
-      isTRUE(input$densCommon) ~ Latin,   # axis = Common → hover/text = Latin
-      !isTRUE(input$densCommon) ~ dplyr::coalesce(Common, Latin)))
+      df <- df %>% dplyr::mutate(LabelOpp = "All species")} else {
+      df <- df %>% dplyr::mutate(
+        LabelOpp = dplyr::case_when(
+          isTRUE(input$densCommon) ~ Latin,
+          !isTRUE(input$densCommon) ~ dplyr::coalesce(Common, Latin)))}
   
   # match ordering of base df
   if (!base::identical(input$densSpeciesType, "All")) {
@@ -1256,38 +1265,72 @@ output$DensPlotly <- plotly::renderPlotly({
     df$Species <- base::factor(df$Species, levels = species_levels)}
   if (!base::is.null(df_cmp) && base::nrow(df_cmp) > 0) {
     df_cmp$Species <- base::factor(df_cmp$Species, levels = species_levels)}
+ 
+  
+  #make labels readable
+  park_long_name <- function(park_key) {
+    if (is.null(park_key) || !nzchar(park_key)) return(park_key)
+    obj <- VEGDATA[[park_key]]
+    if (!is.null(obj)) {return(NPSForVeg::getNames(obj, "long"))}}
+    
+  cycle_long_name <- function(cycle_code) {
+    if (is.null(cycle_code) || !nzchar(cycle_code)) return(cycle_code)
+    row <- DATACYCLES[DATACYCLES$Cycle == cycle_code, ]
+    if (nrow(row) == 1L) {
+      paste0(row$Name, ": ", row$YearStart, "-", row$YearEnd)} else {
+      as.character(cycle_code)}}
+  
+  species_group_long <- setNames(DENSLABELDATA$Label, DENSLABELDATA$Name)
+  group_long_name <- function(group_key) {
+    val <- species_group_long[group_key]
+    if (length(val) == 0 || is.na(val)) group_key else val}
+  
+  park_display         <- park_long_name(input$densPark)
+  cmp_park_display     <- park_long_name(input$ComparePark)
+  cycle_display_base   <- cycle_long_name(input$densCycles)
+  cycle_display_cmp    <- cycle_long_name(input$compCycles)
+  group_display_base   <- group_long_name(input$densGroup)
+  group_display_cmp    <- group_long_name(input$CompareGroup)
   
   
-  #wire legend to selections
+ #wire legend to selections
   base_legend <- base::paste(
-    "Park:", input$densPark, 
-    "<br>Cycle:", input$densCycles, 
-    "<br>Plant Type:", input$densGroup)
+    if (input$CompareType == "Park")
+      paste0("<b>Park: ", park_display, "</b>")
+    else paste0("Park: ", park_display),
+    if (input$CompareType == "Time")
+      paste0("| <b>",cycle_display_base, "</b>")
+    else paste0("| ",cycle_display_base),
+    if (input$CompareType == "Growth Stage")
+      paste0("| <b>Plant Type: ", group_display_base, "</b>")
+    else paste0("| Plant Type: ", group_display_base))
+
   cmp_legend <- base::switch(input$CompareType,
     None = "Compare",
     Park = base::paste(
-      "<b>Park:", input$ComparePark, "</b>", 
-      "<br>Cycle:", input$densCycles,
-      "<br>Plant Type:", input$densGroup),
+      "<b>Park:",cmp_park_display, "</b>", 
+      "| ", cycle_display_base,
+      "| Plant Type:",group_display_base),
     "Growth Stage" = base::paste(
-      "Park:", input$densPark, 
-      "<br>Cycle:", input$densCycles,
-      "<b><br>Growth Stage:", input$CompareGroup), "</b>",
+      "Park:",park_display, 
+      "| ", cycle_display_base,
+      "| <b> Growth Stage:",group_display_cmp, "</b>"),
     Time = base::paste(
-      "Park:", input$densPark, 
-      "<b><br>Cycle:", input$compCycles, "</b>",
-      "<br>Plant Type:", input$densGroup))
-
+      "Park:",park_display, 
+      "| <b>",cycle_display_cmp, "</b>",
+      "| Plant Type:",group_display_base))
   
 ### for bar chart plotly ###  
-  n_species   <- length(species_levels)
-  
-  
+  n_species <- length(species_levels)
   bars_per_species <- if (!is.null(df_cmp) && nrow(df_cmp) > 0) 2 else 1
-  row_px <- 100 * bars_per_species
-  top_pad_px  <- 50
+  
+  
+  row_px <- if (n_species == 1) 200 else 100 * bars_per_species
+  
+  top_pad_px    <- 50
   bottom_pad_px <- 50
   fig_height <- top_pad_px + n_species * row_px + bottom_pad_px
+  
   
   #plot in plotly
   p <- plotly::plot_ly(
@@ -1319,7 +1362,8 @@ output$DensPlotly <- plotly::renderPlotly({
         array = df$err_up,
         arrayminus = df$err_dn,
         color = "#144c73",
-        thickness = 1.5))
+        thickness = 1.5),
+    legendgroup = "dens")
   
   if (!base::is.null(df_cmp) && base::nrow(df_cmp) > 0) {
 #    df_cmp$y_off <- species_idx[df_cmp$Species] + offset
@@ -1353,10 +1397,17 @@ output$DensPlotly <- plotly::renderPlotly({
           array = df_cmp$err_up,
           arrayminus = df_cmp$err_dn,
           color = "#951b1c",
-          thickness = 1.5))}
+          thickness = 1.5),
+        legendgroup = "dens")}
    p <- p %>% plotly::layout(
      barmode = "group",
-     legend = base::list(traceorder = "reversed", font = base::list(size = 15)),
+     showlegend = TRUE,
+     legend = base::list(
+       traceorder = "reversed", 
+       font = base::list(size = 15),
+       orientation = "h",
+       x = 0.5, xanchor = "center",
+       y = 1, yanchor = "bottom"),
       title = base::list(
         text = DensTitle(),
         font = base::list(size = 22),
@@ -1376,7 +1427,7 @@ output$DensPlotly <- plotly::renderPlotly({
           standoff = 15),
         ticks = "outside",
         ticklabelposition = "outside"),
-      margin = base::list(t = 40, l = 140, r = 40),
+      margin = base::list(t = 80, l = 140, r = 40),
       height = fig_height,
       font = base::list(size = 12),
       autosize = TRUE)
@@ -1433,7 +1484,7 @@ output$DensPlotly <- plotly::renderPlotly({
 tempDensTableTitle<-shiny::reactive({
   shiny::validate(shiny::need(base::try(base::paste(NPSForVeg::getNames(VEGDATA[input$densPark],"long"),":",densTitleGroup(),densTitleValues(), 
                           base::paste0(base::as.character(base::min(densYears())),"-",base::as.character(base::max(densYears())),"(",densYlabel(),")") )), message=FALSE) )
-  base::paste(NPSForVeg::getNames(VEGDATA[input$densPark],"long"),":",densTitleGroup(),densTitleValues(), 
+  base::paste(NPSForVeg::getNames(VEGDATA[[input$densPark]],"long"),":",densTitleGroup(),densTitleValues(), 
         base::paste0(base::as.character(base::min(densYears())),"-",base::as.character(base::max(densYears())) ," (",densYlabel(),")") )
 })
   
@@ -1442,27 +1493,27 @@ output$densTableTitle<-shiny::renderText({ tempDensTableTitle() })
 
 #### Data for Table ####
 DensTableArgs<-shiny::reactive({
+  shiny::req(input$densPark, input$densGroup, input$densvalues, densYears())
+  veg <- VEGDATA[[input$densPark]]
+  shiny::req(veg)
   base::list(
-    object=DensPlotArgs()$object,
-    group=DensPlotArgs()$densargs$group,
-    years=DensPlotArgs()$densargs$years,
-    values=DensPlotArgs()$densargs$values,
-    area=base::ifelse(DensPlotArgs()$densargs$values=="size","ha","plot"),
-    common=DensPlotArgs()$densargs$common
-  )
-})
-
+    object = veg,
+    group  = input$densGroup,
+    years  = densYears(),
+    values = input$densvalues,
+    area   = base::ifelse(input$densvalues == "size", "ha", "plot"),
+    common = base::isTRUE(input$densCommon))})
 
 #### Make Table ####
 
 tempDensTable<-shiny::reactive({
   expr={
   shiny::validate(shiny::need(base::try(
-    base::do.call(dens, DensTableArgs() )
+    base::do.call(NPSForVeg::dens, DensTableArgs() )
   ),
     "There is no data for this combination of choices. Either you need to select a park, or the type of plant you selected was not found in the park during those years"
           ))
-  TableOut<-base::do.call(dens,DensTableArgs())
+  TableOut<-base::do.call(NPSForVeg::dens,DensTableArgs())
  base::names(TableOut)<-base::c("Species",'Mean',"Lower 95% CI", "Upper 95% CI")
   base::return(TableOut)
     }

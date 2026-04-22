@@ -489,6 +489,7 @@ tags$head(tags$style(HTML("
             shiny::tabsetPanel(id="densPanel",type="pills",
                 shiny::tabPanel(title=htmltools::tags$div(title="Graph the data", "Graph"),value="Graph",
                   htmltools::tags$div(title="Mean and 95% Confidence interval",
+                  shiny::uiOutput("GraphValidationNote"),
                   plotly::plotlyOutput(outputId="DensPlotly", height="600px")),
              
                     shiny::fixedPanel(class="panel panel-primary controls",draggable=TRUE,
