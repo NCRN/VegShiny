@@ -329,18 +329,18 @@ shiny::navbarPage(
 #### Map Controls ####
       htmltools::div(id="MapControlPanel",class="panel panel-default controls",
             shiny::h4("Map Controls", class="panel-heading"),
-            htmltools::tags$div(title="Choose the type of plant you want to work with", shiny::selectInput(inputId="MapGroup", 
+            htmltools::tags$div(title="Select the type of plant you want to work with", shiny::selectInput(inputId="MapGroup", 
               label="Type of plant:", choices=PLANTTYPES)),
-            htmltools::tags$div(title="Choose live or dead", shiny::selectInput(inputId="TreeStatus", label="Live or dead",
+            htmltools::tags$div(title="Select live or dead", shiny::selectInput(inputId="TreeStatus", label="Live or dead",
                                                                choices=base::c("Live"='alive',"Dead" = 'snag',"All"='all'))),
-            htmltools::tags$div(title="Type of data to map",shiny::uiOutput("PlantValueControl")),
-            htmltools::tags$div(title="Choose the time period you want to work with.", shiny::uiOutput("MapCycleControl")),
-            #htmltools::tags$div(title="Choose the four year period you want to work with.", shiny::sliderInput(inputId="MapYear", 
+            htmltools::tags$div(title="Select the type of data to map",shiny::uiOutput("PlantValueControl")),
+            htmltools::tags$div(title="Select the time period you want to work with", shiny::uiOutput("MapCycleControl")),
+            #htmltools::tags$div(title="Select the four year period you want to work with.", shiny::sliderInput(inputId="MapYear", 
              #     label="Display data from the 4 years ending:", min=YEARS$Start+YEARS$Range-1, max=YEARS$End, value=YEARS$End,
               #    sep="", step=1,ticks=T)),
             htmltools::tags$div(title="Toggle between common and scientific names",
-                             shiny::checkboxInput(inputId="mapCommon", label="Show common names?", value=TRUE )),
-            htmltools::tags$div(title="Choose a species of plants to map", shiny::uiOutput("MapSpeciesControl")),  
+                             shiny::checkboxInput(inputId="mapCommon", label="Display common names?", value=TRUE )),
+            htmltools::tags$div(title="Select a species of plants to map", shiny::uiOutput("MapSpeciesControl")),  
             htmltools::tags$div(title="Filter the species list so only species found in a particular park are listed",
                            shiny::uiOutput("MapParkControl")),
             shiny::actionButton(inputId="AboutMapButton",label="About the map",class="btn btn-primary")
@@ -350,7 +350,7 @@ shiny::navbarPage(
      htmltools::div(id="ZoomPanel",class="panel panel-default controls",
           shiny::h4("Zoom to:", class="panel-heading"),
           shiny::fluidRow(
-            shiny::column(9, htmltools::tags$div(title="Choose a park and click 'Go'", shiny::uiOutput("ParkZoomControl"))),
+            shiny::column(9, htmltools::tags$div(title="Select a park and click 'Go'", shiny::uiOutput("ParkZoomControl"))),
             shiny::column(3, shiny::actionButton(inputId="MapZoom", label="Go", class="btn btn-primary btn-block action-button"))
           ),
           shiny::hr(),
@@ -423,7 +423,7 @@ tags$head(tags$style(HTML("
     shiny::navbarMenu(htmltools::tags$div(title="Graph the data", "Graphs"),
                       
 #############  densplot() based plots
-      shiny::tabPanel(htmltools::tags$div(title="Graph abundance, basal area, percent cover, etc.","Data by Park and Species"),
+      shiny::tabPanel(htmltools::tags$div(title="Graph abundance, basal area, percent cover, etc","Data by Park and Species"),
                shinyjs::useShinyjs(),
         shiny::fluidRow(
           shiny::column(3,
@@ -433,31 +433,31 @@ tags$head(tags$style(HTML("
                                               word-wrap: break-word !important;}"))),
             shiny::wellPanel(class="panel panel-default",
               shiny::h4("Data:", class="panel-heading"),
-              htmltools::tags$div(title="Choose a park to work with.",
+              htmltools::tags$div(title="Select the park you want to work with",
                        shiny::uiOutput(outputId="densParkControl")
               ),
-              htmltools::tags$div(title="Choose the time period you want to work with.", shiny::uiOutput("densCycleControl")),
+              htmltools::tags$div(title="Select the time period you want to work with", shiny::uiOutput("densCycleControl")),
               # htmltools::tags$div(title="Pick the four year period you want to graph",
               #          shiny::sliderInput(inputId="densYear", label="Display data from the 4 years ending:", 
               #                      min=YEARS$Start+YEARS$Range-1, max=YEARS$End, value=YEARS$End,
               #                      sep="", step=1,ticks=T)
               # ),
-              htmltools::tags$div(title="Choose the type of plant you want to work with", 
+              htmltools::tags$div(title="Select the type of plant you want to work with", 
                 shiny::selectizeInput(inputId="densGroup", label="Type of plant:",   choices=PLANTTYPES)
               ),
               htmltools::tags$div(title="Toggle between common and scientific names",
-                       shiny::checkboxInput(inputId="densCommon", label="Show common names?", value=TRUE )
+                       shiny::checkboxInput(inputId="densCommon", label="Display common names?", value=TRUE )
               ),
-              htmltools::tags$div(title="Toggle text on",
-                                  shiny::checkboxInput(inputId="plotlyText", label="Show summary statistics?", value=FALSE )
+              htmltools::tags$div(title="Toggle summary statistics on or off",
+                                  shiny::checkboxInput(inputId="plotlyText", label="Display summary statistics?", value=FALSE )
               ),
-              htmltools::tags$div(title="Graph the most common species, species you choose, or all species combined.",
+              htmltools::tags$div(title="Graph the most common species, species you select, or all species combined",
                 shiny::radioButtons(inputId="densSpeciesType", label="Which species?", 
                  choices=base::c("Most common species"="Common","Pick individual species"="Pick",
                           "All species combined"="All"), inline=FALSE)
               ),
               shiny::uiOutput(outputId="densSpeciesControl"),
-              htmltools::tags$div(title="Type of data to graph",
+              htmltools::tags$div(title="Select the type of data to graph",
                 shiny::uiOutput(outputId="densValControl")
               ),
               shiny::conditionalPanel(
@@ -488,8 +488,7 @@ tags$head(tags$style(HTML("
           shiny::column(9,
             shiny::tabsetPanel(id="densPanel",type="pills",
                 shiny::tabPanel(title=htmltools::tags$div(title="Graph the data", "Graph"),value="Graph",
-                  htmltools::tags$div(title="Mean and 95% Confidence interval",
-                  shiny::uiOutput("GraphValidationNote"),
+                  htmltools::tags$div(title="Graph of Mean and 95% Confidence Interval",
                   plotly::plotlyOutput(outputId="DensPlotly", height="600px")),
              
                     shiny::fixedPanel(class="panel panel-primary controls",draggable=TRUE,
@@ -539,18 +538,18 @@ tags$head(tags$style(HTML("
             shiny::wellPanel(class="panel panel-default",
               shiny::h4("Data:", class="panel-heading"),
               htmltools::tags$div(
-                title="Choose a park to work with.",
+                title="Select the park you want to work with",
                 shiny::uiOutput("IVParkControl")
               ),
               shiny::br(),
               htmltools::tags$div(
-                title="Choose the type of plant you want to work with", 
+                title="Select the type of plant you want to work with", 
                 shiny::selectizeInput(inputId="IVGroup", label="Type of plant:",choices=IVPLANTTYPES)
               ),
               shiny::br(),
               htmltools::tags$div(
                 title="Toggle between common and scientific names",
-                shiny::checkboxInput(inputId="IVCommon", label="Show common names?", value=TRUE)
+                shiny::checkboxInput(inputId="IVCommon", label="Display common names?", value=TRUE)
               ),
               shiny::br(),
               # htmltools::tags$div(
@@ -558,24 +557,24 @@ tags$head(tags$style(HTML("
               #   shiny::sliderInput(inputId="IVYear", label="Display data from the 4 years ending:", min=YEARS$Start+YEARS$Range-1, 
               #               max=YEARS$End, value=YEARS$End, sep="", step=1,ticks=T)
               # ),
-              htmltools::tags$div(title="Choose the time period you want to work with.", shiny::uiOutput("IVCycleControl")),
+              htmltools::tags$div(title="Select the time period you want to work with", shiny::uiOutput("IVCycleControl")),
               shiny::br(),
               htmltools::tags$div(
-                title="Show density, size and disbribution separately",
-                shiny::checkboxInput(inputId="IVPart", label="Show Components of the Importance Value?", value=FALSE)
+                title="Display density, size and disbribution separately",
+                shiny::checkboxInput(inputId="IVPart", label="Display components of the importance value?", value=FALSE)
               ),
               shiny::br(),
               htmltools::tags$div(
-                title="Chose the maximum number of species to display.",
-                shiny::sliderInput(inputId="IVTop",label="Number of species to plot (in order of IV):",min=1, max=20,
-                  value=10, sep="", step=1, ticks=FALSE)),
+                title="Select the maximum number of species to plot",
+                shiny::sliderInput(inputId="IVTop",label="Maximum number of species to plot (in order of IV):",min=1, max=20,
+                  value=10, sep="", step=1, ticks=TRUE)),
                 shiny::conditionalPanel(
                   condition="input.IVPanel=='Graph'",
                   shiny::hr(),
                   shiny::actionButton(inputId="IVGraphButton", label="Display Options", class="btn btn-primary btn-block action-button"),
-                  shiny::br(),
-                  shiny::downloadButton(outputId="IVGraphDownload", label="Save Graph (.jpg)", class="btn btn-primary btn-block action-button"),
-                  shiny::downloadButton(outputId="IVWmfDownload", label="Save Graph (.wmf)", class="btn btn-primary btn-block action-button")
+                  #shiny::br(),
+                  #shiny::downloadButton(outputId="IVGraphDownload", label="Save Graph (.jpg)", class="btn btn-primary btn-block action-button"),
+                  #shiny::downloadButton(outputId="IVWmfDownload", label="Save Graph (.wmf)", class="btn btn-primary btn-block action-button")
                 ),  
                   shiny::conditionalPanel(
                     condition="input.IVPanel=='Table'",
@@ -636,16 +635,16 @@ tags$head(tags$style(HTML("
         htmltools::tags$head(htmltools::tags$style(htmltools::HTML("#SpeciesControls{height:400px}"))),
         shiny::wellPanel(
           htmltools::tags$div(
-            title="Choose the type of species list", 
-            shiny::radioButtons(inputId="SpListType", label="Choose a species list:",
+            title="Select the type of species list", 
+            shiny::radioButtons(inputId="SpListType", label="Select a species list:",
                  choices=base::c("Vascular plants in the monitorng plots"= "Monitoring", "All vascular plants known from the park"="NPSpecies"))
           ),
           htmltools::tags$div(
-            title="Choose a park to work with.",shiny::uiOutput("SpListParkControl")
+            title="Select a park to work with",shiny::uiOutput("SpListParkControl")
           ),
           shiny::conditionalPanel(condition="input.SpListType=='Monitoring'",
             htmltools::tags$div(
-              title="Choose one or more plots, select and backspace to delete.", shiny::uiOutput("SpListPlotControl")
+              title="Select one or more plots, select and backspace to delete.", shiny::uiOutput("SpListPlotControl")
             )
           )
         )

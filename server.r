@@ -32,7 +32,7 @@ base::names(PARKLIST)<-NPSForVeg::getNames(VEGDATA)
 
 PARKBOUNDS<-utils::read.csv("boundboxes.csv", as.is=TRUE)
 
-DATACYCLES<-NPSForVeg::getCycles(VEGDATA[[1]])  #assumes that first park has all the cycles
+DATACYCLES<-NPSForVeg::getCycles(VEGDATA[[1]])
 ##### Begin Server Function ####
 
 shiny::shinyServer(function(input,output,session){
@@ -625,7 +625,7 @@ shiny::shinyServer(function(input,output,session){
     print(base::paste0('input$MapPark:', input$MapPark))
     print(base::paste0('input$MapGroup:', input$MapGroup))
     shiny::req(input$MapPark, input$MapGroup)
-    shiny::selectInput(inputId="MapSpecies", label="Choose a species", choices=base::c(MapSpecList() ))
+    shiny::selectInput(inputId="MapSpecies", label="Select a species", choices=base::c(MapSpecList() ))
 
   })
   
@@ -777,7 +777,7 @@ shiny::shinyServer(function(input,output,session){
 #### Park Control for Density plot  ####
 output$densParkControl<-shiny::renderUI({
   shiny::selectizeInput(inputId="densPark",choices=PARKLIST, label="Park:",
-                 options = base::list(placeholder='Choose a park',
+                 options = base::list(placeholder='Select a park',
                                 onInitialize = base::I('function() { this.setValue(""); }') )) 
 })
 
@@ -824,14 +824,14 @@ densSpecList<-shiny::reactive({
 
 output$densSpeciesControl<-shiny::renderUI({
   base::switch(input$densSpeciesType,
-         Common= htmltools::tags$div(title="# of species to display", 
-            shiny::sliderInput(inputId="densTop",label="Number of species to display (in order of mean value):",
+         Common= htmltools::tags$div(title="Select the maximum number of species to plot", 
+            shiny::sliderInput(inputId="densTop",label="Maximum number of species to plot (in order of mean value):",
                 min=1, max=10,value=5, sep="", step=1, ticks=TRUE)
           ),
          Pick= if(base::is.null(input$densPark) || base::nchar(input$densPark)==0) {  base::return()  }
           else{
             htmltools::tags$div(title="Click here to pick the species you want to graph",
-              shiny::selectizeInput(inputId="densSpecies", label="Choose one or more species,
+              shiny::selectizeInput(inputId="densSpecies", label="Select one or more species,
               backspace to remove", choices=densSpecList(),
                 multiple=TRUE, selected = input$densSpecies)
             )
@@ -862,30 +862,21 @@ compYears<-shiny::reactive({
 output$CompareSelect<-shiny::renderUI({
   base::switch(input$CompareType, 
     None=,base::return(),
-    Park= htmltools::tags$div(title= "Choose a second park",
-            shiny::selectizeInput(inputId="ComparePark",choices=PARKLIST, label="Park:",
-           options = base::list(placeholder='Choose a park',onInitialize = base::I('function() { this.setValue(""); }') ))),
+    Park= htmltools::tags$div(title= "Select a second park",
+            shiny::selectizeInput(inputId="ComparePark",choices=c("All Parks" = "ALL", PARKLIST), label="Park:",
+           options = base::list(placeholder='Select a park',onInitialize = base::I('function() { this.setValue(""); }') ))),
     
-    "Growth Stage"=htmltools::tags$div(title="Choose an additional growth stage",
+    "Growth Stage"=htmltools::tags$div(title="Select an additional growth stage",
                     shiny::selectizeInput(inputId="CompareGroup", label="Growth Stage:", 
                       choices=base::switch(input$densGroup,
                       trees=,saplings=,seedlings=base::c(Trees="trees", Saplings="saplings", "Tree Seedlings"="seedlings"),
                       shrubs=, shseedlings=base::c(Shrubs="shrubs", "Shrub Seedlings"="shseedlings"),
                       vines=,herbs=base::c('Only one growth stage monitored.'=NA)))),
-    Time=htmltools::tags$div(title= "Choose a second range of years",
+    Time=htmltools::tags$div(title= "Select a second range of years",
           shiny::selectInput(inputId="compCycles", label="Display data from years:", 
             choices=base::rev(stats::setNames(base::as.character(DATACYCLES$Cycle), base::paste0(DATACYCLES$Name,": ",
                                               DATACYCLES$YearStart,"-",DATACYCLES$YearEnd))))))
 })
-
-#### empty graph panel note ####
-output$GraphValidationNote <- shiny::renderUI({
-  if (is.null(input$densPark) || !base::nzchar(input$densPark)) {
-    htmltools::div(class = "shiny-output-error-validation", "Select a park to display the graph.")
-  } else {htmltools::HTML("")
-  }})
-
-
 
 #### This is currently disabled while the output of dens() for all 0s is reconsidered
 #### Need Compare species to keep the number of species to display to accepted number ####
@@ -1119,33 +1110,86 @@ densDf <- shiny::reactive({
 
 #### create compare plotting df #####
 
+aggregate_all <- function(group, years, values) {
+  dfs <- lapply(PARKLIST, function(pk) {
+    veg <- VEGDATA[[pk]]
+    if (is.null(veg)) return(NULL)
+    NPSForVeg::dens(
+      object = veg,
+      group  = group,
+      years  = years,
+      values = values,
+      common = FALSE,
+      area   = if (values == "size") "ha" else "plot",
+      Total  = FALSE)
+  })
+  raw <- dplyr::bind_rows(dfs)
+  
+  if (values %in% c("count","size")) {
+    agg <- raw %>%
+      dplyr::group_by(Latin_Name) %>%
+      dplyr::summarise(
+        Mean   = sum(Mean, na.rm = TRUE),
+        err_up = sum(Upper.95 - Mean, na.rm = TRUE),
+        err_dn = sum(Mean - Lower.95, na.rm = TRUE),
+        .groups = "drop") %>%
+      dplyr::mutate(
+        Upper.95 = Mean + err_up,
+        Lower.95 = Mean - err_dn)
+  } else { # presab
+    n_col <- intersect(c("N","n","Plots","n_plots"), names(raw))[1]
+    agg <- raw %>%
+      dplyr::group_by(Latin_Name) %>%
+      dplyr::summarise(
+        Mean     = if (!is.na(n_col)) stats::weighted.mean(Mean, .data[[n_col]], na.rm = TRUE)
+        else mean(Mean, na.rm = TRUE),
+        Upper.95 = NA_real_,
+        Lower.95 = NA_real_,
+        .groups  = "drop")
+    agg$err_up <- 0; agg$err_dn <- 0
+  }
+  agg
+}
+
 compareDf <- shiny::reactive({
   cmp <- DensCompare()
   
   if (base::is.null(cmp) || (base::is.atomic(cmp) && base::is.na(cmp))) base::return(NULL)
   shiny::req(base::is.list(cmp), cmp$object, cmp$group, cmp$years, cmp$values)
   
-  raw <- NPSForVeg::dens(
-    object = cmp$object,
-    group  = cmp$group,
-    years  = cmp$years,
-    values = cmp$values,
-    common = FALSE,
-    area   = if (cmp$values == "size") "ha" else "plot",
-    Total  = FALSE)
+  
+  raw <- if (identical(input$ComparePark, "ALL")) {
+    # Aggregate across all parks (compare side only)
+    agg <- aggregate_all(cmp$group, cmp$years, cmp$values)
+    dplyr::mutate(agg, Park = "All Parks")
+  } else {
+    # Normal single-park comparison
+    shiny::req(cmp$object)
+    NPSForVeg::dens(
+      object = cmp$object,
+      group  = cmp$group,
+      years  = cmp$years,
+      values = cmp$values,
+      common = FALSE,
+      area   = if (cmp$values == "size") "ha" else "plot",
+      Total  = FALSE)}
+  
   
   ### add common names if requested ###
+  
+  name_obj <- if (identical(input$densPark, "ALL")) VEGDATA[[PARKLIST[1]]] else VEGDATA[[input$densPark]]
+  
   if (!("Common_Name" %in% names(raw))) {
     raw$Common_Name <- NPSForVeg::getPlantNames(
-      object    = VEGDATA[[input$densPark]],
+      object    = name_obj,
       names     = raw$Latin_Name,
       in.style  = "Latin",
       out.style = "common")}
   
-  species_col <- species_col()
+  species_col_val <- species_col()
   
   df <- raw %>% dplyr::transmute(
-    Species = .data[[species_col]],
+    Species = .data[[species_col_val]],
     Latin   = .data$Latin_Name,
     Common  = if ("Common_Name" %in% names(raw)) .data$Common_Name else NA_character_,
     Mean    = .data$Mean,
@@ -1158,23 +1202,20 @@ compareDf <- shiny::reactive({
   # Pick
   if (base::identical(input$densSpeciesType, "Pick")) {
     shiny::req(input$densSpecies)
-    chosen <- if (species_col == "Latin_Name") {
+    chosen <- if (species_col_val == "Latin_Name") {
       input$densSpecies
     } else {
       NPSForVeg::getPlantNames(
-        object    = cmp$object,
+        object    = name_obj,   # base veg object for name mapping
         names     = input$densSpecies,
         in.style  = "Latin",
-        out.style = "common")
-    }
-    df <- df %>% dplyr::filter(Species %in% chosen)
-  }
+        out.style = "common")}
+    df <- df %>% dplyr::filter(Species %in% chosen)}
   
   # Common = top N from BASE (important!)
   if (base::identical(input$densSpeciesType, "Common")) {
     base_species <- densDf()$Species
-    df <- df %>% dplyr::filter(Species %in% base_species)
-  }
+    df <- df %>% dplyr::filter(Species %in% base_species)}
   
   # All species combined
   if (base::identical(input$densSpeciesType, "All")) {
@@ -1184,12 +1225,12 @@ compareDf <- shiny::reactive({
         Species = "All species",
         Mean    = agg_fun(Mean,   na.rm = TRUE),
         err_up  = agg_fun(err_up, na.rm = TRUE),
-        err_dn  = agg_fun(err_dn, na.rm = TRUE))
-      df <- df %>% dplyr::mutate(LabelOpp = "All species")} else {
-      df <- df %>% dplyr::mutate(
-        LabelOpp = dplyr::case_when(
-          isTRUE(input$densCommon) ~ Latin,
-          !isTRUE(input$densCommon) ~ dplyr::coalesce(Common, Latin)))}
+        err_dn  = agg_fun(err_dn, na.rm = TRUE)) %>%
+      dplyr::mutate(LabelOpp = "All species")} else {
+    df <- df %>% dplyr::mutate(
+      LabelOpp = dplyr::case_when(
+        isTRUE(input$densCommon) ~ Latin,
+        !isTRUE(input$densCommon) ~ dplyr::coalesce(Common, Latin)))}
   
   # match ordering of base df
   if (!base::identical(input$densSpeciesType, "All")) {
@@ -1241,6 +1282,11 @@ DensTitle <- shiny::reactive({
 })
 
 output$DensPlotly <- plotly::renderPlotly({
+  
+  shiny::validate(shiny::need(
+    !is.null(input$densPark) && base::nzchar(input$densPark),
+    "Select a park to display the graph."))
+  
   df <- densDf()
   df_cmp <- compareDf()
   
@@ -1469,16 +1515,6 @@ output$DensPlotly <- plotly::renderPlotly({
 #  }
 #)
 
-
-
-
-
-
-
-
-
-
-
 #### Tables Tab ####
 #### Title for table ####
 tempDensTableTitle<-shiny::reactive({
@@ -1511,7 +1547,7 @@ tempDensTable<-shiny::reactive({
   shiny::validate(shiny::need(base::try(
     base::do.call(NPSForVeg::dens, DensTableArgs() )
   ),
-    "There is no data for this combination of choices. Either you need to select a park, or the type of plant you selected was not found in the park during those years"
+    "There is no data for this combination of choices. Either you need to select a park, or the type of plant you selected was not found in the park during those years."
           ))
   TableOut<-base::do.call(NPSForVeg::dens,DensTableArgs())
  base::names(TableOut)<-base::c("Species",'Mean',"Lower 95% CI", "Upper 95% CI")
@@ -1531,102 +1567,131 @@ output$densTableDownload<-shiny::downloadHandler(
   }
 )
 
+
+
+
+
+
+
+
+
+
+
 #### IV Plots ####
 #### Park Control for IVPlot  ####
-output$IVParkControl<-shiny::renderUI({
-  shiny::selectizeInput(inputId="IVPark",choices=PARKLIST, label="Park:",
-                 options = base::list(placeholder='Choose a park',
-                                onInitialize = base::I('function() { this.setValue(""); }') )) 
+output$IVParkControl <- shiny::renderUI({
+  shiny::selectizeInput(inputId = "IVPark", choices = PARKLIST, label = "Park:",
+                        options = base::list(
+                          placeholder = 'Select a park',
+                          onInitialize = base::I('function() { this.setValue(""); }')
+                        ))
 })
 
-#### All arguments for IVPlot ####
-
-#IV Cycles
-
-output$IVCycleControl<-shiny::renderUI({
+# IV Cycles
+output$IVCycleControl <- shiny::renderUI({
   shiny::req(DATACYCLES)
-  shiny::selectInput(inputId="IVCycles", label="Display data from years:", 
-    choices=base::rev(stats::setNames(base::as.character(DATACYCLES$Cycle), base::paste0(DATACYCLES$Name,": ",
-                                      DATACYCLES$YearStart,"-",DATACYCLES$YearEnd)))
+  shiny::selectInput(
+    inputId = "IVCycles",
+    label   = "Display data from years:",
+    choices = base::rev(stats::setNames(
+      base::as.character(DATACYCLES$Cycle),
+      base::paste0(DATACYCLES$Name, ": ", DATACYCLES$YearStart, "-", DATACYCLES$YearEnd)
+    ))
   )
 })
 
-IVYears<-shiny::reactive({
+IVYears <- shiny::reactive({
   shiny::req(input$IVCycles)
-  (DATACYCLES %>% dplyr::filter(Cycle==input$IVCycles) %>% dplyr::pull(YearStart)) : 
-    (DATACYCLES %>% dplyr::filter(Cycle==input$IVCycles) %>% dplyr::pull(YearEnd))
+  (DATACYCLES %>% dplyr::filter(Cycle == input$IVCycles) %>% dplyr::pull(YearStart)) :
+    (DATACYCLES %>% dplyr::filter(Cycle == input$IVCycles) %>% dplyr::pull(YearEnd))
 })
 
 #### Title for IVPlot ####
-IVTitleGroup<-shiny::reactive({
+IVTitleGroup <- shiny::reactive({
   base::switch(input$IVGroup,
-         trees="Tree",
-         saplings="Sapling",
-         seedlings="Tree Seedling",
-         shseedlings="Shrub Seedlings",
-         herbs="Understory Plant"
-  )
+               trees       = "Tree",
+               saplings    = "Sapling",
+               seedlings   = "Tree Seedling",
+               shseedlings = "Shrub Seedlings")
 })
 
-         
-IVTitle<-shiny::reactive({
-  base::return(base::paste(NPSForVeg::getNames(VEGDATA[input$IVPark],"long"),":","\n", IVTitleGroup(),"Importance Values", 
-                             base::paste0(base::as.character(base::min(IVYears())),"-",base::as.character(base::max(IVYears()))) ))
-         
+IVTitle <- shiny::reactive({
+  base::return(base::paste(
+    NPSForVeg::getNames(VEGDATA[input$IVPark], "long"), ":", "\n",
+    IVTitleGroup(), "Importance Values",
+    base::paste0(
+      base::as.character(base::min(IVYears())), "-", base::as.character(base::max(IVYears()))
+    )
+  ))
 })
 
-IVPlotArgs<-shiny::reactive({
+IVPlotArgs <- shiny::reactive({
   base::list(
-    object=VEGDATA[[input$IVPark]],
-    IVargs=base::list(
-      group=input$IVGroup,
-      years=IVYears(),
-      common=input$IVCommon
+    object = VEGDATA[[input$IVPark]],
+    IVargs = base::list(
+      group  = input$IVGroup,
+      years  = IVYears(),
+      common = input$IVCommon
     ),
-    parts=input$IVPart,
-    top=input$IVTop,
-    compare=NA,
-    labels=NA,
-    if(input$IVPart==FALSE){colors=input$IVBaseColor} else {colors=base::c(input$IVDensityColor,input$IVSizeColor,
-                                                                     input$IVDistributionColor)},
-    main=IVTitle(),
-    par.settings=base::list(fontsize=base::list(text=input$IVFontSize))
+    parts   = input$IVPart,
+    top     = input$IVTop,
+    compare = NA,
+    labels  = NA,
+    if (input$IVPart == FALSE) {
+      colors = input$IVBaseColor
+    } else {
+      colors = base::c(input$IVDensityColor, input$IVSizeColor, input$IVDistributionColor)
+    },
+    main         = IVTitle(),
+    par.settings = base::list(fontsize = base::list(text = input$IVFontSize))
   )
 })
 
+ tempIVPlot <- shiny::reactive({ 
+   if (base::is.null(input$IVPark) || base::nchar(input$IVPark) == 0) {
+     shiny::validate(shiny::need(input$IVPark, "Select a park to display the graph."))
+   } else { 
+     shiny::validate(shiny::need(base::try(
+       base::do.call(IVplot, IVPlotArgs())
+     ),
+     "There is no data for this combination of choices. Either you need to select a park, or the type of plant you selected was not found in the park during those years."
+     ))
+     stats::update(base::do.call(IVplot, IVPlotArgs()), scales = base::list(cex = 1.04))
+   }
+ })
 
-tempIVPlot<-shiny::reactive({ 
-  if (base::is.null(input$IVPark) || base::nchar(input$IVPark)==0) {shiny::validate(shiny::need(input$IVPark, "Please select a park"))}
- else{ 
-  shiny::validate(shiny::need(base::try(
-      base::do.call(IVplot,IVPlotArgs() )),
-      "There is no data for this combination of choices. The type of plant you selected was not found in the park during those years."
-    ))
-    stats::update(base::do.call(IVplot, IVPlotArgs()), scales=base::list(cex=1.04))
-  }
-})
+ output$IVPlot <- shiny::renderPlot({ tempIVPlot() })
 
-output$IVPlot<-shiny::renderPlot({tempIVPlot()})
+
+
+
+
+
+
+
+
+
+
 
 #### jpeg Plot Download ####
-output$IVGraphDownload<-shiny::downloadHandler(
-  filename=function(){base::paste(IVTitle(), ".jpeg", sep="")}, 
-  content=function (file){
-    grDevices::jpeg(file,width=15,height=6,units="in",res=300, quality=100)
-    base::print(tempIVPlot())
-    grDevices::dev.off()
-  }
-)
+#output$IVGraphDownload<-shiny::downloadHandler(
+#  filename=function(){base::paste(IVTitle(), ".jpeg", sep="")}, 
+#  content=function (file){
+#    grDevices::jpeg(file,width=15,height=6,units="in",res=300, quality=100)
+#    base::print(tempIVPlot())
+#    grDevices::dev.off()
+#  }
+#)
 
 #### wmf plot download ####
-output$IVWmfDownload<-shiny::downloadHandler(
-  filename=function(){base::paste(IVTitle(), ".wmf", sep="")}, 
-  content=function (file){
-    grDevices::win.metafile(file,width=15,height=6)
-    base::print(tempIVPlot())
-    grDevices::dev.off()
-  }
-)
+#output$IVWmfDownload<-shiny::downloadHandler(
+#  filename=function(){base::paste(IVTitle(), ".wmf", sep="")}, 
+#  content=function (file){
+#    grDevices::win.metafile(file,width=15,height=6)
+#   base::print(tempIVPlot())
+#    grDevices::dev.off()
+#  }
+#)
 
 
 IVTableArgs<-shiny::reactive({
@@ -1651,7 +1716,7 @@ output$IVTableTitle<-shiny::renderText({tempIVTableTitle() })
 tempIVTable<-shiny::reactive({
   shiny::validate(shiny::need(base::try(
     base::do.call(IV,IVTableArgs() )),
-    "Please select a park"
+    "There is no data for this combination of choices. Either you need to select a park, or the type of plant you selected was not found in the park during those years."
   ))
   base::do.call(IV,IVTableArgs())
 })
@@ -1673,7 +1738,7 @@ output$SpListParkControl<-shiny::renderUI({
     shiny::need(PARKLIST, message=FALSE )
   )
   shiny::selectizeInput(inputId="SpListPark", choices=PARKLIST, label="Park:",
-    options = base::list(placeholder='Choose a park', onInitialize = base::I('function() { this.setValue(""); }'))
+    options = base::list(placeholder='Select a park', onInitialize = base::I('function() { this.setValue(""); }'))
   ) 
 })
 
@@ -1682,7 +1747,7 @@ output$SpListParkControl<-shiny::renderUI({
 
 output$SpListPlotControl <-shiny::renderUI({
   shiny::validate(
-    shiny::need(input$SpListPark!="", message="Please select a Park")
+    shiny::need(input$SpListPark!="")
   )
   shiny::selectizeInput(inputId="SpListPlot", choices=base::c("All Plots"="All", NPSForVeg::getPlotNames(VEGDATA[[input$SpListPark]],type="all")),
         label="Plots (optional)", multiple=TRUE, selected="All"
@@ -1752,7 +1817,8 @@ output$SpeciesTableTitle<- shiny::renderText({
 ##Create Table 
 output$SpeciesTable<- DT::renderDataTable({
  shiny::validate(
-  shiny::need(input$SpListPark!="", message="Please choose a park")
+  shiny::need(input$SpListPark!="", message="There is no data for this combination of choices. Either you need to select a park, or the type of plant you selected was not found in the park during those years.
+")
   )
   
   DT::datatable(rownames=F, caption="Species List", class="display compact", selection="single",
