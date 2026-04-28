@@ -481,7 +481,7 @@ tags$head(tags$style(HTML("
                   shiny::radioButtons(inputId="CompareType", label ="Compare to another:",
                            choices=base::c("None","Park","Growth Stage","Time"),selected="None",inline=TRUE)
                   ),
-                  shiny::uiOutput(outputId="CompareSelect")
+                  shiny::uiOutput(outputId="CompareSelect"),
               )
             )
           ),
