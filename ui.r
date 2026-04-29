@@ -588,7 +588,7 @@ tags$head(tags$style(HTML("
             shiny::tabsetPanel(id="IVPanel",type="pills",
               shiny::tabPanel(value="Graph",
                 htmltools::tags$div(title="Graph the data","Graph"),
-                htmltools::tags$div(title="Graph of IV",shiny::plotOutput("IVPlot",height="600px")),
+                htmltools::tags$div(title="Graph of IV",plotly::plotlyOutput("IVPlot",height="600px")),
               
                   shiny::fixedPanel(class="panel panel-primary controls",draggable=TRUE,
                              cursor="auto",id="IVOptionsPanel",style="padding: 0px; display: none; z-index: 1995;",title="Display Options",

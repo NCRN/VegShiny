@@ -1064,6 +1064,7 @@ shiny::shinyServer(function(input,output,session){
   
   #### create base plotting df #####
   densDf <- shiny::reactive({
+    shiny::req(input$densPark, input$densGroup, input$densvalues, densYears())
     raw <- densData()
     
     ### add common names if requested ###
@@ -1126,36 +1127,75 @@ shiny::shinyServer(function(input,output,session){
   
   #### create compare plotting df #####
   
+  ###bugfix update###########################
   dens_all_parks <- function(VEGDATA, group, years, values) {
     
-    dens_list <- NPSForVeg::dens(
-      object = VEGDATA, #filter out selected park here, check w jp and andrejs
-      group  = group,
-      years  = years,
-      values = values,
-      common = FALSE,
-      area   = if (values == "size") "ha" else "plot",
-      Total  = FALSE,
-      output = "dataframe")
-    return(dens_list)}
+    results <- lapply(VEGDATA, function(x) {
+      
+      ObjectData <- NPSForVeg::SiteXSpec(
+        object = x,
+        group  = group,
+        years  = years,
+        values = values
+      )
+      
+      if (nrow(ObjectData) == 0) return(NULL)
+      
+      subplot <- NPSForVeg::getSubplotCount(
+        object  = x,
+        group   = group,
+        years   = years,
+        subtype = "all"
+      ) %>% dplyr::arrange(Plot_Name)
+      
+      subplot <- subplot[match(ObjectData$Plot_Name, subplot$Plot_Name), ]
+      
+      list(
+        ObjectData = ObjectData,
+        subplot    = subplot
+      )
+    })
+    
+    results <- Filter(Negate(is.null), results)
+    if (length(results) == 0) return(NULL)
+    
+    combined <- dplyr::bind_rows(lapply(results, `[[`, "ObjectData"))
+    combined[is.na(combined)] <- 0
+    
+    subplot_combined <- dplyr::bind_rows(lapply(results, `[[`, "subplot"))
+    
+    NPSForVeg::dens(
+      combined,
+      group         = group,
+      values        = values,
+      density       = TRUE,
+      plotarea      = NPSForVeg::getArea(VEGDATA, group = group, type = "all"),
+      subplots      = NPSForVeg::getArea(VEGDATA, group = group, type = "count"),
+      subplotarea   = subplot_combined$SubPlotArea,
+      subplotnumber = subplot_combined$numSubPlots
+    )
+  }##########################################
   
   compareDf <- shiny::reactive({
+    shiny::req(input$densPark, input$densGroup, input$densvalues, densYears())
     cmp <- DensCompare()
     if (base::is.null(cmp) || (base::is.atomic(cmp) && base::is.na(cmp))) base::return(NULL)
     shiny::req(base::is.list(cmp), cmp$group, cmp$years, cmp$values)
+    ###bugfix update#####################################
     if (identical(cmp$park, "ALL")) {
       raw <- dens_all_parks(
         VEGDATA = VEGDATA,
-        group  = cmp$group,
-        years  = cmp$years,
-        values = cmp$values)
+        group   = cmp$group,
+        years   = cmp$years,
+        values  = cmp$values
+      )
       if (is.null(raw) || nrow(raw) == 0) return(NULL)
       
-      base_species <- densData()$Latin_Name 
+      # Align to base species — fill missing with zeros
+      base_species <- densData()$Latin_Name
       missing_species <- setdiff(base_species, raw$Latin_Name)
       
       if (length(missing_species) > 0) {
-        # Build zero-value rows for missing species
         empty_rows <- data.frame(
           Latin_Name = missing_species,
           Mean       = 0,
@@ -1163,12 +1203,14 @@ shiny::shinyServer(function(input,output,session){
           Upper.95   = 0,
           stringsAsFactors = FALSE
         )
-        # Fill any other columns present in raw with NA
         extra_cols <- setdiff(names(raw), names(empty_rows))
-        for (col in extra_cols) {
-          empty_rows[[col]] <- NA
-        }
-        raw <- dplyr::bind_rows(raw, empty_rows[, names(raw)])}
+        for (col in extra_cols) empty_rows[[col]] <- NA
+        raw <- dplyr::bind_rows(raw, empty_rows[, names(raw), drop = FALSE])
+      }
+      
+      # Drop Park column if present (added by old version, not by new)
+      raw <- raw %>% dplyr::select(-dplyr::any_of("Park"))
+      ##############################################
       
     } else {
       shiny::req(cmp$object)
@@ -1183,14 +1225,32 @@ shiny::shinyServer(function(input,output,session){
       if (is.null(raw) || nrow(raw) == 0) return(NULL)}
     
     ### add common names if requested ###
+    
+    ###bugfix update: Replace the name_obj line and getPlantNames call in compareDf#########################
     name_obj <- VEGDATA[[input$densPark]] %||% VEGDATA[[PARKLIST[1]]]
     
     if (!("Common_Name" %in% names(raw))) {
-      raw$Common_Name <- NPSForVeg::getPlantNames(
-        object    = name_obj,
-        names     = raw$Latin_Name,
-        in.style  = "Latin",
-        out.style = "common")}
+      raw$Common_Name <- tryCatch({
+        # Filter to only names that exist in the object before looking up
+        known <- raw$Latin_Name[raw$Latin_Name %in% 
+                                  NPSForVeg::getPlants(name_obj, group = cmp$group)$Latin_Name]
+        
+        result <- rep(NA_character_, nrow(raw))
+        if (length(known) > 0) {
+          looked_up <- NPSForVeg::getPlantNames(
+            object    = name_obj,
+            names     = known,
+            in.style  = "Latin",
+            out.style = "common"
+          )
+          result[raw$Latin_Name %in% known] <- looked_up
+        }
+        result
+      }, error = function(e) {
+        rep(NA_character_, nrow(raw))
+      })
+    }
+    ###########################################################
     
     species_col_val <- species_col()
     
@@ -1290,6 +1350,7 @@ shiny::shinyServer(function(input,output,session){
                                                  base::paste0(base::as.character(base::min(compYears())), "-", base::as.character(base::max(compYears()))))))})
   
   output$DensPlotly <- plotly::renderPlotly({
+    shiny::req(input$densPark, input$densGroup, input$densvalues, densYears())
     
     shiny::validate(shiny::need(
       !is.null(input$densPark) && base::nzchar(input$densPark),
@@ -1309,6 +1370,7 @@ shiny::shinyServer(function(input,output,session){
     #  if (!base::is.null(df_cmp) && base::nrow(df_cmp) > 0) {
     #    df_cmp$y_cmp <- species_idx[df_cmp$Species] - offset}
     
+    show_compare <- input$CompareType != "None"
     
     species_levels <- if (!base::is.null(df) && base::nrow(df) > 0) {
       base::as.character(df$Species)} else {
@@ -1319,7 +1381,6 @@ shiny::shinyServer(function(input,output,session){
       df$Species <- base::factor(df$Species, levels = species_levels)}
     if (!base::is.null(df_cmp) && base::nrow(df_cmp) > 0) {
       df_cmp$Species <- base::factor(df_cmp$Species, levels = species_levels)}
-    
     
     #make labels readable
     park_long_name <- function(park_key) {
@@ -1590,89 +1651,147 @@ shiny::shinyServer(function(input,output,session){
   
   
   #### IV Plots ####
-  #### Park Control for IVPlot  ####
+  
+  #### Park Control for IVPlot ####
   output$IVParkControl <- shiny::renderUI({
     shiny::selectizeInput(inputId = "IVPark", choices = PARKLIST, label = "Park:",
                           options = base::list(
                             placeholder = 'Select a park',
-                            onInitialize = base::I('function() { this.setValue(""); }')
-                          ))
-  })
+                            onInitialize = base::I('function() { this.setValue(""); }')))})
   
   # IV Cycles
   output$IVCycleControl <- shiny::renderUI({
     shiny::req(DATACYCLES)
     shiny::selectInput(
       inputId = "IVCycles",
-      label   = "Display data from years:",
+      label = "Display data from years:",
       choices = base::rev(stats::setNames(
         base::as.character(DATACYCLES$Cycle),
-        base::paste0(DATACYCLES$Name, ": ", DATACYCLES$YearStart, "-", DATACYCLES$YearEnd)
-      ))
-    )
-  })
+        base::paste0(DATACYCLES$Name, ": ", DATACYCLES$YearStart, "-", DATACYCLES$YearEnd))))})
   
   IVYears <- shiny::reactive({
     shiny::req(input$IVCycles)
     (DATACYCLES %>% dplyr::filter(Cycle == input$IVCycles) %>% dplyr::pull(YearStart)) :
-      (DATACYCLES %>% dplyr::filter(Cycle == input$IVCycles) %>% dplyr::pull(YearEnd))
-  })
+      (DATACYCLES %>% dplyr::filter(Cycle == input$IVCycles) %>% dplyr::pull(YearEnd))})
   
   #### Title for IVPlot ####
   IVTitleGroup <- shiny::reactive({
     base::switch(input$IVGroup,
-                 trees       = "Tree",
-                 saplings    = "Sapling",
-                 seedlings   = "Tree Seedling",
-                 shseedlings = "Shrub Seedlings")
-  })
+                 trees = "Tree",
+                 saplings = "Sapling",
+                 seedlings = "Tree Seedling",
+                 shseedlings = "Shrub Seedling")})
   
   IVTitle <- shiny::reactive({
-    base::return(base::paste(
-      NPSForVeg::getNames(VEGDATA[input$IVPark], "long"), ":", "\n",
-      IVTitleGroup(), "Importance Values",
-      base::paste0(
-        base::as.character(base::min(IVYears())), "-", base::as.character(base::max(IVYears()))
-      )
-    ))
-  })
+    base::paste0(
+      NPSForVeg::getNames(VEGDATA[input$IVPark], "long"), ": \n",
+      IVTitleGroup(), " Importance Values ",
+      base::min(IVYears()), "-", base::max(IVYears()))})
   
-  IVPlotArgs <- shiny::reactive({
-    base::list(
-      object = VEGDATA[[input$IVPark]],
-      IVargs = base::list(
-        group  = input$IVGroup,
-        years  = IVYears(),
-        common = input$IVCommon
-      ),
-      parts   = input$IVPart,
-      top     = input$IVTop,
-      compare = NA,
-      labels  = NA,
-      if (input$IVPart == FALSE) {
-        colors = input$IVBaseColor
-      } else {
-        colors = base::c(input$IVDensityColor, input$IVSizeColor, input$IVDistributionColor)
-      },
-      main         = IVTitle(),
-      par.settings = base::list(fontsize = base::list(text = input$IVFontSize))
-    )
-  })
+  #### IV Data ####
+  IVData <- shiny::reactive({
+    shiny::req(input$IVPark, base::nchar(input$IVPark) > 0)
+    
+    base::do.call(
+      NPSForVeg::IV,
+      base::c(VEGDATA[[input$IVPark]],
+              base::list(
+                group  = input$IVGroup,
+                years  = IVYears(),
+                common = input$IVCommon)))})
   
-  tempIVPlot <- shiny::reactive({ 
+  # IV Colors
+  IVBaseColor <- shiny::reactive({
+    if (base::is.null(input$IVBaseColor) || base::nchar(input$IVBaseColor) == 0) "green4" 
+    else input$IVBaseColor})
+  IVDensityColor <- shiny::reactive({
+    if (base::is.null(input$IVDensityColor) || base::nchar(input$IVDensityColor) == 0) "green4" 
+    else input$IVDensityColor})
+  IVSizeColor <- shiny::reactive({
+    if (base::is.null(input$IVSizeColor) || base::nchar(input$IVSizeColor) == 0) "chartreuse" 
+    else input$IVSizeColor})
+  IVDistributionColor <- shiny::reactive({
+    if (base::is.null(input$IVDistributionColor) || base::nchar(input$IVDistributionColor) == 0) "yellow" 
+    else input$IVDistributionColor})
+  
+  #### IV Plot ####
+  tempIVPlot <- shiny::reactive({
+    shiny::req(IVData())
+    
     if (base::is.null(input$IVPark) || base::nchar(input$IVPark) == 0) {
-      shiny::validate(shiny::need(input$IVPark, "Select a park to display the graph."))
-    } else { 
-      shiny::validate(shiny::need(base::try(
-        base::do.call(IVplot, IVPlotArgs())
-      ),
-      "There is no data for this combination of choices. Either you need to select a park, or the type of plant you selected was not found in the park during those years."
-      ))
-      stats::update(base::do.call(IVplot, IVPlotArgs()), scales = base::list(cex = 1.04))
-    }
+      shiny::validate(shiny::need(input$IVPark, "Select a park to display the graph."))}
+    
+    IVdf <- IVData()
+    
+    shiny::validate(shiny::need(base::nrow(IVdf) > 0,
+        "There is no data for this combination of choices. Either you need to select a park, or the type of plant you selected was not found in the park during those years."))
+    
+    # sets number of displayed species
+    if (!base::is.na(input$IVTop)) {
+      IVdf <- IVdf %>% dplyr::slice_max(order_by = Total, n = input$IVTop, with_ties = FALSE)}
+    
+    # plot order
+    IVdf <- IVdf %>% dplyr::arrange(Total)
+    
+    ### plot in plotly ###
+    if (!input$IVPart) {
+      p <- plotly::plot_ly(
+        data = IVdf,
+        x = ~Total,
+        y = ~Species,
+        type = "bar",
+        orientation = "h",
+        name = "Total IV",
+        marker = base::list(color = if (!is.null(input$IVBaseColor) && 
+                                        nchar(input$IVBaseColor) > 0) {input$IVBaseColor} else {"green4"}))
+    } else {
+      p <- plotly::plot_ly(data = IVdf, y = ~Species, orientation = "h") %>%
+        plotly::add_trace(
+          x = ~Density,
+          name = "Density",
+          type = "bar",
+          marker = base::list(color = input$IVDensityColor)) %>%
+        plotly::add_trace(
+          x = ~Size,
+          name = "Size",
+          type = "bar",
+          marker = base::list(color = input$IVSizeColor)) %>%
+        plotly::add_trace(
+          x = ~Distribution,
+          name = "Distribution",
+          type = "bar",
+          marker = base::list(color = input$IVDistributionColor))}
+    p <- p %>% plotly::layout(
+      barmode = "stack",
+      showlegend = TRUE,
+      legend = base::list(
+        font = base::list(size = 15),
+        orientation = "h",
+        x = 0.5, xanchor = "center",
+        y = 1,   yanchor = "bottom"),
+      title = base::list(
+        text = IVTitle(),
+        font = base::list(size = 22),
+        y = 1,
+        yanchor = "top",
+        pad = base::list(t = 20)),
+      xaxis = base::list(
+        title = "",
+        tickvals = base::c(0, base::max(IVdf$Total)),
+        ticktext = base::c("Low", "High"),
+        tickfont = base::list(size = 18)),
+      yaxis = base::list(
+        title = "",
+        tickfont = base::list(size = input$IVFontSize),
+        ticks = "outside",
+        ticklabelposition = "outside"),
+      margin = base::list(t = 80, l = 140, r = 40),
+      font = base::list(size = 12),
+      autosize = TRUE)
+    p
   })
   
-  output$IVPlot <- shiny::renderPlot({ tempIVPlot() })
+  output$IVPlot <- plotly::renderPlotly({tempIVPlot()})
   
   
   
