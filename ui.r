@@ -470,7 +470,7 @@ tags$head(tags$style(HTML("
               shiny::conditionalPanel(
                 condition="input.densPanel=='Table'",
                 shiny::hr(),
-                shiny::downloadButton(outputId="densTableDownload", label="Save Table (.csv)", class="btn btn-primary btn-block action-button")
+                shiny::downloadButton(outputId="densTableDownload", label="Save Table (.csv)", class="btn btn-primary btn-block")
               )
             ),
             shiny::conditionalPanel(
@@ -582,7 +582,7 @@ tags$head(tags$style(HTML("
                   shiny::conditionalPanel(
                     condition="input.IVPanel=='Table'",
                     shiny::hr(),
-                    shiny::downloadButton(outputId="IVTableDownload", label="Save Table (.csv)", class="btn btn-primary btn-block action-button")
+                    shiny::downloadButton(outputId="IVTableDownload", label="Save Table (.csv)", class="btn btn-primary btn-block")
                     
                 )
             )

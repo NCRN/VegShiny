@@ -1619,35 +1619,21 @@ shiny::shinyServer(function(input,output,session){
   tempDensTable<-shiny::reactive({
     expr={
       shiny::validate(shiny::need(base::try(
-        base::do.call(NPSForVeg::dens, DensTableArgs() )
-      ),
-      "There is no data for this combination of choices. Either you need to select a park, or the type of plant you selected was not found in the park during those years."
-      ))
+        base::do.call(NPSForVeg::dens, DensTableArgs())),
+      "There is no data for this combination of choices. Either you need to select a park, or the type of plant you selected was not found in the park during those years."))
       TableOut<-base::do.call(NPSForVeg::dens,DensTableArgs())
       base::names(TableOut)<-base::c("Species",'Mean',"Lower 95% CI", "Upper 95% CI")
-      base::return(TableOut)
-    }
-    
-  })
+      base::return(TableOut)}})
   
   output$densTable<-DT::renderDataTable(tempDensTable())
   
   #### Table Download ####
-  
-  output$densTableDownload<-shiny::downloadHandler(
-    filename=function(){base::paste(tempDensTableTitle(), ".csv", sep="")}, 
-    content=function (file){
-      utils::write.csv(tempDensTable(),file)
-    }
-  )
-  
-  
-  
-  
-  
-  
-  
-  
+  output$densTableDownload <- shiny::downloadHandler(
+    filename = function() {base::paste0(tempDensTableTitle(), ".csv")},
+    content = function(file) {
+      df <- tempDensTable()
+      shiny::req(!is.null(df), nrow(df) > 0)
+      utils::write.csv(df, file, row.names = FALSE)})
   
   
   
@@ -1759,9 +1745,6 @@ shiny::shinyServer(function(input,output,session){
     
     IVdf <- IVData()
     
-    shiny::validate(shiny::need(base::nrow(IVdf) > 0,
-        "There is no data for this combination of choices. Either you need to select a park, or the type of plant you selected was not found in the park during those years."))
-    
     # sets number of displayed species
     if (!base::is.na(input$IVTop)) {
       IVdf <- IVdf %>% dplyr::slice_max(order_by = Total, n = input$IVTop, with_ties = FALSE)}
@@ -1870,19 +1853,6 @@ shiny::shinyServer(function(input,output,session){
       "Select a park to display the graph."))
     tempIVPlot()})
   
-  
-  
-  
-  
-
-    
-    
-  
-  
-  
-  
-  
-  
   #### jpeg Plot Download ####
   #output$IVGraphDownload<-shiny::downloadHandler(
   #  filename=function(){base::paste(IVTitle(), ".jpeg", sep="")}, 
@@ -1913,7 +1883,7 @@ shiny::shinyServer(function(input,output,session){
 #    )
 #})
  
-   #### IV Table ####
+  #### IV Table ####
   #### title ####
   
   tempIVTableTitle<-shiny::reactive({ 
@@ -1925,24 +1895,23 @@ shiny::shinyServer(function(input,output,session){
   output$IVTableTitle<-shiny::renderText({tempIVTableTitle() })
   
   tempIVTable <- shiny::reactive({
-    df <- IVData()
     shiny::validate(shiny::need(
-      !base::is.null(df) && base::nrow(df) > 0,
-      "There is no data for this combination of choices. Either you need to select a park, or the type of plant you selected was not found in the park during those years."
-    ))
-    df <- df %>% dplyr::select(-LabelOpp)
-    df
-  })
+      !is.null(input$IVPark) && nzchar(input$IVPark),
+      "There is no data for this combination of choices. Either you need to select a park, or the type of plant you selected was not found in the park during those years."))
+    df <- IVData()
+    shiny::validate(shiny::need(!is.null(df) && nrow(df) > 0,
+      "There is no data for this combination of choices. Either you need to select a park, or the type of plant you selected was not found in the park during those years."))
+    df %>% dplyr::select(-LabelOpp)})
   
   output$IVData <- DT::renderDataTable({tempIVTable()})
+
   #### IV Table download ####
-  
-  output$IVTableDownload<-shiny::downloadHandler(
-    filename=function(){base::paste(tempIVTableTitle(), ".csv", sep="")}, 
-    content=function (file){
-      utils::write.csv(tempIVTable(),file)
-    }
-  )
+  output$IVTableDownload <- shiny::downloadHandler(
+  filename = function() {paste0(tempIVTableTitle(), ".csv")},
+  content = function(file) {df <- tempIVTable()
+    shiny::req(!is.null(df), nrow(df) > 0)
+    utils::write.csv(df, file, row.names = FALSE)})
+
   
   #### Species list ####
   #### Species list park control ####
