@@ -551,6 +551,9 @@ tags$head(tags$style(HTML("
                 title="Toggle between common and scientific names",
                 shiny::checkboxInput(inputId="IVCommon", label="Display common names?", value=TRUE)
               ),
+              htmltools::tags$div(
+                title="Toggle importance values on or off",
+                shiny::checkboxInput(inputId="IVPlotlyText", label="Display importance values?", value=FALSE)),
               shiny::br(),
               # htmltools::tags$div(
               #   title="Pick the four year period you want to graph",
@@ -600,11 +603,17 @@ tags$head(tags$style(HTML("
                       ),
                       shiny::h5("Component Colors:"),
                       shiny::flowLayout(
-                        shiny::selectizeInput("IVDensityColor","Density Color:",choices=COLORNAMES, selected="green4", width="125px"),
-                        shiny::selectizeInput("IVSizeColor","Size Color:",choices=COLORNAMES, selected="chartreuse",width="125px"),
-                        shiny::selectizeInput("IVDistributionColor","Distribution Color:",choices=COLORNAMES, selected="yellow",width="125px")
+                        shiny::selectizeInput("IVDensityColor","Density Color:",choices=COLORNAMES,
+                                              selected = if ("green4" %in% COLORNAMES) "green4" else COLORNAMES[[1]],
+                                              width="125px"),
+                        shiny::selectizeInput("IVSizeColor","Size Color:",choices=COLORNAMES,
+                                              selected = if ("chartreuse" %in% COLORNAMES) "chartreuse" else COLORNAMES[[1]],
+                                              width="125px"),
+                        shiny::selectizeInput("IVDistributionColor","Distribution Color:",choices=COLORNAMES,
+                                              selected = if ("yellow" %in% COLORNAMES) "yellow" else COLORNAMES[[1]],
+                                              width="125px")
                       )
-                    ),
+                   ),
                    htmltools::div(class="panel-footer", shiny::actionButton(inputId="CloseIVDisplayOptions",class="btn btn-primary",label="Close"))
                   )
               ),
