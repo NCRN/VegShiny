@@ -1156,7 +1156,7 @@ shiny::shinyServer(function(input,output,session){
       out
     })
     
-    per_park <- dplyr::filter(base::negate(base::is.null), per_park)
+    per_park <- base::Filter(base::Negate(base::is.null), per_park)
     if (!base::length(per_park)) return(NULL)
     
     combined <- dplyr::bind_rows(per_park)
@@ -1408,6 +1408,16 @@ shiny::shinyServer(function(input,output,session){
     group_display_base   <- group_long_name(input$densGroup)
     group_display_cmp    <- group_long_name(input$CompareGroup)
     
+    # graphing colors
+    # copy pickColor and toHex if not already global — or move them to global.R
+    densBaseColor <- shiny::reactive(toHex(pickColor(input$densBaseColor, "blue")))
+    densCmpColor  <- shiny::reactive(toHex(pickColor(input$densCompareColor, "red")))
+    densFontSize  <- shiny::reactive(if (!base::is.null(input$densFontSize)) input$densFontSize else 12)
+    
+    # error bar colors
+    darken <- function(hex, factor = 0.6) {rgb <- grDevices::col2rgb(hex)
+      grDevices::rgb(rgb[1] * factor, rgb[2] * factor, rgb[3] * factor, maxColorValue = 255)}
+    
     
     #wire legend to selections
     base_legend <- base::paste(
@@ -1462,7 +1472,7 @@ shiny::shinyServer(function(input,output,session){
       #mode = "markers", ##for scatter plot
       name = base_legend,   
       showlegend = TRUE,        
-      marker = base::list(size = 10, color = "#2385ca"),
+      marker = base::list(color = densBaseColor()),
       hovertext = ~base::sprintf(
         "Species: %s<br>Mean: %.2f<br>Lower 95%%: %.2f<br>Upper 95%%: %.2f",
         LabelOpp,
@@ -1478,11 +1488,11 @@ shiny::shinyServer(function(input,output,session){
           Mean + err_up)} else {""},
       hoverinfo = if (text_on()) "none" else "text",
       error_x = base::list(
+        thickness = input$densErrorThickness,
         type = "data",
         array = df$err_up,
         arrayminus = df$err_dn,
-        color = "#144c73",
-        thickness = 1.5),
+        color = darken(densBaseColor())),
       legendgroup = "dens")
     
     if (!base::is.null(df_cmp) && base::nrow(df_cmp) > 0) {
@@ -1497,7 +1507,7 @@ shiny::shinyServer(function(input,output,session){
         #mode = "markers", ##for scatter plot
         name = cmp_legend,
         showlegend = TRUE,
-        marker = base::list(size = 10, color = "#db3b3c"),
+        marker = base::list(color = densCmpColor()),
         hovertext = ~base::sprintf(
           "Species: %s<br>Mean: %.2f<br>Lower 95%%: %.2f<br>Upper 95%%: %.2f",
           LabelOpp,
@@ -1513,11 +1523,11 @@ shiny::shinyServer(function(input,output,session){
             Mean + err_up)} else {""},
         hoverinfo = if (text_on()) "none" else "text",
         error_x = base::list(
+          thickness = input$densErrorThickness,
           type = "data",
           array = df_cmp$err_up,
           arrayminus = df_cmp$err_dn,
-          color = "#951b1c",
-          thickness = 1.5),
+          color = darken(densCmpColor())),
         legendgroup = "dens")}
     p <- p %>% plotly::layout(
       barmode = "group",
@@ -1537,22 +1547,23 @@ shiny::shinyServer(function(input,output,session){
       xaxis = base::list(
         title = base::list(
           text = densYlabel(),
-          font = base::list(size = 18),
+          font = base::list(size = densFontSize()),
           standoff = 20)),
       yaxis = base::list(
         type = "category", categoryorder = "array", categoryarray = species_levels,
         title = base::list(
           text = "Species",
-          font = base::list(size = 18),
+          font = base::list(size = densFontSize()),
           standoff = 15),
         ticks = "outside",
         ticklabelposition = "outside"),
       margin = base::list(t = 80, l = 140, r = 40),
       height = fig_height,
-      font = base::list(size = 12),
+      font = base::list(size = densFontSize()),
       autosize = TRUE)
     p
   })
+
   
   ####### original graphs and file downloads #######
   #tempDensPlot<-shiny::reactive({
@@ -1912,6 +1923,24 @@ shiny::shinyServer(function(input,output,session){
     shiny::req(!is.null(df), nrow(df) > 0)
     utils::write.csv(df, file, row.names = FALSE)})
 
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
   
   #### Species list ####
   #### Species list park control ####

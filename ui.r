@@ -502,8 +502,8 @@ tags$head(tags$style(HTML("
                     ),
                     shiny::br(),
                     shiny::flowLayout(cellArgs=base::list(style="width: 160px"),
-                      shiny::sliderInput("densPointSize", "Change Point Size", min=4, max=24, value=8, step=2,width=150),
-                      shiny::sliderInput("densFontSize", "Change Font Size", min=12, max=32, value=20, step=2,width=150)
+                                      shiny::sliderInput("densErrorThickness", "Error Bar Thickness", min = 0.5, max = 5, value = 1.5, step = 0.5, width = 150),
+                                      shiny::sliderInput("densFontSize", "Change Font Size", min=12, max=32, value=12, step=2,width=150)
                     )),
                  htmltools::div(class="panel-footer",
                         shiny::actionButton(inputId="CloseDisplayOptions",class="btn btn-primary",label="Close"))
