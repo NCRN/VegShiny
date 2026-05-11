@@ -762,16 +762,6 @@ shiny::shinyServer(function(input,output,session){
     
   })
   
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
   #### Plots Tab ####
   
   #### Park Control for Density plot  ####
@@ -1409,7 +1399,6 @@ shiny::shinyServer(function(input,output,session){
     group_display_cmp    <- group_long_name(input$CompareGroup)
     
     # graphing colors
-    # copy pickColor and toHex if not already global — or move them to global.R
     densBaseColor <- shiny::reactive(toHex(pickColor(input$densBaseColor, "blue")))
     densCmpColor  <- shiny::reactive(toHex(pickColor(input$densCompareColor, "red")))
     densFontSize  <- shiny::reactive(if (!base::is.null(input$densFontSize)) input$densFontSize else 12)
@@ -1645,8 +1634,6 @@ shiny::shinyServer(function(input,output,session){
       df <- tempDensTable()
       shiny::req(!is.null(df), nrow(df) > 0)
       utils::write.csv(df, file, row.names = FALSE)})
-  
-  
   
   #### IV Plots ####
   
@@ -1922,25 +1909,6 @@ shiny::shinyServer(function(input,output,session){
   content = function(file) {df <- tempIVTable()
     shiny::req(!is.null(df), nrow(df) > 0)
     utils::write.csv(df, file, row.names = FALSE)})
-
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
   
   #### Species list ####
   #### Species list park control ####
@@ -1958,7 +1926,7 @@ shiny::shinyServer(function(input,output,session){
   
   output$SpListPlotControl <-shiny::renderUI({
     shiny::validate(
-      shiny::need(input$SpListPark!="")
+      shiny::need(input$SpListPark!="", message = F)
     )
     shiny::selectizeInput(inputId="SpListPlot", choices=base::c("All Plots"="All", NPSForVeg::getPlotNames(VEGDATA[[input$SpListPark]],type="all")),
                           label="Plots (optional)", multiple=TRUE, selected="All"
@@ -1997,10 +1965,10 @@ shiny::shinyServer(function(input,output,session){
   
   
   MonitoringList<-shiny::reactive({ 
-    tibble::tbl_df(base::data.frame('Latin.Name'=LatinList(),'Common.Name'=CommonList())) %>% 
+    tibble::as_tibble(base::data.frame('Latin.Name'=LatinList(),'Common.Name'=CommonList())) %>% 
       dplyr::arrange (Common.Name) %>% 
       dplyr::rename('Latin Name'=Latin.Name, 'Common Name'=Common.Name) %>% 
-      .[,c(2,1)]
+      dplyr::select(2, 1)
   })
   
   ###Make URL for and get data from NPSpecies
