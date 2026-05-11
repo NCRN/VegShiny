@@ -116,10 +116,17 @@ shiny::shinyServer(function(input,output,session){
     )
   })
   
-  MapYears<-shiny::reactive({
+  MapYears <- shiny::reactive({
     shiny::req(input$MapCycles)
-    (DATACYCLES %>% dplyr::filter(Cycle==input$MapCycles) %>% dplyr::pull(YearStart)) : 
-      (DATACYCLES %>% dplyr::filter(Cycle==input$MapCycles) %>% dplyr::pull(YearEnd))
+    year_start <- DATACYCLES %>% dplyr::filter(Cycle == input$MapCycles) %>% dplyr::pull(YearStart)
+    year_end <- DATACYCLES %>% dplyr::filter(Cycle == input$MapCycles) %>% dplyr::pull(YearEnd)
+    
+    available_years <- base::sort(base::unique(
+      NPSForVeg::getEvents(object = VEGDATA, plot.type = "all")$Event_Year
+    ))
+    
+    all_years <- year_start:year_end
+    all_years[all_years %in% available_years]
   })
   
   # Map MetaData
@@ -129,24 +136,37 @@ shiny::shinyServer(function(input,output,session){
   })
   
   # Data to plot on map - always for all parks 
+  
+  ### debug ####################################################################
+  
   MapData<-shiny::reactive({
     shiny::req(input$MapSpecies=="All" | input$MapSpecies %in% NPSForVeg::getPlants(object=VEGDATA, group=input$MapGroup, years=MapYears())$Latin_Name )
     shiny::req(input$MapGroup!="vines" | (input$MapGroup=="vines" & input$MapValues=="count"))
     
-    P<-dplyr::left_join(NPSForVeg::getPlots(VEGDATA, years=MapYears(), output="dataframe", type="all") %>% 
-                          dplyr::select(Plot_Name,Unit_Code, Latitude, Longitude), NPSForVeg::getEvents(object=VEGDATA, years=MapYears(), plot.type="all") %>% 
-                          dplyr::select(Plot_Name,Year=Event_Year), by="Plot_Name") %>% 
-      dplyr::mutate(Size=NPSForVeg::getArea(VEGDATA[Unit_Code], group=input$MapGroup))
+    P <- dplyr::left_join(
+      NPSForVeg::getPlots(VEGDATA, years=MapYears(), output="dataframe", type="all") %>%
+        dplyr::select(Plot_Name, Unit_Code, Latitude, Longitude),
+      NPSForVeg::getEvents(object=VEGDATA, years=MapYears(), plot.type="all") %>%
+        dplyr::select(Plot_Name, Year=Event_Year),
+      by="Plot_Name"
+    ) %>%
+      dplyr::rowwise() %>%
+      dplyr::mutate(Size = if (Unit_Code %in% base::names(VEGDATA)) {
+        NPSForVeg::getArea(VEGDATA[[Unit_Code]], group=input$MapGroup)
+      } else {
+        NA_real_
+      }) %>%
+      dplyr::ungroup()
     
     # if(input$MapGroup != "herbs"){
     #   base::return(P %>% 
-    #            dplyr::left_join(NPSForVeg::SiteXSpec(object=VEGDATA, group=input$MapGroup, years=MapYears(), 
-    #                                status=if(input$MapGroup=='trees') {
-    #                                  shiny::req(input$TreeStatus)
-    #                                  input$TreeStatus
-    #                                  } else {'alive'},
-    #                    species= if(input$MapSpecies=="All") NA else input$MapSpecies, values=input$MapValues, area="ha") %>% 
-    #            dplyr::select(Plot_Name,Values=Total), by="Plot_Name")
+    #    dplyr::left_join(NPSForVeg::SiteXSpec(object=VEGDATA, group=input$MapGroup, years=MapYears(), 
+    #      status=if(input$MapGroup=='trees') {
+    #      shiny::req(input$TreeStatus)
+    #      input$TreeStatus
+    #     } else {'alive'},
+    #    species= if(input$MapSpecies=="All") NA else input$MapSpecies, values=input$MapValues, area="ha") %>% 
+    #     dplyr::select(Plot_Name,Values=Total), by="Plot_Name")
     #   )
     # }
     
@@ -161,27 +181,73 @@ shiny::shinyServer(function(input,output,session){
       
       species_val <- if (input$MapSpecies == "All") NA else input$MapSpecies
       
-      spec_data <- NPSForVeg::SiteXSpec(
-        object = VEGDATA,
-        group = input$MapGroup,
-        years = MapYears(),
-        status = status_val,
-        species = species_val,
-        values = input$MapValues,
-        area = "ha"
-      )
+      if (input$MapPark == "All") {
+        results <- base::lapply(base::names(VEGDATA), function(park) {
+          base::tryCatch(
+            NPSForVeg::SiteXSpec(
+              object = VEGDATA[[park]],
+              group = input$MapGroup,
+              years = MapYears(),
+              status = status_val,
+              species = species_val,
+              values = input$MapValues,
+              area = "ha"
+            ),
+            error = function(e) {
+              base::message("SiteXSpec failed for park: ", park, " - ", e$message)
+              NULL
+            }
+          )
+        })
+        spec_data <- dplyr::bind_rows(results[!base::sapply(results, base::is.null)])
+        } else {
+
+        spec_data <- NPSForVeg::SiteXSpec(
+          object = VEGDATA[[input$MapPark]],
+          group = input$MapGroup,
+          years = MapYears(),
+          status = status_val,
+          species = species_val,
+          values = input$MapValues,
+          area = "ha"
+        )
+      }
       
       base::return(P %>% dplyr::left_join(spec_data %>% dplyr::select(Plot_Name, Values = Total), by = "Plot_Name"))
     }
     
-    if(input$MapGroup == "herbs"){
-      base::return(P %>% 
-                     dplyr::mutate(Values=NPSForVeg::SiteXSpec(object=VEGDATA,group=input$MapGroup, years=MapYears(),
-                                                               species= if(input$MapSpecies=="All") NA else input$MapSpecies,
-                                                               values=input$MapValues)$Total)#/getArea(VEGDATA[Unit_Code], group=input$MapGroup, type="count"))
-      )
+    if (input$MapGroup == "herbs") {
+      
+      if (input$MapPark == "All") {
+        results <- base::lapply(base::names(VEGDATA), function(park) {
+          base::tryCatch(
+            NPSForVeg::SiteXSpec(
+              object = VEGDATA[[park]],
+              group = input$MapGroup,
+              years = MapYears(),
+              species = if (input$MapSpecies == "All") NA else input$MapSpecies,
+              values = input$MapValues
+            ),
+            error = function(e) {
+              base::message("SiteXSpec failed for park: ", park, " - ", e$message)
+              NULL
+            }
+          )
+        })
+        spec_data <- dplyr::bind_rows(results[!base::sapply(results, base::is.null)])
+        } else {
+        spec_data <- NPSForVeg::SiteXSpec(
+          object = VEGDATA[[input$MapPark]],
+          group = input$MapGroup,
+          years = MapYears(),
+          species = if (input$MapSpecies == "All") NA else input$MapSpecies,
+          values = input$MapValues
+        )
+      }
+      
+      base::return(P %>% dplyr::left_join(spec_data %>% dplyr::select(Plot_Name, Values = Total), by = "Plot_Name"))
     }
-  })
+  }) ###########################################################################
   
   # Map Colors
   CircleColors<-shiny::reactive({
@@ -491,9 +557,32 @@ shiny::shinyServer(function(input,output,session){
       cn <- base::tryCatch(
         ritis::common_names(tsn),
         error = function(e) NULL)
+      if (base::is.null(cn) || base::nrow(cn) == 0) {
+        cn_list[[i]] <- base::data.frame(
+          tsn = tsn,
+          commonName = NA_character_,
+          language = NA_character_,
+          stringsAsFactors = FALSE
+        )
+        next
+      }
+      
       cn <- cn %>%
         dplyr::filter(language %in% base::c("English", "unspecified")) %>%
-        dplyr::mutate(name_word_count = base::lengths(base::strsplit(commonName, "\\s+"))) %>%
+        dplyr::mutate(name_word_count = base::lengths(base::strsplit(commonName, "\\s+")))
+      
+      # Guard: check again after language filter
+      if (base::nrow(cn) == 0) {
+        cn_list[[i]] <- base::data.frame(
+          tsn = tsn,
+          commonName = NA_character_,
+          language = NA_character_,
+          stringsAsFactors = FALSE
+        )
+        next
+      }
+      
+      cn <- cn %>%
         dplyr::filter(!(name_word_count == 1 & base::any(name_word_count >= 2))) %>%
         dplyr::slice(1)
       
@@ -502,7 +591,7 @@ shiny::shinyServer(function(input,output,session){
     
     cn_df <- base::do.call(base::rbind, base::lapply(cn_list, base::as.data.frame))
     
-    if (base::nrow(cn_df) == 0) base::return(NULL)
+    if (base::is.null(cn_df) || base::nrow(cn_df) == 0) base::return(NULL)
     
     cn_df <- cn_df %>% 
       dplyr::select(-name_word_count, -language) %>%
@@ -559,16 +648,23 @@ shiny::shinyServer(function(input,output,session){
     
     vegdata_df <- selected_commons()
     cn_df <- return_cndf()
-    vd_filled <- vegdata_df %>%
-      dplyr::left_join(cn_df, by = "TSN", suffix = base::c("", "_new")) %>%
-      dplyr::mutate(
-        Common = base::ifelse(Common == "" | base::is.na(Common), Common_new, Common)
-      ) %>%
-      dplyr::select(-Common_new) %>%
-      dplyr::mutate(Common = base::ifelse(TSN == "25328", "spirea", Common)) %>%
-      dplyr::distinct(Latin_Name, Common, .keep_all = FALSE)
+    if (base::is.null(cn_df)) {
+      vd_filled <- vegdata_df %>%
+        dplyr::distinct(Latin_Name, Common, .keep_all = FALSE)
+    } else {
+      vd_filled <- vegdata_df %>%
+        dplyr::left_join(cn_df, by = "TSN", suffix = base::c("", "_new")) %>%
+        dplyr::mutate(
+          Common = base::ifelse(Common == "" | base::is.na(Common), Common_new, Common)
+        ) %>%
+        dplyr::select(-Common_new) %>%
+        dplyr::distinct(Latin_Name, Common, .keep_all = FALSE)
+    }
     
-    new_vd_rows <-base::data.frame(
+    #vd_filled <- vd_filled %>%
+    #  dplyr::mutate(Common = base::ifelse(TSN == "25328", "spirea", Common))
+    
+    new_vd_rows <- base::data.frame(
       Latin_Name = base::c("Acer spp.", "Quercus acutissima", "Oplismenus undulatifolius", "Robinia viscosa", "Viburnum lantana", "Rosaceae Family", "Lygodium palmatum"),
       Common = base::c("maples", "sawtooth oak", "wavyleaf basketgrass", "clammy locust", "wayfaring tree", "roses", "American climbing fern")
     )
@@ -599,7 +695,8 @@ shiny::shinyServer(function(input,output,session){
       })
     }
     
-    SpecNames <- safeGetPlantNames(object = vd_filled,
+    SpecNames <- safeGetPlantNames(object = vd_filled %>%
+                                     dplyr::distinct(Latin_Name, .keep_all = TRUE),
                                    names = SpecTemp,
                                    in.style = "Latin",
                                    out.style = base::ifelse(input$mapCommon, "common", "Latin"))
