@@ -2071,14 +2071,27 @@ shiny::shinyServer(function(input,output,session){
   ###Make URL for and get data from NPSpecies
   NPSpeciesURL<-shiny::reactive({base::paste0("https://irmaservices.nps.gov/v3/rest/npspecies/checklist/",input$SpListPark,"/Vascular%20Plant?format=Json")})
   
-  NPSpeciesList<-shiny::reactive({
-    jsonlite::fromJSON(NPSpeciesURL()) %>% 
-      dplyr::select(CommonNames,ScientificName,Occurrence) %>% 
-      dplyr::arrange(CommonNames) %>% 
-      dplyr::rename("Latin Name"=ScientificName, "Common Name"=CommonNames)
-  })  
+#  NPSpeciesList<-shiny::reactive({
+#    jsonlite::fromJSON(NPSpeciesURL()) %>% 
+#      dplyr::select(CommonNames,ScientificName,Occurrence) %>% 
+#      dplyr::arrange(CommonNames) %>% 
+#      dplyr::rename("Latin Name"=ScientificName, "Common Name"=CommonNames)
+#  })  
   
-  
+  ### bugfix ##############################################
+  NPSpeciesList <- shiny::reactive({
+    parsed <- jsonlite::fromJSON(NPSpeciesURL())
+    
+    shiny::validate(
+      shiny::need(length(parsed) > 0,
+                  "There is no Natioanl Park Species data available for this park."))
+    
+    parsed %>%
+      dplyr::select(CommonNames, ScientificName, Occurrence) %>%
+      dplyr::arrange(CommonNames) %>%
+      dplyr::rename("Latin Name" = ScientificName, "Common Name" = CommonNames)
+  })
+  #########################################################
   
   ##Create Title for Table
   
@@ -2088,22 +2101,19 @@ shiny::shinyServer(function(input,output,session){
                  NPSpecies="All Species Known from the Park")
   }) 
   
-  
-  
-  ##Create Table 
-  output$SpeciesTable<- DT::renderDataTable({
+  output$SpeciesTable <- DT::renderDataTable({
     shiny::validate(
-      shiny::need(input$SpListPark!="", message="There is no data for this combination of choices. Either you need to select a park, or the type of plant you selected was not found in the park during those years.
-")
+      shiny::need(input$SpListPark != "", message = "There is no data for this combination of choices. Either you need to select a park, or the type of plant you selected was not found in the park during those years.")
     )
+    tableData <- base::switch(input$SpListType,
+                              Monitoring = MonitoringList(),
+                              NPSpecies  = NPSpeciesList())
+    shiny::validate(
+      shiny::need(is.data.frame(tableData), message = "Data is not available in the expected format."))
     
-    DT::datatable(rownames=F, caption="Species List", class="display compact", selection="single",
-                  data=base::switch(input$SpListType,
-                                    Monitoring= MonitoringList(),
-                                    NPSpecies=NPSpeciesList()
-                  )
-    ) %>% 
-      DT::formatStyle('Latin Name', fontStyle='italic' )
+    DT::datatable(
+      data = tableData, rownames = FALSE, caption = "Species List", class = "display compact", selection = "single") %>%
+      DT::formatStyle('Latin Name', fontStyle = 'italic')
   })
   
   
