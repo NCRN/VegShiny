@@ -674,7 +674,8 @@ tags$head(tags$style(HTML("
 ##################### About
     tabPanel(
       tags$div(
-        title="About the project", "About"), 
+        title="About the project", "About"),
+      tags$base(target="_blank"),
       includeHTML("www/AboutTab.html") 
       )#end About menu
 )#end shiny::navbarPage()
