@@ -719,8 +719,6 @@ shiny::shinyServer(function(input,output,session){
   # })
   
   output$MapSpeciesControl<-shiny::renderUI({
-    print(base::paste0('input$MapPark:', input$MapPark))
-    print(base::paste0('input$MapGroup:', input$MapGroup))
     shiny::req(input$MapPark, input$MapGroup)
     shiny::selectInput(inputId="MapSpecies", label="Select a species", choices=base::c(MapSpecList() ))
     
@@ -1432,9 +1430,21 @@ shiny::shinyServer(function(input,output,session){
                      NPSForVeg::getNames(cmp_obj, "long")
                      } else {input$ComparePark}
                      base::paste(base_name, "vs.", cmp_name, ":", grp_title, val_title, period1)}},
-                 "Growth Stage" = base::return(base::paste(base_name, ":", grp_title, "vs.", compareTitleGroup(), val_title, period1)),
-                 Time = base::return(base::paste(base_name, ":", grp_title, val_title, period1, "vs.", 
-                                                 base::paste0(base::as.character(base::min(compYears())), "-", base::as.character(base::max(compYears()))))))})
+                 "Growth Stage" = base::return(
+                   {stage_order <- c("seedlings", "saplings", "trees", "shseedlings", "shrubs")
+                    base_idx <- base::match(input$densGroup, stage_order)
+                    cmp_idx  <- base::match(input$CompareGroup, stage_order)
+                    if (base_idx <= cmp_idx) {base::paste(base_name, ":", grp_title, "vs.", compareTitleGroup(), val_title, period1)
+                      } else {base::paste(base_name, ":", compareTitleGroup(), "vs.", grp_title, val_title, period1)}}),
+                 Time = base::return(
+                   {base_yr <- DATACYCLES$YearStart[DATACYCLES$Cycle == input$densCycles]
+                    cmp_yr <- DATACYCLES$YearStart[DATACYCLES$Cycle == input$compCycles]
+                    if (base_yr <= cmp_yr) {base::paste(base_name, ":", grp_title, val_title, period1, "vs.",
+                                                        base::paste0(base::as.character(base::min(compYears())), "-",
+                                                                     base::as.character(base::max(compYears()))))
+                      } else {base::paste(base_name, ":", grp_title, val_title, base::paste0(base::as.character(base::min(compYears())), "-",
+                                                                                             base::as.character(base::max(compYears()))), "vs.", period1)}}))})
+  
   
   output$DensPlotly <- plotly::renderPlotly({
     
@@ -1495,16 +1505,6 @@ shiny::shinyServer(function(input,output,session){
     group_display_base   <- group_long_name(input$densGroup)
     group_display_cmp    <- group_long_name(input$CompareGroup)
     
-    # graphing colors
-    densBaseColor <- shiny::reactive(toHex(pickColor(input$densBaseColor, "blue")))
-    densCmpColor  <- shiny::reactive(toHex(pickColor(input$densCompareColor, "red")))
-    densFontSize  <- shiny::reactive(if (!base::is.null(input$densFontSize)) input$densFontSize else 12)
-    
-    # error bar colors
-    darken <- function(hex, factor = 0.6) {rgb <- grDevices::col2rgb(hex)
-      grDevices::rgb(rgb[1] * factor, rgb[2] * factor, rgb[3] * factor, maxColorValue = 255)}
-    
-    
     #wire legend to selections
     base_legend <- base::paste(
       if (input$CompareType == "Park")
@@ -1536,6 +1536,15 @@ shiny::shinyServer(function(input,output,session){
                                  "| <b>",cycle_display_cmp, "</b>",
                                  "| Plant Type:",group_display_base))
     
+    # graphing colors
+    densBaseColor <- shiny::reactive(toHex(pickColor(input$densBaseColor, "blue")))
+    densCmpColor  <- shiny::reactive(toHex(pickColor(input$densCompareColor, "red")))
+    densFontSize  <- shiny::reactive(if (!base::is.null(input$densFontSize)) input$densFontSize else 12)
+    
+    # error bar colors
+    darken <- function(hex, factor = 0.6) {rgb <- grDevices::col2rgb(hex)
+    grDevices::rgb(rgb[1] * factor, rgb[2] * factor, rgb[3] * factor, maxColorValue = 255)}
+    
     ### for bar chart plotly ###  
     n_species <- base::length(species_levels)
     bars_per_species <- if (!base::is.null(df_cmp) && base::nrow(df_cmp) > 0) 2 else 1
@@ -1547,18 +1556,43 @@ shiny::shinyServer(function(input,output,session){
     bottom_pad_px <- 50
     fig_height <- top_pad_px + n_species * row_px + bottom_pad_px
     
+    ### bind into one df
+    df$group     <- base_legend
+    df$Species   <- base::factor(df$Species, levels = species_levels)
+    
+    if (!base::is.null(df_cmp) && base::nrow(df_cmp) > 0) {
+      df_cmp$group   <- cmp_legend
+      df_cmp$Species <- base::factor(df_cmp$Species, levels = species_levels)
+      df <- dplyr::bind_rows(df, df_cmp)}
+    
     
     #plot in plotly
-    p <- plotly::plot_ly(
-      data = df,
+    p <- plotly::plot_ly()
+    
+    grp_order <- base::switch(input$CompareType,
+      Time = {base_yr <- DATACYCLES$YearStart[DATACYCLES$Cycle == input$densCycles]
+              cmp_yr <- DATACYCLES$YearStart[DATACYCLES$Cycle == input$compCycles]
+              if (base_yr <= cmp_yr) c(cmp_legend, base_legend) else c(base_legend, cmp_legend)},
+      "Growth Stage" = {stage_order <- c("seedlings", "saplings", "trees", "shseedlings", "shrubs")
+             base_idx <- base::match(input$densGroup, stage_order)
+             cmp_idx <- base::match(input$CompareGroup, stage_order)
+             if (base_idx <= cmp_idx) c(cmp_legend, base_legend) else c(base_legend, cmp_legend)},
+     c(cmp_legend, base_legend))
+
+    for (grp in grp_order) {df_all <- df[df$group == grp, ]
+      bar_color <- if (grp == base_legend) densBaseColor() else densCmpColor()
+      err_color <- darken(bar_color)
+      
+      p <- p %>% plotly::add_trace(
+      data = df_all,
       y = ~Species,
       x = ~Mean,
       type = "bar",
       orientation = "h",
       #mode = "markers", ##for scatter plot
-      name = base_legend,   
+      name = grp,   
       showlegend = TRUE,        
-      marker = base::list(color = densBaseColor()),
+      marker = base::list(color = bar_color),
       hovertext = ~base::sprintf(
         "Species: %s<br>Mean: %.2f<br>Lower 95%%: %.2f<br>Upper 95%%: %.2f",
         LabelOpp,
@@ -1576,45 +1610,11 @@ shiny::shinyServer(function(input,output,session){
       error_x = base::list(
         thickness = input$densErrorThickness,
         type = "data",
-        array = df$err_up,
-        arrayminus = df$err_dn,
-        color = darken(densBaseColor())),
-      legendgroup = "dens")
+        array = df_all$err_up,
+        arrayminus = df_all$err_dn,
+        color = err_color),
+      legendgroup = "dens")}
     
-    if (!base::is.null(df_cmp) && base::nrow(df_cmp) > 0) {
-      #    df_cmp$y_off <- species_idx[df_cmp$Species] + offset
-      
-      p <- p %>% plotly::add_trace(
-        data = df_cmp,
-        y = ~Species,
-        x = ~Mean,
-        type = "bar",
-        orientation = "h",
-        #mode = "markers", ##for scatter plot
-        name = cmp_legend,
-        showlegend = TRUE,
-        marker = base::list(color = densCmpColor()),
-        hovertext = ~base::sprintf(
-          "Species: %s<br>Mean: %.2f<br>Lower 95%%: %.2f<br>Upper 95%%: %.2f",
-          LabelOpp,
-          Mean,
-          Mean - err_dn,
-          Mean + err_up),
-        text = if (text_on()) {
-          ~base::sprintf(
-            "Species: %s<br>Mean: %.2f<br>Lower 95%%: %.2f<br>Upper 95%%: %.2f",
-            LabelOpp,
-            Mean,
-            Mean - err_dn,
-            Mean + err_up)} else {""},
-        hoverinfo = if (text_on()) "none" else "text",
-        error_x = base::list(
-          thickness = input$densErrorThickness,
-          type = "data",
-          array = df_cmp$err_up,
-          arrayminus = df_cmp$err_dn,
-          color = darken(densCmpColor())),
-        legendgroup = "dens")}
     p <- p %>% plotly::layout(
       barmode = "group",
       showlegend = TRUE,
