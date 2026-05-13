@@ -245,8 +245,8 @@ shiny::navbarPage(
           top: 85px;
           left: 20vw;
           width: 600px !important;
-          height: 825px !important;}
-        #AboutMapPanel .panel-body {height: 700px !important; overflow-y: scroll;}
+          height: 450px !important;}
+        #AboutMapPanel .panel-body {height: 327px !important; overflow-y: scroll;}
         #GraphOptionsPanel {
           top: 150px;
           left: 25.75vw;
@@ -254,11 +254,11 @@ shiny::navbarPage(
           height: 350px !important}
         #GraphOptionsPanel .panel-body {height: 225px !important; overflow-y: auto;}
         #IVOptionsPanel{
-          top: 150px;
+          top: 140px;
           left: 25.75vw;
-          width: 600px !important;
-          height: 450px !important}
-        #IVOptionsPanel .panel-body {height: 325px !important; overflow-y: auto;}}
+          width: 725px !important;
+          height: 345px !important}
+        #IVOptionsPanel .panel-body {height: 223px !important; overflow-y: none;}}
   ")),
     
     htmltools::tags$script(htmltools::HTML("
