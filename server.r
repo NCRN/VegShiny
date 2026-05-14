@@ -2025,7 +2025,7 @@ shiny::shinyServer(function(input,output,session){
       shiny::need(input$SpListPark!="", message = F)
     )
     shiny::selectizeInput(inputId="SpListPlot", choices=base::c("All Plots"="All", NPSForVeg::getPlotNames(VEGDATA[[input$SpListPark]],type="all")),
-                          label="Plots (optional)", multiple=TRUE, selected="All"
+                          label="Plots (optional)", multiple=TRUE, selected="All", options = base::list(plugins = base::list("remove_button"))
     )
   })
   

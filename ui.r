@@ -260,7 +260,6 @@ shiny::navbarPage(
           height: 345px !important}
         #IVOptionsPanel .panel-body {height: 223px !important; overflow-y: none;}}
         
-      
         #SpeciesControls .panel.panel-default,
         #SpeciesControls .well.panel.panel-default,
         #densDataPanel .panel.panel-default,
@@ -268,7 +267,6 @@ shiny::navbarPage(
         #IVDataPanel .panel.panel-default,
         #IVDataPanel .well.panel.panel-default {
           border-color: #7c8f4f !important;}
-        
         #MapControlPanel.panel.panel-default,
         #ZoomPanel.panel.panel-default,
         #ExtraLayerPanel.panel.panel-default {
