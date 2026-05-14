@@ -259,6 +259,21 @@ shiny::navbarPage(
           width: 725px !important;
           height: 345px !important}
         #IVOptionsPanel .panel-body {height: 223px !important; overflow-y: none;}}
+        
+      
+        #SpeciesControls .panel.panel-default,
+        #SpeciesControls .well.panel.panel-default,
+        #densDataPanel .panel.panel-default,
+        #densDataPanel .well.panel.panel-default,
+        #IVDataPanel .panel.panel-default,
+        #IVDataPanel .well.panel.panel-default {
+          border-color: #7c8f4f !important;}
+        
+        #MapControlPanel.panel.panel-default,
+        #ZoomPanel.panel.panel-default,
+        #ExtraLayerPanel.panel.panel-default {
+          border-radius: 4px !important;}
+      
   ")),
     
     htmltools::tags$script(htmltools::HTML("
@@ -426,12 +441,12 @@ tags$head(tags$style(HTML("
       shiny::tabPanel(htmltools::tags$div(title="Graph abundance, basal area, percent cover, etc","Data by Park and Species"),
                shinyjs::useShinyjs(),
         shiny::fluidRow(
-          shiny::column(3,
+          shiny::column(3, id = "densDataPanel",
                         htmltools::tags$head(htmltools::tags$style(
                           htmltools::HTML(".action-button {
                                               white-space: normal !important;
                                               word-wrap: break-word !important;}"))),
-            shiny::wellPanel(class="panel panel-default",
+            shiny::wellPanel(class="panel panel-default controls",
               shiny::h4("Data:", class="panel-heading"),
               htmltools::tags$div(title="Select the park you want to work with",
                        shiny::uiOutput(outputId="densParkControl")
@@ -475,7 +490,7 @@ tags$head(tags$style(HTML("
             ),
             shiny::conditionalPanel(
               condition="input.densPanel=='Graph'",
-              shiny::wellPanel(class="panel panel-default",
+              shiny::wellPanel(class="panel panel-default controls",
                 shiny::h4("Comparison Data:", class="panel-heading"),
                   htmltools::tags$div(title="Compare the base data with a differnet park, growth stage, or time period",
                   shiny::radioButtons(inputId="CompareType", label ="Compare to another:",
@@ -530,12 +545,12 @@ tags$head(tags$style(HTML("
 ###############IV Plots
       shiny::tabPanel(htmltools::tags$div(title="Graph Importance Values", "Forestry Importance Values (IV)"),
         shiny::fluidRow(
-          shiny::column(3,
+          shiny::column(3, id = "IVDataPanel",
                         htmltools::tags$head(htmltools::tags$style(
                           htmltools::HTML(".action-button {
                                               white-space: normal !important;
                                               word-wrap: break-word !important;}"))),
-            shiny::wellPanel(class="panel panel-default",
+            shiny::wellPanel(class="panel panel-default controls",
               shiny::h4("Data:", class="panel-heading"),
               htmltools::tags$div(
                 title="Select the park you want to work with",
@@ -642,7 +657,8 @@ tags$head(tags$style(HTML("
       ),
       shiny::column(4,id="SpeciesControls",
         htmltools::tags$head(htmltools::tags$style(htmltools::HTML("#SpeciesControls{height:400px}"))),
-        shiny::wellPanel(
+        shiny::wellPanel(id = "specDataPanel", class="panel panel-default controls",
+                         shiny::h4("Species Data:", class="panel-heading"),
           htmltools::tags$div(
             title="Select the type of species list", 
             shiny::radioButtons(inputId="SpListType", label="Select a species list:",
