@@ -918,10 +918,9 @@ shiny::shinyServer(function(input,output,session){
                  Pick= if(base::is.null(input$densPark) || base::nchar(input$densPark)==0) {  base::return()  }
                  else{
                    htmltools::tags$div(title="Click here to pick the species you want to graph",
-                                       shiny::selectizeInput(inputId="densSpecies", label="Select one or more species,
-              backspace to remove", choices=densSpecList(),
-                                                             multiple=TRUE, selected = input$densSpecies)
-                   )
+                                       shiny::selectizeInput(inputId="densSpecies", label="Select one or more species", choices=densSpecList(),
+                                                             multiple=TRUE, selected = input$densSpecies, options = base::list(plugins = base::list("remove_button"))
+                   ))
                  }
     )
   })
