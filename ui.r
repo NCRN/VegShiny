@@ -271,7 +271,6 @@ shiny::navbarPage(
         #ZoomPanel.panel.panel-default,
         #ExtraLayerPanel.panel.panel-default {
           border-radius: 4px !important;}
-      
   ")),
     
     htmltools::tags$script(htmltools::HTML("
@@ -323,9 +322,9 @@ shiny::navbarPage(
       if ($t.closest('.selectize-control').length) return;
     $('.selectized').each(function () {
       var sel = getSelectize(this);
-      if (sel && sel.isOpen) sel.close();});
-    });
+      if (sel && sel.isOpen) sel.close();});});
     })();
+    
   ")),
     
     htmltools::includeHTML("www/google-analytics.html")
@@ -446,9 +445,7 @@ tags$head(tags$style(HTML("
                                               word-wrap: break-word !important;}"))),
             shiny::wellPanel(class="panel panel-default controls",
               shiny::h4("Data:", class="panel-heading"),
-              htmltools::tags$div(title="Select the park you want to work with",
-                       shiny::uiOutput(outputId="densParkControl")
-              ),
+              htmltools::tags$div(title="Select the park you want to work with", shiny::uiOutput(outputId="densParkControl")),
               htmltools::tags$div(title="Select the time period you want to work with", shiny::uiOutput("densCycleControl")),
               # htmltools::tags$div(title="Pick the four year period you want to graph",
               #          shiny::sliderInput(inputId="densYear", label="Display data from the 4 years ending:", 
@@ -456,14 +453,11 @@ tags$head(tags$style(HTML("
               #                      sep="", step=1,ticks=T)
               # ),
               htmltools::tags$div(title="Select the type of plant you want to work with", 
-                shiny::selectizeInput(inputId="densGroup", label="Type of plant:",   choices=PLANTTYPES)
-              ),
+                shiny::selectizeInput(inputId="densGroup", label="Type of plant:",   choices=PLANTTYPES)),
               htmltools::tags$div(title="Toggle between common and scientific names",
-                       shiny::checkboxInput(inputId="densCommon", label="Display common names?", value=TRUE )
-              ),
+                       shiny::checkboxInput(inputId="densCommon", label="Display common names?", value=TRUE)),
               htmltools::tags$div(title="Toggle summary statistics on or off",
-                                  shiny::checkboxInput(inputId="plotlyText", label="Display summary statistics?", value=FALSE )
-              ),
+                                  shiny::checkboxInput(inputId="plotlyText", label="Display summary statistics?", value=FALSE )),
               htmltools::tags$div(title="Graph the most common species, species you select, or all species combined",
                 shiny::radioButtons(inputId="densSpeciesType", label="Which species?", 
                  choices=base::c("Most common species"="Common","Pick individual species"="Pick",
@@ -475,7 +469,8 @@ tags$head(tags$style(HTML("
               ),
               shiny::conditionalPanel(
                 condition="input.densPanel=='Graph'",
-                shiny::actionButton(inputId="densGraphButton", label="Display Options", class="btn btn-primary btn-block action-button"),
+                shiny::hr(),
+                shiny::actionButton(inputId="densGraphButton", label="Display Options", class="btn btn-primary btn-block action-button")
               #  br(),
               # htmltools::div(shiny::downloadButton(outputId="densGraphDownload", label="Save Graph (.jpg)", class="btn btn-primary btn-block action-button"),
               #  shiny::downloadButton(outputId="densWmfDownload", label="Save Graph (.png)", class="btn btn-primary btn-block action-button"))
@@ -494,15 +489,15 @@ tags$head(tags$style(HTML("
                   shiny::radioButtons(inputId="CompareType", label ="Compare to another:",
                            choices=base::c("None","Park","Growth Stage","Time"),selected="None",inline=TRUE)
                   ),
-                  shiny::uiOutput(outputId="CompareSelect"),
+                  shiny::uiOutput(outputId="CompareSelect")
               )
             )
           ),
           shiny::column(9,
             shiny::tabsetPanel(id="densPanel",type="pills",
                 shiny::tabPanel(title=htmltools::tags$div(title="Graph the data", "Graph"),value="Graph",
-                  htmltools::tags$div(title="Graph of Mean and 95% Confidence Interval",
-                  plotly::plotlyOutput(outputId="DensPlotly", height="600px")),
+                  htmltools::tags$div(id = "densPlotContainer", title="Graph of Mean and 95% Confidence Interval",
+                  plotly::plotlyOutput(outputId="DensPlotly", height= "600px")),
              
                     shiny::fixedPanel(class="panel panel-primary controls",draggable=TRUE,
                                cursor="auto",id="GraphOptionsPanel",style="padding: 0px; display: none; z-index: 1995;",
@@ -516,7 +511,7 @@ tags$head(tags$style(HTML("
                     shiny::br(),
                     shiny::flowLayout(cellArgs=base::list(style="width: 160px"),
                                       shiny::sliderInput("densErrorThickness", "Error Bar Thickness", min = 0.5, max = 5, value = 1.5, step = 0.5, width = 150),
-                                      shiny::sliderInput("densFontSize", "Change Font Size", min=12, max=32, value=12, step=2,width=150)
+                                      shiny::sliderInput("densFontSize", "Change Font Size", min=12, max=24, value=12, step=2,width=150)
                     )),
                  htmltools::div(class="panel-footer",
                         shiny::actionButton(inputId="CloseDisplayOptions",class="btn btn-primary",label="Close"))
@@ -536,7 +531,7 @@ tags$head(tags$style(HTML("
                        htmltools::includeHTML("www/DensPlot.html")
               )
             )
-          )
+          )#close column
         )
       ),
 
@@ -550,44 +545,31 @@ tags$head(tags$style(HTML("
                                               word-wrap: break-word !important;}"))),
             shiny::wellPanel(class="panel panel-default controls",
               shiny::h4("Data:", class="panel-heading"),
-              htmltools::tags$div(
-                title="Select the park you want to work with",
-                shiny::uiOutput("IVParkControl")
-              ),
-              shiny::br(),
-              htmltools::tags$div(
-                title="Select the type of plant you want to work with", 
-                shiny::selectizeInput(inputId="IVGroup", label="Type of plant:",choices=IVPLANTTYPES)
-              ),
-              shiny::br(),
-              htmltools::tags$div(
-                title="Toggle between common and scientific names",
-                shiny::checkboxInput(inputId="IVCommon", label="Display common names?", value=TRUE)
-              ),
-              htmltools::tags$div(
-                title="Toggle importance values on or off",
+              htmltools::tags$div(title="Select the park you want to work with",shiny::uiOutput("IVParkControl")),
+              htmltools::tags$div(title="Select the time period you want to work with", shiny::uiOutput("IVCycleControl")),
+              htmltools::tags$div(title="Select the type of plant you want to work with", 
+                shiny::selectizeInput(inputId="IVGroup", label="Type of plant:",choices=IVPLANTTYPES)),
+              htmltools::tags$div(title="Toggle between common and scientific names",
+                shiny::checkboxInput(inputId="IVCommon", label="Display common names?", value=TRUE)),
+              htmltools::tags$div(title="Toggle importance values on or off",
                 shiny::checkboxInput(inputId="IVPlotlyText", label="Display importance values?", value=FALSE)),
-              shiny::br(),
+              htmltools::tags$div(title="Display density, size and disbribution separately",
+                                  shiny::checkboxInput(inputId="IVPart", label="Display components of the importance value?", value=FALSE)),
               # htmltools::tags$div(
               #   title="Pick the four year period you want to graph",
               #   shiny::sliderInput(inputId="IVYear", label="Display data from the 4 years ending:", min=YEARS$Start+YEARS$Range-1, 
               #               max=YEARS$End, value=YEARS$End, sep="", step=1,ticks=T)
               # ),
-              htmltools::tags$div(title="Select the time period you want to work with", shiny::uiOutput("IVCycleControl")),
-              shiny::br(),
-              htmltools::tags$div(
-                title="Display density, size and disbribution separately",
-                shiny::checkboxInput(inputId="IVPart", label="Display components of the importance value?", value=FALSE)
-              ),
-              shiny::br(),
-              htmltools::tags$div(
-                title="Select the maximum number of species to plot",
-                shiny::sliderInput(inputId="IVTop",label="Maximum number of species to plot (in order of IV):",min=1, max=20,
-                  value=10, sep="", step=1, ticks=TRUE)),
+              
+              htmltools::tags$div(title="Graph the most common species, species you select, or all species observed",
+                                  shiny::radioButtons(inputId="IVSpeciesType", label="Which species?", 
+                                                      choices=base::c("Most common species"="Common","Pick individual species"="Pick",
+                                                                      "All species observed"="All"), inline=FALSE)),
+              shiny::uiOutput(outputId="IVSpeciesControl"),
                 shiny::conditionalPanel(
                   condition="input.IVPanel=='Graph'",
                   shiny::hr(),
-                  shiny::actionButton(inputId="IVGraphButton", label="Display Options", class="btn btn-primary btn-block action-button"),
+                  shiny::actionButton(inputId="IVGraphButton", label="Display Options", class="btn btn-primary btn-block action-button")
                   #shiny::br(),
                   #shiny::downloadButton(outputId="IVGraphDownload", label="Save Graph (.jpg)", class="btn btn-primary btn-block action-button"),
                   #shiny::downloadButton(outputId="IVWmfDownload", label="Save Graph (.wmf)", class="btn btn-primary btn-block action-button")
@@ -596,23 +578,22 @@ tags$head(tags$style(HTML("
                     condition="input.IVPanel=='Table'",
                     shiny::hr(),
                     shiny::downloadButton(outputId="IVTableDownload", label="Save Table (.csv)", class="btn btn-primary btn-block")
-                    
                 )
-            )
-          ),
+              )
+            ),
           shiny::column(9,
             shiny::tabsetPanel(id="IVPanel",type="pills",
               shiny::tabPanel(value="Graph",
                 htmltools::tags$div(title="Graph the data","Graph"),
-                htmltools::tags$div(title="Graph of IV",plotly::plotlyOutput("IVPlot",height="600px")),
+                htmltools::tags$div(title="Graph of IV", plotly::plotlyOutput("IVPlot",height="600px")),
               
-                  shiny::fixedPanel(class="panel panel-primary controls",draggable=TRUE,
-                             cursor="auto",id="IVOptionsPanel",style="padding: 0px; display: none; z-index: 1995;",title="Display Options",
-                   htmltools::div(class="panel-heading", shiny::h4("Display Options")),
-                   htmltools::div(class="panel-body",
+                shiny::fixedPanel(class="panel panel-primary controls",draggable=TRUE,
+                    cursor="auto",id="IVOptionsPanel",style="padding: 0px; display: none; z-index: 1995;",title="Display Options",
+                    htmltools::div(class="panel-heading", shiny::h4("Display Options")),
+                    htmltools::div(class="panel-body",
                       shiny::flowLayout(
                         shiny::selectizeInput("IVBaseColor","Base Color:",choices=COLORNAMES, selected="green4",width="125px"),
-                        shiny::sliderInput("IVFontSize", "Change Font Size", min=10, max=24, value=14, step=2,width="175px")
+                        shiny::sliderInput("IVFontSize", "Change Font Size", min=12, max=24, value=12, step=2,width="175px")
                       ),
                       shiny::h5("Component Colors:"),
                       shiny::flowLayout(
@@ -637,10 +618,8 @@ tags$head(tags$style(HTML("
                  DT::dataTableOutput("IVData")
                 )
               ),
-              shiny::tabPanel(htmltools::tags$div(title="Explanation of the graph",
-                  "About this graph..."
-                ),
-                htmltools::includeHTML("www/IVPlot.html")
+              shiny::tabPanel(htmltools::tags$div(title="Explanation of the graph","About this graph..."),
+                              htmltools::includeHTML("www/IVPlot.html")
               )
             )
           )

@@ -913,8 +913,7 @@ shiny::shinyServer(function(input,output,session){
     base::switch(input$densSpeciesType,
                  Common= htmltools::tags$div(title="Select the maximum number of species to plot", 
                                              shiny::sliderInput(inputId="densTop",label="Maximum number of species to plot (in order of mean value):",
-                                                                min=1, max=10,value=5, sep="", step=1, ticks=TRUE)
-                 ),
+                                                                min = 1, max = 10, value = 5, step = 1, ticks = FALSE)),
                  Pick= if(base::is.null(input$densPark) || base::nchar(input$densPark)==0) {  base::return()  }
                  else{
                    htmltools::tags$div(title="Click here to pick the species you want to graph",
@@ -1564,7 +1563,6 @@ shiny::shinyServer(function(input,output,session){
       df_cmp$Species <- base::factor(df_cmp$Species, levels = species_levels)
       df <- dplyr::bind_rows(df, df_cmp)}
     
-    
     #plot in plotly
     p <- plotly::plot_ly()
     
@@ -1619,30 +1617,36 @@ shiny::shinyServer(function(input,output,session){
       showlegend = TRUE,
       legend = base::list(
         traceorder = "reversed", 
-        font = base::list(size = 15),
+        font = base::list(size = densFontSize() + 3),
         orientation = "h",
         x = 0.5, xanchor = "center",
         y = 1, yanchor = "bottom"),
       title = base::list(
         text = DensTitle(),
-        font = base::list(size = 22),
+        font = base::list(size = densFontSize() + 10),
         y = 1,
         yanchor = "top",
-        pad = base::list(t = 20)),
+        pad = base::list(t = 20),
+        automargin = TRUE,
+        xref = "paper",
+        x = 0.5,
+        xanchor = "center"),
       xaxis = base::list(
+        showgrid = TRUE,
         title = base::list(
           text = densYlabel(),
           font = base::list(size = densFontSize()),
           standoff = 20)),
       yaxis = base::list(
         type = "category", categoryorder = "array", categoryarray = species_levels,
+        showline = TRUE,
         title = base::list(
           text = "Species",
           font = base::list(size = densFontSize()),
           standoff = 15),
         ticks = "outside",
         ticklabelposition = "outside"),
-      margin = base::list(t = 80, l = 140, r = 40),
+      margin = base::list(t = 50 + densFontSize() * 3, l = 140, r = 40),
       height = fig_height,
       font = base::list(size = densFontSize()),
       autosize = TRUE)
@@ -1750,6 +1754,38 @@ shiny::shinyServer(function(input,output,session){
         base::as.character(DATACYCLES$Cycle),
         base::paste0(DATACYCLES$Name, ": ", DATACYCLES$YearStart, "-", DATACYCLES$YearEnd))))})
   
+  #IV Species Control
+  IVSpecList <- shiny::reactive({
+    shiny::req(input$IVPark, input$IVGroup)
+    shiny::req(input$IVPark %in% base::names(VEGDATA))
+    SpecTemp <- base::unique(NPSForVeg::getPlants(
+      object = VEGDATA[[input$IVPark]], group = input$IVGroup,
+      years = IVYears(), common = FALSE)$Latin_Name)
+    SpecNames <- NPSForVeg::getPlantNames(
+      object = VEGDATA[[input$IVPark]], names = SpecTemp,
+      in.style = "Latin",
+      out.style = base::ifelse(input$IVCommon, "common", "Latin"))
+    base::names(SpecTemp) <- SpecNames
+    SpecTemp[order(base::names(SpecTemp))]
+  })
+  
+  output$IVSpeciesControl <- shiny::renderUI({
+    base::switch(input$IVSpeciesType,
+                 Common = htmltools::tags$div(title = "Select the maximum number of species to plot",
+                                              shiny::sliderInput("IVTop", "Maximum number of species to plot (in order of IV):",
+                                                                 min = 1, max = 10, value = 5, step = 1, ticks = FALSE)),
+                 Pick = if (base::is.null(input$IVPark) || base::nchar(input$IVPark) == 0) {base::return()
+                 } else {htmltools::tags$div(title = "Click here to pick the species you want to graph",
+                                       shiny::selectizeInput(inputId = "IVSpecies", label = "Select one or more species",
+                                                             choices = IVSpecList(), multiple = TRUE, selected = input$IVSpecies,
+                                                             options = base::list(plugins = base::list("remove_button"))))},
+                 All = NULL)})
+  
+  shiny::observeEvent(input$IVCommon, {
+    shiny::req(input$IVSpeciesType == "Pick")
+    current <- shiny::isolate(input$IVSpecies)
+    shiny::updateSelectizeInput(session, "IVSpecies", choices = IVSpecList(), selected = current)})
+  
   IVYears <- shiny::reactive({
     shiny::req(input$IVCycles)
     (DATACYCLES %>% dplyr::filter(Cycle == input$IVCycles) %>% dplyr::pull(YearStart)) :
@@ -1832,7 +1868,7 @@ shiny::shinyServer(function(input,output,session){
   
   #### IV Plot ####
   tempIVPlot <- shiny::reactive({
-    shiny::req(IVData())
+    shiny::req(IVData())  
     
     if (base::is.null(input$IVPark) || base::nchar(input$IVPark) == 0) {
       shiny::validate(shiny::need(input$IVPark, "Select a park to display the graph."))}
@@ -1840,11 +1876,15 @@ shiny::shinyServer(function(input,output,session){
     IVdf <- IVData()
     
     # sets number of displayed species
-    if (!base::is.na(input$IVTop)) {
-      IVdf <- IVdf %>% dplyr::slice_max(order_by = Total, n = input$IVTop, with_ties = FALSE)}
-    
-    # plot order
-    IVdf <- IVdf %>% dplyr::arrange(Total)
+    IVdf <- base::switch(input$IVSpeciesType, Common = IVdf %>%
+                           dplyr::slice_max(order_by = Total, n = input$IVTop, with_ties = FALSE) %>%
+                           dplyr::arrange(Total),
+                         Pick = {shiny::req(input$IVSpecies)
+                           chosen <- if (base::isTRUE(input$IVCommon)) {NPSForVeg::getPlantNames(VEGDATA[[input$IVPark]],
+                                                                                                 names = input$IVSpecies, in.style = "Latin", out.style = "common")
+                           } else { input$IVSpecies }
+                           IVdf %>% dplyr::filter(Species %in% chosen) %>% dplyr::arrange(Total)},
+                         All = IVdf %>% dplyr::arrange(Total))
     
     ### plot in plotly ###
     if (!input$IVPart) {
@@ -1866,61 +1906,51 @@ shiny::shinyServer(function(input,output,session){
     } else {
       p <- plotly::plot_ly() %>%
         plotly::add_trace(
-          data = IVdf,
-          x = ~Density,
-          y = ~Species,
-          name = "Density",
-          type = "bar",
-          orientation = "h",
+          data = IVdf, x = ~Density, y = ~Species,
+          name = "Density", type = "bar", orientation = "h",
+          legendrank = 3,
           marker = base::list(color = IVDensityColor()),
           text = if (iv_text_on()) {~base::sprintf("%.2f", Density)} else {NULL},
           hovertext = ~base::sprintf("Species: %s<br>Density: %.2f", LabelOpp, Density),
           hoverinfo = "text",
-          hoverlabel = base::list(
-            bgcolor = IVDensityColor(),
-            bordercolor = "white",
-            font = base::list(size = 14, color = contrastColor(IVDensityColor())))) %>%
+          hoverlabel = base::list(bgcolor = IVDensityColor(), bordercolor = "white",
+          font = base::list(size = 14, color = contrastColor(IVDensityColor())))) %>%
         plotly::add_trace(
-          data = IVdf,
-          x = ~Size,
-          y = ~Species,
-          name = "Size",
-          type = "bar",
-          orientation = "h",
+          data = IVdf, x = ~Size, y = ~Species,
+          name = "Size", type = "bar", orientation = "h",
+          legendrank = 2,
           marker = base::list(color = IVSizeColor()),
           text = if (iv_text_on()) {~base::sprintf("%.2f", Size)} else {NULL},
-          hovertext = ~base::sprintf("Species: %s<br>Size: %.2f", LabelOpp,Size),
+          hovertext = ~base::sprintf("Species: %s<br>Size: %.2f", LabelOpp, Size),
           hoverinfo = "text",
-          hoverlabel = base::list(
-            bgcolor = IVSizeColor(),
-            bordercolor = "white",
-            font = base::list(size = 14, color = contrastColor(IVSizeColor())))) %>%
+          hoverlabel = base::list(bgcolor = IVSizeColor(), bordercolor = "white",
+          font = base::list(size = 14, color = contrastColor(IVSizeColor())))) %>%
         plotly::add_trace(
-          data = IVdf,
-          x = ~Distribution,
-          y = ~Species,
-          name = "Distribution",
-          type = "bar",
-          orientation = "h",
+          data = IVdf, x = ~Distribution, y = ~Species,
+          name = "Distribution", type = "bar", orientation = "h",
+          legendrank = 1,
           marker = base::list(color = IVDistributionColor()),
           text = if (iv_text_on()) {~base::sprintf("%.2f", Distribution)} else {NULL},
           hovertext = ~base::sprintf("Species: %s<br>Distribution: %.2f", LabelOpp, Distribution),
           hoverinfo = "text",
-          hoverlabel = base::list(
-            bgcolor = IVDistributionColor(),
-            bordercolor = "white",
-            font = base::list(size = 14, color = contrastColor(IVDistributionColor()))))}
+          hoverlabel = base::list(bgcolor = IVDistributionColor(), bordercolor = "white",
+                                  font = base::list(size = 14, color = contrastColor(IVDistributionColor()))))}
+    
+    IVFontSize <- if (!base::is.null(input$IVFontSize)) input$IVFontSize else 12
+    densFontSize  <- shiny::reactive(if (!base::is.null(input$densFontSize)) input$densFontSize else 12)
+    
     p <- p %>% plotly::layout(
       barmode = "stack",
       showlegend = TRUE,
       legend = base::list(
-        font = base::list(size = 15),
+        traceorder  = "reversed",
+        font = base::list(size = IVFontSize + 3),
         orientation = "h",
         x = 0.5, xanchor = "center",
         y = 1,   yanchor = "bottom"),
       title = base::list(
         text = IVTitle(),
-        font = base::list(size = 22),
+        font = base::list(size = IVFontSize + 10),
         y = 1,
         yanchor = "top",
         pad = base::list(t = 20)),
@@ -1928,10 +1958,10 @@ shiny::shinyServer(function(input,output,session){
         title = "",
         tickvals = base::c(0, base::max(IVdf$Total)),
         ticktext = base::c("Low", "High"),
-        tickfont = base::list(size = 14)),
+        tickfont = base::list(size = IVFontSize)),
       yaxis = base::list(
         title = "",
-        tickfont = base::list(size = input$IVFontSize),
+        tickfont = base::list(size = IVFontSize),
         ticks = "outside",
         ticklabelposition = "outside",
         categoryorder = "array",
