@@ -458,7 +458,7 @@ tags$head(tags$style(HTML("
                        shiny::checkboxInput(inputId="densCommon", label="Display common names?", value=TRUE)),
               htmltools::tags$div(title="Toggle summary statistics on or off",
                                   shiny::checkboxInput(inputId="plotlyText", label="Display summary statistics?", value=FALSE )),
-              htmltools::tags$div(title="Graph the most common species, species you select, or all species combined",
+              htmltools::tags$div(title="Graph the most common species, species you select, or all species observed",
                 shiny::radioButtons(inputId="densSpeciesType", label="Which species?", 
                  choices=base::c("Most common species"="Common","Pick individual species"="Pick",
                           "All species combined"="All"), inline=FALSE)
@@ -524,6 +524,7 @@ tags$head(tags$style(HTML("
                 value="Table",
                 shiny::column(10, style="padding: 5px",
                  shiny::h3(shiny::textOutput("densTableTitle")),
+                 uiOutput("densMessage"),
                  DT::dataTableOutput("densTable")
                 )
               ),
@@ -563,8 +564,8 @@ tags$head(tags$style(HTML("
               
               htmltools::tags$div(title="Graph the most common species, species you select, or all species observed",
                                   shiny::radioButtons(inputId="IVSpeciesType", label="Which species?", 
-                                                      choices=base::c("Most common species"="Common","Pick individual species"="Pick",
-                                                                      "All species observed"="All"), inline=FALSE)),
+                                                      choices=base::c("Most common species"="Common","Pick individual species"="Pick", 
+                                                                      "All species combined"="All"), inline=FALSE)),
               shiny::uiOutput(outputId="IVSpeciesControl"),
                 shiny::conditionalPanel(
                   condition="input.IVPanel=='Graph'",
@@ -615,7 +616,9 @@ tags$head(tags$style(HTML("
                 htmltools::tags$div(title="See all data in a table","Data table"),
                 shiny::column(10,
                   shiny::h3(shiny::textOutput("IVTableTitle")),
-                 DT::dataTableOutput("IVData")
+                  uiOutput("IVMessage"),
+                  DT::dataTableOutput("IVData"),
+                  #verbatimTextOutput("IVDebug")
                 )
               ),
               shiny::tabPanel(htmltools::tags$div(title="Explanation of the graph","About this graph..."),

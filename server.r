@@ -913,7 +913,7 @@ shiny::shinyServer(function(input,output,session){
     base::switch(input$densSpeciesType,
                  Common= htmltools::tags$div(title="Select the maximum number of species to plot", 
                                              shiny::sliderInput(inputId="densTop",label="Maximum number of species to plot (in order of mean value):",
-                                                                min = 1, max = 10, value = 5, step = 1, ticks = FALSE)),
+                                                                min = 1, max = 20, value = 10, step = 1, ticks = FALSE)),
                  Pick= if(base::is.null(input$densPark) || base::nchar(input$densPark)==0) {  base::return()  }
                  else{
                    htmltools::tags$div(title="Click here to pick the species you want to graph",
@@ -1723,9 +1723,38 @@ shiny::shinyServer(function(input,output,session){
       "There is no data for this combination of choices. Either you need to select a park, or the type of plant you selected was not found in the park during those years."))
       TableOut<-base::do.call(NPSForVeg::dens,DensTableArgs())
       base::names(TableOut)<-base::c("Species",'Mean',"Lower 95% CI", "Upper 95% CI")
-      base::return(TableOut)}})
+      if (base::identical(input$densSpeciesType, "Pick")) {
+        shiny::req(input$densSpecies)
+        chosen <- if (base::isTRUE(input$densCommon)) {
+          NPSForVeg::getPlantNames(VEGDATA[[input$densPark]],
+                                   names = input$densSpecies, in.style = "Latin", out.style = "common")
+        } else { input$densSpecies }
+        TableOut <- TableOut %>% dplyr::filter(Species %in% chosen)}
+      if (base::identical(input$densSpeciesType, "Common")) {
+        shiny::req(input$densTop)
+        TableOut <- TableOut %>%
+          dplyr::filter(!base::tolower(Species) %in% base::c("total", "all species")) %>%
+          dplyr::arrange(dplyr::desc(Mean)) %>%
+          dplyr::slice(1:input$densTop)}
+      if (base::identical(input$densSpeciesType, "All")) {
+        agg_fun <- if (input$densvalues %in% base::c("count", "size")) sum else mean
+        TableOut <- TableOut %>%
+          dplyr::filter(!base::tolower(Species) %in% base::c("total", "all species")) %>%
+          dplyr::summarise(
+            Species      = "All species",
+            Mean         = agg_fun(Mean, na.rm = TRUE),
+            `Lower 95% CI` = agg_fun(`Lower 95% CI`, na.rm = TRUE),
+            `Upper 95% CI` = agg_fun(`Upper 95% CI`, na.rm = TRUE))}
+      TableOut}})
   
-  output$densTable<-DT::renderDataTable(tempDensTable())
+  output$densMessage <- renderUI({
+    if (input$densSpeciesType == "Pick" && (is.null(input$densSpecies) || length(input$densSpecies) == 0)) {
+      helpText("Please select a park and one or more species to display the table.")
+    } else {NULL}})
+  output$densTable <- DT::renderDataTable({
+    req(!(input$densSpeciesType == "Pick" && (is.null(input$densSpecies) || length(input$densSpecies) == 0)))
+    
+    DT::datatable(tempDensTable(), options = list(dom = "t", pageLength = -1))})
   
   #### Table Download ####
   output$densTableDownload <- shiny::downloadHandler(
@@ -1773,7 +1802,7 @@ shiny::shinyServer(function(input,output,session){
     base::switch(input$IVSpeciesType,
                  Common = htmltools::tags$div(title = "Select the maximum number of species to plot",
                                               shiny::sliderInput("IVTop", "Maximum number of species to plot (in order of IV):",
-                                                                 min = 1, max = 10, value = 5, step = 1, ticks = FALSE)),
+                                                                 min = 1, max = 20, value = 10, step = 1, ticks = FALSE)),
                  Pick = if (base::is.null(input$IVPark) || base::nchar(input$IVPark) == 0) {base::return()
                  } else {htmltools::tags$div(title = "Click here to pick the species you want to graph",
                                        shiny::selectizeInput(inputId = "IVSpecies", label = "Select one or more species",
@@ -1884,7 +1913,15 @@ shiny::shinyServer(function(input,output,session){
                                                                                                  names = input$IVSpecies, in.style = "Latin", out.style = "common")
                            } else { input$IVSpecies }
                            IVdf %>% dplyr::filter(Species %in% chosen) %>% dplyr::arrange(Total)},
-                         All = IVdf %>% dplyr::arrange(Total))
+                         All = IVdf %>%
+                           dplyr::summarise(
+                             Species = "All species ",
+                             Density = round(base::mean(Density, na.rm = TRUE), 2),
+                             Size = round(base::mean(Size, na.rm = TRUE), 2),
+                             Distribution = round(base::mean(Distribution, na.rm = TRUE), 2),
+                             Total = round(base::mean(Total, na.rm = TRUE), 2),
+                             LabelOpp = "All species") %>%
+                           dplyr::arrange(Total))
     
     ### plot in plotly ###
     if (!input$IVPart) {
@@ -2018,16 +2055,64 @@ shiny::shinyServer(function(input,output,session){
   ## Table
   output$IVTableTitle<-shiny::renderText({tempIVTableTitle() })
   
+  #tempIVTable <- shiny::reactive({
+  #  shiny::validate(shiny::need(
+  #    !is.null(input$IVPark) && nzchar(input$IVPark),
+  #    "There is no data for this combination of choices. Either you need to select a park, or the type of plant you selected was not found in the park during those years."))
+  #  df <- IVData()
+  #  shiny::validate(shiny::need(!is.null(df) && nrow(df) > 0,
+  #    "There is no data for this combination of choices. Either you need to select a park, or the type of plant you selected was not found in the park during those years."))
+  #  df %>% dplyr::select(-LabelOpp)})
+  
+  
+  
   tempIVTable <- shiny::reactive({
     shiny::validate(shiny::need(
-      !is.null(input$IVPark) && nzchar(input$IVPark),
+      !base::is.null(input$IVPark) && base::nzchar(input$IVPark),
       "There is no data for this combination of choices. Either you need to select a park, or the type of plant you selected was not found in the park during those years."))
+    
     df <- IVData()
-    shiny::validate(shiny::need(!is.null(df) && nrow(df) > 0,
+    
+    shiny::validate(shiny::need(
+      !base::is.null(df) && base::nrow(df) > 0,
       "There is no data for this combination of choices. Either you need to select a park, or the type of plant you selected was not found in the park during those years."))
-    df %>% dplyr::select(-LabelOpp)})
-  
-  output$IVData <- DT::renderDataTable({tempIVTable()})
+    df <- base::switch(input$IVSpeciesType,
+                       Common = df %>%
+                         dplyr::slice_max(order_by = Total, n = input$IVTop, with_ties = FALSE) %>%
+                         dplyr::arrange(dplyr::desc(Total)),
+                       Pick = {
+                         shiny::req(input$IVSpecies)
+                         chosen <- if (base::isTRUE(input$IVCommon)) {
+                           NPSForVeg::getPlantNames(
+                             VEGDATA[[input$IVPark]],
+                             names  = input$IVSpecies,
+                             in.style  = "Latin",
+                             out.style = "common")
+                         } else {input$IVSpecies}
+                         df %>%
+                           dplyr::filter(Species %in% chosen) %>%
+                           dplyr::arrange(dplyr::desc(Total))},
+                       All = df %>%
+                         dplyr::summarise(
+                           Species = "All species",
+                           Density = round(base::mean(Density, na.rm = TRUE), 2),
+                           Size = round(base::mean(Size, na.rm = TRUE), 2),
+                           Distribution = round(base::mean(Distribution, na.rm = TRUE), 2),
+                           Total = round(base::mean(Total, na.rm = TRUE), 2)) %>%
+                         dplyr::arrange(Total))
+    
+    if (!input$IVPart) {df <- df %>% dplyr::select(Species, Total)
+    } else {df <- df %>% dplyr::select(Species, Density, Size, Distribution, Total)}
+    df})
+
+  output$IVMessage <- renderUI({
+    if (input$IVSpeciesType == "Pick" && (is.null(input$IVSpecies) || length(input$IVSpecies) == 0)) {
+      helpText("Please select a park and one or more species to display the table.")
+    } else {NULL}})
+  output$IVData <- DT::renderDataTable({
+    req(!(input$IVSpeciesType == "Pick" && (is.null(input$IVSpecies) || length(input$IVSpecies) == 0)))
+    
+    DT::datatable(tempIVTable(), options = list(dom = "t", pageLength = -1))})
 
   #### IV Table download ####
   output$IVTableDownload <- shiny::downloadHandler(
