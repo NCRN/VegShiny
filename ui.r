@@ -463,6 +463,7 @@ tags$head(tags$style(HTML("
                  choices=base::c("Most common species"="Common","Pick individual species"="Pick",
                           "All species combined"="All"), inline=FALSE)
               ),
+              
               shiny::uiOutput(outputId="densSpeciesControl"),
               htmltools::tags$div(title="Select the type of data to graph",
                 shiny::uiOutput(outputId="densValControl")
@@ -482,14 +483,18 @@ tags$head(tags$style(HTML("
               )
             ),
             shiny::conditionalPanel(
-              condition="input.densPanel=='Graph'",
+              condition="input.densPanel!='About'",
               shiny::wellPanel(class="panel panel-default controls",
-                shiny::h4("Comparison Data:", class="panel-heading"),
-                  htmltools::tags$div(title="Compare the base data with a differnet park, growth stage, or time period",
-                  shiny::radioButtons(inputId="CompareType", label ="Compare to another:",
-                           choices=base::c("None","Park","Growth Stage","Time"),selected="None",inline=TRUE)
-                  ),
-                  shiny::uiOutput(outputId="CompareSelect")
+                               shiny::h4("Comparison Data:", class="panel-heading"),
+                               htmltools::tags$div(
+                                 title="Compare the base data with a different park, growth stage, or time period",
+                                 shiny::radioButtons(
+                                   inputId="CompareType",
+                                   label ="Compare to another:",
+                                   choices=base::c("None","Park","Growth Stage","Time"),
+                                   selected="None",
+                                   inline=TRUE)),
+                               shiny::uiOutput(outputId="CompareSelect")
               )
             )
           ),
