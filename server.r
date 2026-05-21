@@ -111,7 +111,7 @@ shiny::shinyServer(function(input,output,session){
   output$MapCycleControl<-shiny::renderUI({
     shiny::req(DATACYCLES)
     shiny::selectInput(inputId="MapCycles", label="Display data from years:", 
-                       choices=base::rev(stats::setNames(base::as.character(DATACYCLES$Cycle), base::paste0(DATACYCLES$Name,": ",
+                       choices=base::rev(stats::setNames(base::as.character(DATACYCLES$Cycle), base::paste0(DATACYCLES$Name,":",
                                                                                                             DATACYCLES$YearStart,"-",DATACYCLES$YearEnd)))
     )
   })
@@ -856,30 +856,7 @@ shiny::shinyServer(function(input,output,session){
         )}
     
   })
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
+
   #### Plots Tab ####
   
   #### Park Control for Density plot  ####
@@ -894,7 +871,7 @@ shiny::shinyServer(function(input,output,session){
   output$densCycleControl<-shiny::renderUI({
     shiny::req(DATACYCLES)
     shiny::selectInput(inputId="densCycles", label="Display data from years:", 
-                       choices=base::rev(stats::setNames(base::as.character(DATACYCLES$Cycle), base::paste0(DATACYCLES$Name,": ",
+                       choices=base::rev(stats::setNames(base::as.character(DATACYCLES$Cycle), base::paste0(DATACYCLES$Name,":",
                                                                                                             DATACYCLES$YearStart,"-",DATACYCLES$YearEnd)))
     )
   })
@@ -941,7 +918,8 @@ shiny::shinyServer(function(input,output,session){
                  else{
                    htmltools::tags$div(title="Click here to pick the species you want to graph",
                                        shiny::selectizeInput(inputId="densSpecies", label="Select one or more species", choices=densSpecList(),
-                                                             multiple=TRUE, selected = input$densSpecies, options = base::list(plugins = base::list("remove_button"))
+                                                             multiple=TRUE, selected = input$densSpecies, options = base::list(placeholder='Select species to display',
+                                                                                                                               plugins = base::list("remove_button"))
                                        ))
                  }
     )
@@ -980,7 +958,7 @@ shiny::shinyServer(function(input,output,session){
                                                                                                vines=,herbs=base::c('Only one growth stage monitored.'=NA)))),
                  Time=htmltools::tags$div(title= "Select a second range of years",
                                           shiny::selectInput(inputId="compCycles", label="Display data from years:", 
-                                                             choices=base::rev(stats::setNames(base::as.character(DATACYCLES$Cycle), base::paste0(DATACYCLES$Name,": ",
+                                                             choices=base::rev(stats::setNames(base::as.character(DATACYCLES$Cycle), base::paste0(DATACYCLES$Name,":",
                                                                                                                                                   DATACYCLES$YearStart,"-",DATACYCLES$YearEnd))))))
   })
   
@@ -1185,7 +1163,7 @@ shiny::shinyServer(function(input,output,session){
         }
         base::do.call(NPSForVeg::SiteXSpec, args)
       }, error = function(e) {
-        message("SiteXSpec fallback error for ", input$densGroup, ": ", conditionMessage(e))
+        message("SiteXSpec fallback error for ", input$densGroup, ":", conditionMessage(e))
         NULL
       })
       
@@ -1613,7 +1591,7 @@ shiny::shinyServer(function(input,output,session){
       if (base::is.null(cycle_code) || !nzchar(cycle_code)) base::return(cycle_code)
       row <- DATACYCLES[DATACYCLES$Cycle == cycle_code, ]
       if (base::nrow(row) == 1L) {
-        base::paste0(row$Name, ": ", row$YearStart, "-", row$YearEnd)} else {
+        base::paste0(row$Name, ":", row$YearStart, "-", row$YearEnd)} else {
           base::as.character(cycle_code)}}
     
     species_group_long <- stats::setNames(DENSLABELDATA$Label, DENSLABELDATA$Name)
@@ -1864,11 +1842,6 @@ shiny::shinyServer(function(input,output,session){
         base::return(base::paste(base_name, ":", grp_title, val_title, base_period, "vs", cmp_period, unit_suffix))
       } else {
         base::return(base::paste(base_name, ":", grp_title, val_title, cmp_period, "vs", base_period, unit_suffix))}}
-    
-    # if comparison is selected and there isnt any comparison data available
-    #if (input$CompareType != "None" && (is.null(input$CompareType) || input$CompareType == "")) {return(NULL)}
-    #if (!identical(input$CompareType, "None")) {cmp <- tryCatch(compareDf(), error = function(e) NULL)
-    #if (is.null(cmp) || nrow(cmp) == 0) {return(base::paste(base_name, ":", grp_title, val_title, base_period, unit_suffix))}}
     })
   
   output$densTableTitle <- shiny::renderText({ tempDensTableTitle() })
@@ -1895,7 +1868,7 @@ shiny::shinyServer(function(input,output,session){
                          Park = NPSForVeg::getNames(base_obj, "long"),
                          "Growth Stage" = DENSLABELDATA$Label[DENSLABELDATA$Name == input$densGroup],
                          Time = {row <- DATACYCLES[DATACYCLES$Cycle == input$densCycles, ]
-                           if (base::nrow(row) == 1L) base::paste0(row$Name, ": ", row$YearStart, "-", row$YearEnd)
+                           if (base::nrow(row) == 1L) base::paste0(row$Name, ":", row$YearStart, "-", row$YearEnd)
                            else base::as.character(input$densCycles)},
                          "Base")
     cmp_label <- base::switch(input$CompareType,
@@ -1904,7 +1877,7 @@ shiny::shinyServer(function(input,output,session){
                           if (!base::is.null(cmp_obj)) NPSForVeg::getNames(cmp_obj, "long") else input$ComparePark}},
                         "Growth Stage" = DENSLABELDATA$Label[DENSLABELDATA$Name == input$CompareGroup],
                         Time = {row <- DATACYCLES[DATACYCLES$Cycle == input$compCycles, ]
-                          if (base::nrow(row) == 1L) base::paste0(row$Name, ": ", row$YearStart, "-", row$YearEnd)
+                          if (base::nrow(row) == 1L) base::paste0(row$Name, ":", row$YearStart, "-", row$YearEnd)
                           else base::as.character(input$compCycles)},
                         "Compare")
     base::list(base = base_label, cmp = cmp_label)})
@@ -2014,7 +1987,7 @@ shiny::shinyServer(function(input,output,session){
                          Park = NPSForVeg::getNames(base_obj, "long"),
                          "Growth Stage" = DENSLABELDATA$Label[DENSLABELDATA$Name == input$densGroup],
                          Time = {row <- DATACYCLES[DATACYCLES$Cycle == input$densCycles, ]
-                           if (base::nrow(row) == 1L) base::paste0(row$Name, ": ", row$YearStart, "-", row$YearEnd)
+                           if (base::nrow(row) == 1L) base::paste0(row$Name, ":", row$YearStart, "-", row$YearEnd)
                            else base::as.character(input$densCycles)},
                          "Base")
     
@@ -2024,7 +1997,7 @@ shiny::shinyServer(function(input,output,session){
                             if (!base::is.null(cmp_obj)) NPSForVeg::getNames(cmp_obj, "long") else input$ComparePark}},
                         "Growth Stage" = DENSLABELDATA$Label[DENSLABELDATA$Name == input$CompareGroup],
                         Time = {row <- DATACYCLES[DATACYCLES$Cycle == input$compCycles, ]
-                          if (base::nrow(row) == 1L) base::paste0(row$Name, ": ", row$YearStart, "-", row$YearEnd)
+                          if (base::nrow(row) == 1L) base::paste0(row$Name, ":", row$YearStart, "-", row$YearEnd)
                           else base::as.character(input$compCycles)},
                         "Compare")
     
@@ -2093,7 +2066,7 @@ shiny::shinyServer(function(input,output,session){
       label = "Display data from years:",
       choices = base::rev(stats::setNames(
         base::as.character(DATACYCLES$Cycle),
-        base::paste0(DATACYCLES$Name, ": ", DATACYCLES$YearStart, "-", DATACYCLES$YearEnd))))})
+        base::paste0(DATACYCLES$Name, ":", DATACYCLES$YearStart, "-", DATACYCLES$YearEnd))))})
   
   #IV Species Control
   IVSpecList <- shiny::reactive({

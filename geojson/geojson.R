@@ -21,7 +21,7 @@ base::dput(EcoRegTemp@data, file="./geojson/EcoRegData.txt")
 
 EcoReg<-base::readChar("./geojson/EcoRegTemp", base::file.info("./geojson/EcoRegTemp")$size)
 EcoRegColors<-PolyOpts(EcoRegTemp)
-EcoStyle<-base::paste0('"style": {"weight": 0, "fillOpacity": 0.40, "fillColor": "',EcoRegColors, '"}, ')
+EcoStyle<-base::paste0('"style": {"weight": 0, "fillOpacity": 0.40, "fillColor":"',EcoRegColors, '"}, ')
 
 base::regmatches(EcoReg,base::gregexpr(pattern="[0123456789], \"properties\": \\{ \\K", text=EcoReg,perl=T)) <- base::list(EcoStyle)
 base::writeChar(object=EcoReg,con="./geojson/EcoReg")
@@ -37,7 +37,7 @@ base::dput(ForestTemp@data, file="./geojson/ForestData.txt")
 
 Forest<-base::readChar("./geojson/ForestTemp", base::file.info("./geojson/ForestTemp")$size)
 ForestColors<-PolyOpts(ForestTemp)
-ForestStyle<-base::paste0('"style": {"weight": 0, "fillOpacity": 0.60, "fillColor": "',ForestColors, '"}, ')
+ForestStyle<-base::paste0('"style": {"weight": 0, "fillOpacity": 0.60, "fillColor":"',ForestColors, '"}, ')
 
 base::regmatches(Forest,base::gregexpr(pattern="[0123456789], \"properties\": \\{ \\K", text=Forest,perl=T)) <- base::list(ForestStyle)
 base::writeChar(object=Forest,con="./geojson/Forest")
@@ -52,7 +52,7 @@ base::dput(SoilTemp@data, file="./geojson/SoilData.txt")
 
 Soil<-base::readChar("./geojson/SoilTemp", base::file.info("./geojson/SoilTemp")$size)
 SoilColors<-PolyOpts(SoilTemp)
-SoilStyle<-base::paste0('"style": {"weight": 0, "fillOpacity": 0.60, "fillColor": "',SoilColors, '"}, ')
+SoilStyle<-base::paste0('"style": {"weight": 0, "fillOpacity": 0.60, "fillColor":"',SoilColors, '"}, ')
 
 base::regmatches(Soil,base::gregexpr(pattern="[0123456789], \"properties\": \\{ \\K", text=Soil, perl=T)) <- base::list(SoilStyle)
 base::writeChar(object=Soil,con="./geojson/Soil")
