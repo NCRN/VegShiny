@@ -114,12 +114,12 @@ MAPLEGEND<-list(
   ),
   size=base::list(   
     trees=base::list(
-      Title="Basal area m2 / hectare",
+      Title="Basal area (m\u00B2) / hectare",
       Cuts=base::c(-1,0,0.5, 1.5, 7.5,15,30,45,10000000),
       Labels=base::c("0","0 - 0.5","0.5 - 1.5","1.5 - 7.5","7.5 - 15","15 - 30","30 - 45","45+")
     ),
     saplings=base::list(
-      Title="Basal Area m2 / hectare",
+      Title="Basal Area (m\u00B2) / hectare",
       Cuts=base::c(-1,0,0.25,0.5,1.0,2.0,3.0, 4.0, 10000000),
       Labels=base::c("0","0 - 0.25","0.25 - 0.5","0.5 - 1.0","1.0 - 2.0", "2.0 -3.0", "3.0 - 4.0","4.0+")
     ),

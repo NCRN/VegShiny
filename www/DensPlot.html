@@ -9,7 +9,8 @@
   <p>
   These graphs allow you to see estimates of the abundance, size, and percent of monitoring plots occupied by particular species in each park. 
   The graphs show the mean and the 95% confidence intervals (bars) for the selected species. 
-  By selecting the "Data table" tab at the top of the page you can view all species data for a given park in table format.</p>
+  The table shows Data to Graph (abundance, basal area, and proportion of plots occupied) at a park, in a given time period. 
+  You can view this by selecting the "Data table" tab at the top of the page.</p>
 <p>
   There are three options for selecting species to graph:
 <ul>
@@ -25,8 +26,9 @@
   This option graphs the summed data for every observed species matching the chosen data measures.</li>
 </ul>
 </p>
-<p>Depending on the type of plant selected there are a variety of measurements that can be graphed:
-  <ul>
+<p>Depending on the type of plant selected there are a variety of measurements that can be graphed (<a href="https://irma.nps.gov/DataStore/Reference/Profile/2210263">NCRN forest vegetation monitoring protocol</a>):</p>
+<p>
+    <ul>
     <li><strong>Abundance: </strong>
     This is an estimate of how many individuals of a given species are found in each forested hectare of a park. 
     A hectare is 2.47 acres, or approximately the size of two football fields. 
@@ -49,9 +51,9 @@
   <p>Once you have selected the primary data you wish to graph, you can add comparison data. Three options are available:
   <ul>
     <li><strong>Park:</strong> 
-    This will allow you to compare a second park with the first. 
-    If you have chosen to graph the "Most common species", then the most common species from the base park will be displayed. 
-    If you have chosen "Pick individual species", then you can only pick species present in the base park.</li>
+    This will allow you to select a second comparison park. 
+    If you have chosen to graph the "Most common species", then the most common species from the first park selected will be displayed. 
+    If you have chosen "Pick individual species", then you can only pick species present in the first park.</li>
     <li><strong>Growth Stage:</strong> 
     This allows you to compare two different growth stages of the same species. 
     You can make comparisons between trees, saplings, and tree seedlings, or between shrubs and shrub seedlings. 
@@ -62,18 +64,19 @@
 <br>
 <h4>Statistical Details</h4>
 <p> 
+Statistical calculations were performed using the <a href="https://github.com/NCRN/NPSForVeg"> NPSForVeg R package developed by Schmit et al. (2024).</a>
 Mean values (averages) are always calculated by first summing the values for the monitoring plots in a park and then dividing by the number of plots in the park.  
 The means and confidence intervals are first calculated on a per-plot basis and then converted to a per-hectare basis. 
 The 95% confidence intervals are more complicated to calculate and depend on the type of data graphed.</p>
-   <p><strong>Abundance</strong> 
+   <p><strong>Abundance:</strong> 
    The 95% confidence interval is calculated by fitting the number of plants found in each plot to a negative binomial distribution. 
    Using negative binomial estimation ensures that the 95% confidence interval will never include negative numbers of plants, and often results in confidence intervals that are not symmetric around the mean.</p>
-  <p><strong>Basal Area</strong> 
+  <p><strong>Basal Area:</strong> 
   Basal area measurements often do not fit any standard statistical distribution. 
   To account for this, the 95% confidence interval is calculated by bootstrapping the observed data.</p>
-  <p><strong>Percent of Plots Occupied</strong> 
+  <p><strong>Percent of Plots Occupied:</strong> 
   95% confidence intervals are calculated by fitting the data to a binomial distribution.</p>
-  <p><strong>Percent Cover</strong> 
+  <p><strong>Percent Cover:</strong> 
   Like basal area, confidence intervals are calculated using bootstrapping.</p>
 </fontsize>
 </body>

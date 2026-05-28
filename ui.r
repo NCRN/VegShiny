@@ -502,7 +502,9 @@ tags$head(tags$style(HTML("
             shiny::tabsetPanel(id="densPanel",type="pills",
                 shiny::tabPanel(title=htmltools::tags$div(title="Graph the data", "Graph"),value="Graph",
                   htmltools::tags$div(id = "densPlotContainer", title="Graph of Mean and 95% Confidence Interval",
-                  plotly::plotlyOutput(outputId="DensPlotly", height= "600px")),
+                                      shiny::uiOutput("densMissingWarningGraph"),
+                                      shiny::uiOutput("densOnePlotWarningGraph"),
+                                      plotly::plotlyOutput(outputId="DensPlotly", height= "600px")),
              
                     shiny::fixedPanel(class="panel panel-primary controls",draggable=TRUE,
                                cursor="auto",id="GraphOptionsPanel",style="padding: 0px; display: none; z-index: 1995;",
@@ -529,7 +531,10 @@ tags$head(tags$style(HTML("
                 value="Table",
                 shiny::column(10, style="padding: 5px",
                  shiny::h3(shiny::textOutput("densTableTitle")),
-                 uiOutput("densMessage"),
+                 shiny::hr(),
+                 shiny::uiOutput("densMissingWarningTable"),
+                 shiny::uiOutput("densOnePlotWarningTable"),
+                 shiny::uiOutput("densMessageTable"),
                  DT::dataTableOutput("densTable")
                 )
               ),
@@ -579,8 +584,8 @@ tags$head(tags$style(HTML("
                   #shiny::br(),
                   #shiny::downloadButton(outputId="IVGraphDownload", label="Save Graph (.jpg)", class="btn btn-primary btn-block action-button"),
                   #shiny::downloadButton(outputId="IVWmfDownload", label="Save Graph (.wmf)", class="btn btn-primary btn-block action-button")
-                ),  
-                  shiny::conditionalPanel(
+                ),
+              shiny::conditionalPanel(
                     condition="input.IVPanel=='Table'",
                     shiny::hr(),
                     shiny::downloadButton(outputId="IVTableDownload", label="Save Table (.csv)", class="btn btn-primary btn-block")
@@ -621,7 +626,8 @@ tags$head(tags$style(HTML("
                 htmltools::tags$div(title="See all data in a table","Data table"),
                 shiny::column(10,
                   shiny::h3(shiny::textOutput("IVTableTitle")),
-                  uiOutput("IVMessage"),
+                  shiny::hr(),
+                  shiny::uiOutput("IVMessage"),
                   DT::dataTableOutput("IVData"),
                   #verbatimTextOutput("IVDebug")
                 )
@@ -656,6 +662,11 @@ tags$head(tags$style(HTML("
             htmltools::tags$div(
               title="Select one or more plots, select and backspace to delete.", shiny::uiOutput("SpListPlotControl")
             )
+          ),
+          shiny::conditionalPanel(
+            condition="input.SpeciesListPanel == 'Species Lists'",
+            shiny::hr(),
+            shiny::downloadButton(outputId="SpeciesTableDownload", label="Save Table (.csv)", class="btn btn-primary btn-block")
           )
         )
       ),
@@ -663,6 +674,8 @@ tags$head(tags$style(HTML("
         shiny::tabsetPanel(id="SpeciesListPanel", type="pills",
           shiny::tabPanel("Species Lists",
             shiny::h3(shiny::textOutput("SpeciesTableTitle")),
+            shiny::uiOutput("NPSpeciesLink"),
+            shiny::hr(),
             DT::dataTableOutput("SpeciesTable")
           ),
           shiny::tabPanel("About these lists...",
