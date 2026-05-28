@@ -33,6 +33,12 @@ base::names(PARKLIST)<-NPSForVeg::getNames(VEGDATA)
 PARKBOUNDS<-utils::read.csv("boundboxes.csv", as.is=TRUE)
 
 DATACYCLES<-NPSForVeg::getCycles(VEGDATA[[1]])
+
+fmt_common <- function(x) {base::ifelse(base::is.na(x) | !base::nzchar(base::trimws(x)),
+    x,
+    paste0(base::toupper(base::substr(base::trimws(x), 1, 1)),
+           base::tolower(base::substr(base::trimws(x), 2, base::nchar(base::trimws(x))))))}
+
 ##### Begin Server Function ####
 
 shiny::shinyServer(function(input,output,session){
@@ -586,6 +592,8 @@ shiny::shinyServer(function(input,output,session){
         dplyr::filter(!(name_word_count == 1 & base::any(name_word_count >= 2))) %>%
         dplyr::slice(1)
       
+      cn$commonName <- fmt_common(cn$commonName)
+      
       cn_list[[i]] <- cn
     }
     
@@ -655,7 +663,7 @@ shiny::shinyServer(function(input,output,session){
       vd_filled <- vegdata_df %>%
         dplyr::left_join(cn_df, by = "TSN", suffix = base::c("", "_new")) %>%
         dplyr::mutate(
-          Common = base::ifelse(Common == "" | base::is.na(Common), Common_new, Common)
+          Common = base::ifelse(Common == "" | base::is.na(Common), fmt_common(Common_new), fmt_common(Common))
         ) %>%
         dplyr::select(-Common_new) %>%
         dplyr::distinct(Latin_Name, Common, .keep_all = FALSE)
@@ -666,7 +674,7 @@ shiny::shinyServer(function(input,output,session){
     
     new_vd_rows <- base::data.frame(
       Latin_Name = base::c("Acer spp.", "Quercus acutissima", "Oplismenus undulatifolius", "Robinia viscosa", "Viburnum lantana", "Rosaceae Family", "Lygodium palmatum"),
-      Common = base::c("maples", "sawtooth oak", "wavyleaf basketgrass", "clammy locust", "wayfaring tree", "roses", "American climbing fern")
+      Common = base::c("Maples", "Sawtooth oak", "Wavyleaf basketgrass", "Clammy locust", "Wayfaring tree", "Roses", "American climbing fern")
     )
     vd_filled <- base::rbind(vd_filled, new_vd_rows)
     
@@ -695,11 +703,11 @@ shiny::shinyServer(function(input,output,session){
       })
     }
     
-    SpecNames <- safeGetPlantNames(object = vd_filled %>%
+    SpecNames <- fmt_common(safeGetPlantNames(object = vd_filled %>%
                                      dplyr::distinct(Latin_Name, .keep_all = TRUE),
                                    names = SpecTemp,
                                    in.style = "Latin",
-                                   out.style = base::ifelse(input$mapCommon, "common", "Latin"))
+                                   out.style = base::ifelse(input$mapCommon, "common", "Latin")))
     
     base::names(SpecTemp)<-SpecNames
     SpecTemp<-SpecTemp[order(base::tolower(base::names(SpecTemp)))]
@@ -829,6 +837,7 @@ shiny::shinyServer(function(input,output,session){
         }
       }
       
+      base::names(tempData) <- fmt_common(base::names(tempData))
       
       content<-base::paste0( shiny::h5(NPSForVeg::getNames(VEGDATA[[selectedPlot$Unit_Code]],"long")),
                              shiny::h6("Monitoring Plot:",selectedPlot$Plot_Name),
@@ -909,8 +918,8 @@ shiny::shinyServer(function(input,output,session){
     shiny::req(input$densPark, input$densGroup)
     shiny::req(input$densPark %in% base::names(VEGDATA))
     SpecTemp<-base::unique(NPSForVeg::getPlants(object=VEGDATA[[input$densPark]], group=input$densGroup, years=densYears(),common=F)$Latin_Name)
-    SpecNames<-NPSForVeg::getPlantNames(object=VEGDATA[[input$densPark]], names=SpecTemp, in.style="Latin",
-                                        out.style=base::ifelse(input$densCommon,"common","Latin"))
+    SpecNames<-fmt_common(NPSForVeg::getPlantNames(object=VEGDATA[[input$densPark]], names=SpecTemp, in.style="Latin",
+                                        out.style=base::ifelse(input$densCommon,"common","Latin")))
     base::names(SpecTemp)<-SpecNames  
     SpecTemp<-SpecTemp[order(base::names(SpecTemp))]
   })
@@ -1295,13 +1304,13 @@ shiny::shinyServer(function(input,output,session){
     shiny::req(!base::is.null(raw), base::nrow(raw) > 0)
     
     if (!("Common_Name" %in% base::names(raw))) {
-      raw$Common_Name <- base::tryCatch(
+      raw$Common_Name <- fmt_common(base::tryCatch(
         NPSForVeg::getPlantNames(
           object    = VEGDATA[[input$densPark]],
           names     = raw$Latin_Name,
           in.style  = "Latin",
           out.style = "common"),
-        error = function(e) base::rep(NA_character_, base::nrow(raw)))
+        error = function(e) base::rep(NA_character_, base::nrow(raw))))
     }
     
     df <- raw %>%
@@ -1467,7 +1476,7 @@ shiny::shinyServer(function(input,output,session){
     name_obj <- VEGDATA[[input$densPark]] %||% VEGDATA[[PARKLIST[1]]]
     
     if (!("Common_Name" %in% base::names(raw))) {
-      raw$Common_Name <- base::tryCatch({
+      raw$Common_Name <- fmt_common(base::tryCatch({
         # Filter to only names that exist in the object before looking up
         known <- raw$Latin_Name[raw$Latin_Name %in% 
                                   NPSForVeg::getPlants(name_obj, group = cmp$group)$Latin_Name]
@@ -1485,7 +1494,7 @@ shiny::shinyServer(function(input,output,session){
         result
       }, error = function(e) {
         base::rep(NA_character_, base::nrow(raw))
-      })
+      }))
     }
     ###########################################################
     
@@ -2079,7 +2088,7 @@ shiny::shinyServer(function(input,output,session){
     build_half <- function(df_raw, name_col_arg) {
       df_raw %>%
         dplyr::transmute(
-          Species = .data[[name_col_arg]],
+          Species = fmt_common(.data[[name_col_arg]]),
           Mean = base::as.numeric(Mean),
           Lower95 = base::as.numeric(Lower.95),
           Upper95 = base::as.numeric(Upper.95)) %>%
@@ -2266,10 +2275,10 @@ shiny::shinyServer(function(input,output,session){
     SpecTemp <- base::unique(NPSForVeg::getPlants(
       object = VEGDATA[[input$IVPark]], group = input$IVGroup,
       years = IVYears(), common = FALSE)$Latin_Name)
-    SpecNames <- NPSForVeg::getPlantNames(
+    SpecNames <- fmt_common(NPSForVeg::getPlantNames(
       object = VEGDATA[[input$IVPark]], names = SpecTemp,
       in.style = "Latin",
-      out.style = base::ifelse(input$IVCommon, "common", "Latin"))
+      out.style = base::ifelse(input$IVCommon, "common", "Latin")))
     base::names(SpecTemp) <- SpecNames
     SpecTemp[order(base::names(SpecTemp))]
   })
@@ -2331,26 +2340,28 @@ shiny::shinyServer(function(input,output,session){
       years = IVYears(),
       common = input$IVCommon)
     
+    raw$Species <- fmt_common(raw$Species)
+    
     # compute the opposite name for hover text.
     if (base::isTRUE(input$IVCommon)) {
-      raw$LabelOpp <- base::tryCatch(
+      raw$LabelOpp <- fmt_common(base::tryCatch(
         NPSForVeg::getPlantNames(
           object = VEGDATA[[input$IVPark]],
-          names = raw$Species,
+          names = fmt_common(raw$Species),
           in.style = "common",
           out.style = "Latin"),
-        error = function(e) raw$Species)
+        error = function(e) fmt_common(raw$Species)))
     } else {
-      raw$LabelOpp <- base::tryCatch(
+      raw$LabelOpp <- fmt_common(base::tryCatch(
         NPSForVeg::getPlantNames(
           object = VEGDATA[[input$IVPark]],
-          names = raw$Species,
+          names = fmt_common(raw$Species),
           in.style = "Latin",
           out.style = "common"),
-        error = function(e) raw$Species)}
+        error = function(e) fmt_common(raw$Species)))}
     raw$LabelOpp <- base::ifelse(
       base::is.na(raw$LabelOpp) | !base::nzchar(raw$LabelOpp),
-      raw$Species,
+      fmt_common(raw$Species),
       raw$LabelOpp)
     
     raw})
@@ -2662,7 +2673,7 @@ shiny::shinyServer(function(input,output,session){
   }
   
   CommonList <- shiny::reactive({
-    decapitalize(NPSForVeg::getPlantNames(object = VEGDATA[[input$SpListPark]],
+    fmt_common(NPSForVeg::getPlantNames(object = VEGDATA[[input$SpListPark]],
                                           names = LatinList(), out.style = "common", in.style = "Latin"))})  
   
   MonitoringList <- shiny::reactive({
@@ -2769,7 +2780,6 @@ shiny::shinyServer(function(input,output,session){
       df <- SpeciesTableData()
       shiny::req(base::is.data.frame(df), base::nrow(df) > 0)
       utils::write.csv(df, file, row.names = FALSE)})
-  print(PARKLIST)
-  
+
 })# end of shiny::shinyServer() function
 
