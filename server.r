@@ -918,8 +918,8 @@ shiny::shinyServer(function(input,output,session){
     shiny::req(input$densPark, input$densGroup)
     shiny::req(input$densPark %in% base::names(VEGDATA))
     SpecTemp<-base::unique(NPSForVeg::getPlants(object=VEGDATA[[input$densPark]], group=input$densGroup, years=densYears(),common=F)$Latin_Name)
-    SpecNames<-fmt_common(NPSForVeg::getPlantNames(object=VEGDATA[[input$densPark]], names=SpecTemp, in.style="Latin",
-                                        out.style=base::ifelse(input$densCommon,"common","Latin")))
+    SpecNames <- fmt_common(base::tryCatch( NPSForVeg::getPlantNames(object=VEGDATA[[input$densPark]], names=SpecTemp, in.style="Latin", 
+                                                                     out.style=base::ifelse(input$densCommon,"common","Latin")), error = function(e) SpecTemp))
     base::names(SpecTemp)<-SpecNames  
     SpecTemp<-SpecTemp[order(base::names(SpecTemp))]
   })
@@ -1239,13 +1239,6 @@ shiny::shinyServer(function(input,output,session){
         NULL
       })
       
-      shiny::validate(shiny::need(
-        !base::is.null(sxs) && base::nrow(sxs) > 0 &&
-          base::length(base::setdiff(base::names(sxs), base::c("Plot_Name", "Total"))) > 0,
-        base::paste("No", input$densGroup, "were observed at",
-              NPSForVeg::getNames(VEGDATA[[input$densPark]], "long"),
-              "during", base::min(densYears()), "-", base::max(densYears()), ".")))
-      
       species_cols <- base::setdiff(base::names(sxs), base::c("Plot_Name", "Total"))
       result <- base::data.frame(
         Latin_Name = species_cols,
@@ -1330,18 +1323,7 @@ shiny::shinyServer(function(input,output,session){
     ### radioButton: Pick ###
     if (base::identical(input$densSpeciesType, "Pick")) {
       shiny::req(input$densSpecies)
-      chosen <- if (species_col() == "Latin_Name") {
-        input$densSpecies
-      } else {
-        base::tryCatch(
-          NPSForVeg::getPlantNames(
-            object    = VEGDATA[[input$densPark]],
-            names     = input$densSpecies,
-            in.style  = "Latin",
-            out.style = "common"),
-          error = function(e) input$densSpecies)
-      }
-      df <- df %>% dplyr::filter(Species %in% chosen)}
+      df <- df %>% dplyr::filter(Latin %in% input$densSpecies)}
     
     ### radioButton: Common ###
     if (base::identical(input$densSpeciesType, "Common")) {
@@ -1515,15 +1497,7 @@ shiny::shinyServer(function(input,output,session){
     # Pick
     if (base::identical(input$densSpeciesType, "Pick")) {
       shiny::req(input$densSpecies)
-      chosen <- if (species_col_val == "Latin_Name") {
-        input$densSpecies
-      } else {
-        NPSForVeg::getPlantNames(
-          object    = name_obj,   # base veg object for name mapping
-          names     = input$densSpecies,
-          in.style  = "Latin",
-          out.style = "common")}
-      df <- df %>% dplyr::filter(Species %in% chosen)}
+      df <- df %>% dplyr::filter(Latin %in% input$densSpecies)}
     
     # Common = top N from BASE (important!)
     if (base::identical(input$densSpeciesType, "Common")) {
@@ -2088,6 +2062,7 @@ shiny::shinyServer(function(input,output,session){
     build_half <- function(df_raw, name_col_arg) {
       df_raw %>%
         dplyr::transmute(
+          Latin_Name = Latin_Name,
           Species = fmt_common(.data[[name_col_arg]]),
           Mean = base::as.numeric(Mean),
           Lower95 = base::as.numeric(Lower.95),
@@ -2097,21 +2072,14 @@ shiny::shinyServer(function(input,output,session){
     filter_half <- function(tbl) {
       if (base::identical(input$densSpeciesType, "Pick")) {
         shiny::req(input$densSpecies)
-        chosen <- if (!base::isTRUE(input$densCommon)) {input$densSpecies} else {
-          tryCatch(
-            NPSForVeg::getPlantNames(
-              object = VEGDATA[[input$densPark]],
-              names = input$densSpecies,
-              in.style = "Latin",
-              out.style = "common"),
-            error = function(e) input$densSpecies)}
-        tbl <- tbl %>% dplyr::filter(Species %in% chosen)}
+        tbl <- tbl %>% dplyr::filter(Latin_Name %in% input$densSpecies)}
       if (base::identical(input$densSpeciesType, "Common")) {
         shiny::req(input$densTop)
         tbl <- tbl %>% dplyr::arrange(dplyr::desc(Mean)) %>% dplyr::slice(1:input$densTop)}
       if (base::identical(input$densSpeciesType, "All")) {
         agg_fun <- if (input$densvalues %in% base::c("count", "size")) sum else mean
         tbl <- tbl %>% dplyr::summarise(
+          Latin_Name = "All species",
           Species = "All species",
           Mean = agg_fun(Mean, na.rm = TRUE),
           Lower95 = agg_fun(Lower95, na.rm = TRUE),
@@ -2128,7 +2096,7 @@ shiny::shinyServer(function(input,output,session){
         dplyr::mutate(dplyr::across(dplyr::all_of(base::c("Mean", "Lower 95% CI", "Upper 95% CI")),
           ~ base::ifelse(base::is.na(.x), "NA", base::format(base::round(base::as.numeric(.x), 3), nsmall = 3, scientific = FALSE))))}
     
-    base_half <- build_half(raw, name_col) %>% filter_half()
+    base_half <- build_half(raw, name_col) %>% filter_half() %>% dplyr::select(-Latin_Name)
     
     # no comparison selected
     if (input$CompareType == "None") {
@@ -2208,7 +2176,7 @@ shiny::shinyServer(function(input,output,session){
     base_half$Dataset <- base_label
     cmp_half$Dataset  <- cmp_label
     
-    sp_levels <- base::levels(densDf()$Species)
+    sp_levels <- unique(base_half$Species)
     
     # only group species labels when comparison is selected
     if (!base::identical(input$CompareType, "None")) {
@@ -2275,10 +2243,8 @@ shiny::shinyServer(function(input,output,session){
     SpecTemp <- base::unique(NPSForVeg::getPlants(
       object = VEGDATA[[input$IVPark]], group = input$IVGroup,
       years = IVYears(), common = FALSE)$Latin_Name)
-    SpecNames <- fmt_common(NPSForVeg::getPlantNames(
-      object = VEGDATA[[input$IVPark]], names = SpecTemp,
-      in.style = "Latin",
-      out.style = base::ifelse(input$IVCommon, "common", "Latin")))
+    SpecNames <- fmt_common(base::tryCatch(NPSForVeg::getPlantNames(object=VEGDATA[[input$IVPark]], names=SpecTemp, in.style="Latin", 
+                                                                    out.style=base::ifelse(input$IVCommon,"common","Latin")), error = function(e) SpecTemp))
     base::names(SpecTemp) <- SpecNames
     SpecTemp[order(base::names(SpecTemp))]
   })
@@ -2301,7 +2267,8 @@ shiny::shinyServer(function(input,output,session){
                  } else {htmltools::tags$div(title = "Click here to pick the species you want to graph",
                                        shiny::selectizeInput(inputId = "IVSpecies", label = "Select one or more species",
                                                              choices = IVSpecList(), multiple = TRUE, selected = input$IVSpecies,
-                                                             options = base::list(plugins = base::list("remove_button"))))},
+                                                             options = base::list(placeholder='Select species to display',
+                                                                                  plugins = base::list("remove_button"))))},
                  All = NULL)})
   
   shiny::observeEvent(input$IVCommon, {
@@ -2334,6 +2301,13 @@ shiny::shinyServer(function(input,output,session){
     shiny::req(input$IVPark, base::nchar(input$IVPark) > 0)
     shiny::req(IVYears())
     
+    # get latin names
+    raw_latin <- NPSForVeg::IV(
+      object = VEGDATA[[input$IVPark]],
+      group = input$IVGroup,
+      years = IVYears(),
+      common = FALSE)
+    
     raw <- NPSForVeg::IV(
       object = VEGDATA[[input$IVPark]],
       group = input$IVGroup,
@@ -2342,28 +2316,20 @@ shiny::shinyServer(function(input,output,session){
     
     raw$Species <- fmt_common(raw$Species)
     
-    # compute the opposite name for hover text.
+    # LabelOpp = the opposite of whatever Species currently is
     if (base::isTRUE(input$IVCommon)) {
-      raw$LabelOpp <- fmt_common(base::tryCatch(
-        NPSForVeg::getPlantNames(
-          object = VEGDATA[[input$IVPark]],
-          names = fmt_common(raw$Species),
-          in.style = "common",
-          out.style = "Latin"),
-        error = function(e) fmt_common(raw$Species)))
+      raw$LabelOpp <- raw_latin$Species
     } else {
       raw$LabelOpp <- fmt_common(base::tryCatch(
         NPSForVeg::getPlantNames(
           object = VEGDATA[[input$IVPark]],
-          names = fmt_common(raw$Species),
+          names = raw$Species,
           in.style = "Latin",
           out.style = "common"),
-        error = function(e) fmt_common(raw$Species)))}
-    raw$LabelOpp <- base::ifelse(
-      base::is.na(raw$LabelOpp) | !base::nzchar(raw$LabelOpp),
-      fmt_common(raw$Species),
-      raw$LabelOpp)
+        error = function(e) raw$Species))}
     
+    raw$LabelOpp <- base::ifelse(base::is.na(raw$LabelOpp) | !base::nzchar(raw$LabelOpp), fmt_common(raw$Species), raw$LabelOpp)
+
     raw})
   
   ### IV checkbox ###
@@ -2407,10 +2373,11 @@ shiny::shinyServer(function(input,output,session){
                              dplyr::slice_max(order_by = Total, n = input$IVTop, with_ties = FALSE) %>%
                              dplyr::arrange(Total)},
                          Pick = {shiny::req(input$IVSpecies)
-                           chosen <- if (base::isTRUE(input$IVCommon)) {NPSForVeg::getPlantNames(VEGDATA[[input$IVPark]],
-                                                                                                 names = input$IVSpecies, in.style = "Latin", out.style = "common")
-                             } else { input$IVSpecies }
-                           IVdf %>% dplyr::filter(Species %in% chosen) %>% dplyr::arrange(Total)},
+                           IVdf %>%
+                             dplyr::filter(
+                               if (base::isTRUE(input$IVCommon)) LabelOpp %in% input$IVSpecies
+                               else Species %in% input$IVSpecies) %>%
+                             dplyr::arrange(Total)},
                          All = IVdf %>%
                            dplyr::summarise(
                              Species = "All species ",
@@ -2582,15 +2549,10 @@ shiny::shinyServer(function(input,output,session){
                            dplyr::arrange(dplyr::desc(Total))},
                        Pick = {
                          shiny::req(input$IVSpecies)
-                         chosen <- if (base::isTRUE(input$IVCommon)) {
-                           NPSForVeg::getPlantNames(
-                             VEGDATA[[input$IVPark]],
-                             names  = input$IVSpecies,
-                             in.style  = "Latin",
-                             out.style = "common")
-                         } else {input$IVSpecies}
                          df %>%
-                           dplyr::filter(Species %in% chosen) %>%
+                           dplyr::filter(
+                             if (base::isTRUE(input$IVCommon)) LabelOpp %in% input$IVSpecies
+                             else Species %in% input$IVSpecies) %>%
                            dplyr::arrange(dplyr::desc(Total))},
                        All = df %>%
                          dplyr::summarise(
@@ -2735,7 +2697,7 @@ shiny::shinyServer(function(input,output,session){
     
     shiny::validate(shiny::need(base::is.data.frame(df), "Data not available."))
     
-    DT::datatable(df, rownames = FALSE, caption = "Species list", selection = "single", class = "display compact") |>
+    DT::datatable(df, rownames = FALSE, selection = "single", class = "display compact") |>
       DT::formatStyle("Latin Name", fontStyle = "italic")})
   
   output$NPSpeciesLink <- shiny::renderUI({
