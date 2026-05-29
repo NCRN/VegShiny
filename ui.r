@@ -341,21 +341,24 @@ shiny::navbarPage(
 #### Map Controls ####
       htmltools::div(id="MapControlPanel",class="panel panel-default controls",
             shiny::h4("Map Controls", class="panel-heading"),
+            uiOutput("mapModeIndicator"),
+            shiny::hr(),
+            htmltools::tags$div(title="Filter by park so only species in a given park are listed",
+                                shiny::uiOutput("MapParkControl")),
+            htmltools::tags$div(title="Select the time period you want to work with", shiny::uiOutput("MapCycleControl")),
+            htmltools::tags$div(title="Select a species of plants to map", shiny::uiOutput("MapSpeciesControl")),  
+            htmltools::tags$div(title="Toggle between common and scientific names",
+                                shiny::checkboxInput(inputId="mapCommon", label="Display common names?", value=TRUE )),
             htmltools::tags$div(title="Select the type of plant you want to work with", shiny::selectInput(inputId="MapGroup", 
               label="Type of plant:", choices=PLANTTYPES)),
             htmltools::tags$div(title="Select live or dead", shiny::selectInput(inputId="TreeStatus", label="Live or dead",
                                                                choices=base::c("Live"='alive',"Dead" = 'snag',"All"='all'))),
             htmltools::tags$div(title="Select the type of data to map",shiny::uiOutput("PlantValueControl")),
-            htmltools::tags$div(title="Select the time period you want to work with", shiny::uiOutput("MapCycleControl")),
             #htmltools::tags$div(title="Select the four year period you want to work with.", shiny::sliderInput(inputId="MapYear", 
              #     label="Display data from the 4 years ending:", min=YEARS$Start+YEARS$Range-1, max=YEARS$End, value=YEARS$End,
               #    sep="", step=1,ticks=T)),
-            htmltools::tags$div(title="Toggle between common and scientific names",
-                             shiny::checkboxInput(inputId="mapCommon", label="Display common names?", value=TRUE )),
-            htmltools::tags$div(title="Select a species of plants to map", shiny::uiOutput("MapSpeciesControl")),  
-            htmltools::tags$div(title="Filter the species list so only species found in a particular park are listed",
-                           shiny::uiOutput("MapParkControl")),
-            shiny::actionButton(inputId="AboutMapButton",label="About the map",class="btn btn-primary")
+            shiny::actionButton(inputId="AboutMapButton",label="About the map",class="btn btn-primary"),
+            
            ),
         
 #### Zoom Controls ####

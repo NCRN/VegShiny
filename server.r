@@ -135,11 +135,127 @@ shiny::shinyServer(function(input,output,session){
     all_years[all_years %in% available_years]
   })
   
+  #Build warning label for plots removed by filter selecitons
+  AllPlotsCount <- shiny::reactive({
+    shiny::req(MapYears())
+    
+    P <- NPSForVeg::getPlots(
+      VEGDATA,
+      years = MapYears(),
+      output = "dataframe",
+      type = "all")
+    
+    base::nrow(P)
+  })
+  
   # Map MetaData
   MapMetaData<-shiny::reactive({
     shiny::req(input$MapValues, input$MapGroup)
     MAPLEGEND[[input$MapValues]][[input$MapGroup]] 
   })
+  
+  
+  
+  
+  
+  
+  
+  
+  ### all plots setting
+  AllPlotLocations <- shiny::reactive({
+    all_plots <- base::lapply(base::names(VEGDATA), function(park) {
+      base::tryCatch(
+        NPSForVeg::getPlots(VEGDATA[[park]], output = "dataframe", type = "all") %>%
+          dplyr::select(Plot_Name, Unit_Code, Latitude, Longitude),
+        error = function(e) NULL
+      )
+    })
+    dplyr::bind_rows(all_plots[!base::sapply(all_plots, base::is.null)]) %>%
+      dplyr::distinct(Plot_Name, .keep_all = TRUE)
+  })
+  
+  showAllPlots <- shiny::reactiveVal(TRUE)
+  
+  # Track whether a reset is in progress
+  resetting <- shiny::reactiveVal(FALSE)
+  
+  shiny::observeEvent(
+    base::list(
+      input$MapGroup,
+      input$TreeStatus,
+      input$MapValues,
+      input$MapCycles,
+      input$MapSpecies,
+      input$MapPark
+    ),
+    {
+      # Do nothing if a reset is in progress
+      if (resetting()) base::return()
+      
+      # Do nothing if all inputs still match defaults
+      default_cycle <- base::as.character(DATACYCLES$Cycle[base::nrow(DATACYCLES)])
+      
+      is_default <- 
+        base::identical(input$MapGroup, "trees") &&
+        base::identical(input$TreeStatus, "alive") &&
+        base::identical(input$MapValues, "count") &&
+        base::identical(input$MapCycles, default_cycle) &&
+        base::identical(input$MapSpecies, "All") &&
+        base::identical(input$MapPark, "All")
+      
+      if (!is_default) {
+        showAllPlots(FALSE)
+      }
+    },
+    ignoreInit = TRUE,
+    ignoreNULL = TRUE
+  )
+  
+  output$mapModeIndicator <- shiny::renderUI({
+    if (showAllPlots()) {
+      htmltools::tags$div(
+        style = "padding: 6px 12px; margin-bottom: 8px;
+               background-color: #e8f5e9; color: #2e7d32;
+               border: 1.5px solid #a5d6a7; border-radius: 6px;
+               font-size: 13px; font-weight: bold;",
+        "\u25cf  Showing every NCRN plot ever sampled \u2014 no filters below are applied"
+      )
+    } else {
+      shiny::actionButton(
+        inputId = "resetMapFilters",
+        label = "\u25cf  Showing filtered plots \u2014 Click here to show every NCRN plot ever sampled",
+        style = "width: 100%; text-align: left;
+                 padding: 6px 12px; margin-bottom: 8px;
+                 background-color: #e3f2fd; color: #1565c0;
+                 border: 1.5px solid #90caf9; border-radius: 6px;
+                 font-size: 13px; font-weight: bold;
+                 cursor: pointer;"
+      )
+    }
+  })
+  
+  shiny::observeEvent(input$resetMapFilters, {
+    resetting(TRUE)
+    
+    shiny::updateSelectInput(session, "MapGroup", selected = "trees")
+    shiny::updateSelectInput(session, "MapValues", selected = "count")
+    shiny::updateSelectInput(session, "MapPark", selected = "All")
+    shiny::updateSelectInput(session, "MapSpecies", selected = "All")
+    shiny::updateRadioButtons(session,"TreeStatus", selected = "alive")
+    shiny::updateSelectInput(session, "MapCycles",
+                             selected = base::as.character(DATACYCLES$Cycle[base::nrow(DATACYCLES)]))
+    
+    showAllPlots(TRUE)
+    
+    session$onFlushed(function() {
+      resetting(FALSE)
+    }, once = TRUE)
+  })
+  
+  
+  
+  
+  
   
   # Data to plot on map - always for all parks 
   
@@ -208,18 +324,30 @@ shiny::shinyServer(function(input,output,session){
         spec_data <- dplyr::bind_rows(results[!base::sapply(results, base::is.null)])
         } else {
 
-        spec_data <- NPSForVeg::SiteXSpec(
-          object = VEGDATA[[input$MapPark]],
-          group = input$MapGroup,
-          years = MapYears(),
-          status = status_val,
-          species = species_val,
-          values = input$MapValues,
-          area = "ha"
-        )
+        spec_data <- base::tryCatch(
+          NPSForVeg::SiteXSpec(
+            object = VEGDATA[[input$MapPark]],
+            group = input$MapGroup,
+            years = MapYears(),
+            status = status_val,
+            species = species_val,
+            values = input$MapValues,
+            area = "ha"
+          ),
+            error = function(e) {
+              base::message("SiteXSpec failed for park: ", input$MapPark, " - ", e$message)
+              NULL
+            }
+          )
+        shiny::validate(shiny::need(
+          !base::is.null(spec_data),
+          base::paste("No data found for this species/group/year combination in",
+                      NPSForVeg::getNames(VEGDATA[[input$MapPark]], "long"), ".")
+        ))
       }
       
-      base::return(P %>% dplyr::left_join(spec_data %>% dplyr::select(Plot_Name, Values = Total), by = "Plot_Name"))
+      base::return(P %>% dplyr::left_join(spec_data %>% dplyr::select(Plot_Name, Values = Total), by = "Plot_Name") %>%
+                     dplyr::filter(!base::is.na(Values) & Values > 0))
     }
     
     if (input$MapGroup == "herbs") {
@@ -242,22 +370,36 @@ shiny::shinyServer(function(input,output,session){
         })
         spec_data <- dplyr::bind_rows(results[!base::sapply(results, base::is.null)])
         } else {
-        spec_data <- NPSForVeg::SiteXSpec(
-          object = VEGDATA[[input$MapPark]],
-          group = input$MapGroup,
-          years = MapYears(),
-          species = if (input$MapSpecies == "All") NA else input$MapSpecies,
-          values = input$MapValues
-        )
+         spec_data <- base::tryCatch(
+           NPSForVeg::SiteXSpec(
+            object = VEGDATA[[input$MapPark]],
+            group = input$MapGroup,
+             years = MapYears(),
+            species = if (input$MapSpecies == "All") NA else input$MapSpecies,
+            values = input$MapValues
+          ),
+          error = function(e) {
+             base::message("SiteXSpec failed for park: ", input$MapPark, " - ", e$message)
+             NULL
+            }
+          )
+          
+        shiny::validate(shiny::need(
+          !base::is.null(spec_data),
+           base::paste("No data found for this species/group/year combination in",
+                      NPSForVeg::getNames(VEGDATA[[input$MapPark]], "long"), ".")
+         ))
       }
       
-      base::return(P %>% dplyr::left_join(spec_data %>% dplyr::select(Plot_Name, Values = Total), by = "Plot_Name"))
+      base::return(P %>% dplyr::left_join(spec_data %>% dplyr::select(Plot_Name, Values = Total), by = "Plot_Name") %>%
+                     dplyr::filter(!base::is.na(Values) & Values > 0))
     }
   }) ###########################################################################
   
   # Map Colors
   CircleColors<-shiny::reactive({
     shiny::req(MapMetaData()$Cuts)
+    shiny::req(!base::is.null(MapData()) && base::nrow(MapData()) > 0)
     leaflet::colorBin(palette=base::c("cyan","magenta4","orangered3"),domain=MapData()$Values, bins=base::c(MapMetaData()$Cuts+.001)) # colors for circles
   })  
   
@@ -279,6 +421,11 @@ shiny::shinyServer(function(input,output,session){
     )) %>%
       leaflet::fitBounds(
         lng1 = bounds$LongW, lat1 = bounds$LatS, lng2 = bounds$LongE, lat2 = bounds$LatN
+      ) %>%
+      leaflet::setView(
+        lng = mean(c(bounds$LongW, bounds$LongE)),
+        lat = mean(c(bounds$LatS, bounds$LatN)),
+        zoom = 9
       ) %>%
       leaflet::setMaxBounds(
         lng1 = bounds$LongW, lng2 = bounds$LongE, lat1 = bounds$LatS, lat2 = bounds$LatN)})
@@ -327,9 +474,28 @@ shiny::shinyServer(function(input,output,session){
       target='_blank'>Improve Park Tiles</a>")
   
   
-  # add Monitoring plot data as circles - needs to be before layers or app hangs for some reason - new issue?
+  # add Monitoring plot data as circles
   shiny::observe({
-    shiny::req(MapData()$Values)
+    if (showAllPlots()) {
+      all_df <- AllPlotLocations()
+      shiny::req(!base::is.null(all_df) && base::nrow(all_df) > 0)
+      
+      leaflet::leafletProxy("VegMap") %>%
+        leaflet::clearGroup("Circles") %>%
+        leaflet::addCircles(
+          data = all_df,
+          radius = 15 * base::as.numeric(input$PlotSize),
+          group = "Circles",
+          lng = all_df$Longitude,
+          lat = all_df$Latitude,
+          layerId = all_df$Plot_Name,
+          fillColor = "green",
+          color = "green",
+          fillOpacity = 0.7
+        )
+      
+    } else {
+    shiny::req(!base::is.null(MapData()) && base::nrow(MapData()) > 0)
     input$MapLayer #make sure Circles are always on top
     
     leaflet::leafletProxy("VegMap") %>%
@@ -341,6 +507,7 @@ shiny::shinyServer(function(input,output,session){
                           color=CircleColors()(MapData()$Values),
                           fillOpacity=1
       )
+    }
   })
   
   
@@ -358,13 +525,21 @@ shiny::shinyServer(function(input,output,session){
   
   # Add Circle legends 
   shiny::observe({
-    leaflet::leafletProxy("VegMap") %>%
-      leaflet::removeControl(layerId="CircleLegend") %>%
-      leaflet::addLegend(.,title=MapMetaData()$Title,
-                         colors=CircleColors()(MapMetaData()$Cuts[-1]-.001),
-                         labels=MapMetaData()$Labels,
-                         layerId="CircleLegend",
-                         opacity=1)
+    if (showAllPlots()) {
+      leaflet::leafletProxy("VegMap") %>%
+        leaflet::removeControl(layerId = "CircleLegend")
+    } else {
+      shiny::req(CircleColors())
+      leaflet::leafletProxy("VegMap") %>%
+        leaflet::removeControl(layerId = "CircleLegend") %>%
+        leaflet::addLegend(
+          title   = MapMetaData()$Title,
+          colors  = CircleColors()(MapMetaData()$Cuts[-1] - .001),
+          labels  = MapMetaData()$Labels,
+          layerId = "CircleLegend",
+          opacity = 1
+        )
+    }
   })
   
   
@@ -713,6 +888,7 @@ shiny::shinyServer(function(input,output,session){
     SpecTemp<-SpecTemp[order(base::tolower(base::names(SpecTemp)))]
     SpecTemp<-base::c("All Species"="All", SpecTemp)
   })
+
   
   # MapSpecList<-shiny::reactive({
   #   shiny::req(input$MapPark, input$MapGroup)
@@ -780,27 +956,52 @@ shiny::shinyServer(function(input,output,session){
   })
   
   # Mouse Hover 
-  
-  shiny::observeEvent(input$VegMap_shape_mouseover, {
+    shiny::observeEvent(input$VegMap_shape_mouseover, {
+    ShapeOver <- input$VegMap_shape_mouseover
     
-    ShapeOver<-input$VegMap_shape_mouseover
-    selectedPlot <- MapData()[MapData()$Plot_Name == ShapeOver$id,]
+    if (showAllPlots()) {
+      all_df <- AllPlotLocations()
+      selectedPlot <- all_df[all_df$Plot_Name == ShapeOver$id, ]
+      if (base::nrow(selectedPlot) == 0) base::return()
+      leaflet::leafletProxy("VegMap") %>%
+        leaflet::clearPopups() %>%
+        leaflet::addPopups(
+          map     = .,
+          lat     = ShapeOver$lat + .001,
+          lng     = ShapeOver$lng,
+          layerId = "MouseOverPopup",
+          popup   = base::paste0(
+            shiny::h5(NPSForVeg::getNames(VEGDATA[[selectedPlot$Unit_Code]], "long")),
+            shiny::h6("Monitoring Plot: ", selectedPlot$Plot_Name),
+            htmltools::tags$h6("Use filters to see data for this plot")
+          )
+        )
+      base::return()
+    }
     
-    
+    selectedPlot <- MapData()[MapData()$Plot_Name == ShapeOver$id, ]
+    if (base::nrow(selectedPlot) == 0) base::return()
     leaflet::leafletProxy("VegMap") %>%
       leaflet::clearPopups() %>% {
         base::switch(ShapeOver$group,
-                     Circles= leaflet::addPopups(map=.,lat=ShapeOver$lat+.001, lng=ShapeOver$lng, layerId="MouseOverPopup",
-                                                 popup=base::paste0(
-                                                   shiny::h5(NPSForVeg::getNames(VEGDATA[[selectedPlot$Unit_Code]], "long")),
-                                                   shiny::h6("Monitoring Plot:",selectedPlot$Plot_Name),
-                                                   shiny::h6("Year Monitored:", selectedPlot$Year),
-                                                   shiny::h6(base::names(MapSpecList()[MapSpecList()==input$MapSpecies]),":",base::format(base::signif(selectedPlot$Values,2),
-                                                                                                                                          big.mark=","), " ", MapMetaData()$Title),
-                                                   htmltools::tags$h6("Click on plot to see full list")
-                                                 )
+                     Circles = leaflet::addPopups(
+                       map     = .,
+                       lat     = ShapeOver$lat + .001,
+                       lng     = ShapeOver$lng,
+                       layerId = "MouseOverPopup",
+                       popup   = base::paste0(
+                         shiny::h5(NPSForVeg::getNames(VEGDATA[[selectedPlot$Unit_Code]], "long")),
+                         shiny::h6("Monitoring Plot:", selectedPlot$Plot_Name),
+                         shiny::h6("Year Monitored:", selectedPlot$Year),
+                         shiny::h6(
+                           base::names(MapSpecList()[MapSpecList() == input$MapSpecies]), ":",
+                           base::format(base::signif(selectedPlot$Values, 2), big.mark = ","),
+                           " ", MapMetaData()$Title),
+                         htmltools::tags$h6("Click on plot to see full list")
+                       )
                      )
-        )}
+        )
+      }
   })
   
   shiny::observeEvent(input$VegMap_shape_mouseout,{    #clear popup when mouse leaves circle
@@ -810,60 +1011,98 @@ shiny::shinyServer(function(input,output,session){
   
   # Mouse Click 
   
-  shiny::observeEvent(input$VegMap_shape_click, {          # user clicked on a shape
-    ShapeClick<-input$VegMap_shape_click
-    selectedPlot <- MapData()[MapData()$Plot_Name == ShapeClick$id,]
+  # REPLACE the entire observeEvent(input$VegMap_shape_click block WITH:
+  shiny::observeEvent(input$VegMap_shape_click, {
+    ShapeClick <- input$VegMap_shape_click
     
-    if(
-      base::class(base::try(NPSForVeg::SiteXSpec(object=VEGDATA[[selectedPlot$Unit_Code]], group=input$MapGroup, years=selectedPlot$Year,
-                                                 plots=ShapeClick$id, common=input$mapCommon,
-                                                 status= if(input$MapGroup=='trees') input$TreeStatus else 'alive' 
-      ), silent=TRUE))=="try-error") {
-      content<-base::as.character(htmltools::tagList(htmltools::tags$h6("None found on this plot")))
-    } else {
-      
-      tempData<- if(input$MapGroup != "herbs"){ 
-        NPSForVeg::SiteXSpec(object=VEGDATA[[selectedPlot$Unit_Code]],group=input$MapGroup, years=selectedPlot$Year,
-                             plots=ShapeClick$id, values=input$MapValues,area="ha", common=input$mapCommon,
-                             status= if(input$MapGroup=='trees') input$TreeStatus else 'alive'
-        )[-1]
-        
-      } else {
-        
-        
-        if(input$MapGroup == "herbs"){
-          NPSForVeg::SiteXSpec(object=VEGDATA[[selectedPlot$Unit_Code]], group=input$MapGroup, years=selectedPlot$Year,
-                               plots=ShapeClick$id,values=input$MapValues,common=input$mapCommon)[-1]
-        }
-      }
-      
-      base::names(tempData) <- fmt_common(base::names(tempData))
-      
-      content<-base::paste0( shiny::h5(NPSForVeg::getNames(VEGDATA[[selectedPlot$Unit_Code]],"long")),
-                             shiny::h6("Monitoring Plot:",selectedPlot$Plot_Name),
-                             shiny::h6("Year Monitored:",selectedPlot$Year),
-                             shiny::h6("Species: ",MapMetaData()$Title),
-                             htmltools::tagList(htmltools::tags$table(
-                               base::mapply(FUN=function(Name,Value){
-                                 htmltools::tags$tr(
-                                   htmltools::tags$td(base::sprintf("%s:  ", Name)),
-                                   htmltools::tags$td(align="right",base::sprintf("%s", base::format(base::signif(Value,2), big.mark=",")))
-                                 )
-                               },
-                               Name=base::names(tempData),
-                               Value=base::unlist(tempData), SIMPLIFY=FALSE
-                               )))
-                             
-      )
+    if (showAllPlots()) {
+      all_df <- AllPlotLocations()
+      selectedPlot <- all_df[all_df$Plot_Name == ShapeClick$id, ]
+      if (base::nrow(selectedPlot) == 0) base::return()
+      leaflet::leafletProxy("VegMap") %>%
+        leaflet::clearPopups() %>%
+        leaflet::addPopups(
+          map     = .,
+          lat     = ShapeClick$lat + .001,
+          lng     = ShapeClick$lng,
+          layerId = "CircleClickPopup",
+          popup   = base::paste0(
+            shiny::h5(NPSForVeg::getNames(VEGDATA[[selectedPlot$Unit_Code]], "long")),
+            shiny::h6("Monitoring Plot: ", selectedPlot$Plot_Name),
+            htmltools::tags$h6("Use the filters to see species data for this plot")
+          )
+        )
+      base::return()
     }
     
+    selectedPlot <- MapData()[MapData()$Plot_Name == ShapeClick$id, ]
+    if (base::nrow(selectedPlot) == 0) base::return()
+    
+    if (base::class(base::try(
+      NPSForVeg::SiteXSpec(
+        object  = VEGDATA[[selectedPlot$Unit_Code]],
+        group   = input$MapGroup,
+        years   = selectedPlot$Year,
+        plots   = ShapeClick$id,
+        common  = input$mapCommon,
+        status  = if (input$MapGroup == "trees") input$TreeStatus else "alive"
+      ), silent = TRUE)) == "try-error") {
+      content <- base::as.character(htmltools::tagList(
+        htmltools::tags$h6("None found on this plot")))
+    } else {
+      tempData <- if (input$MapGroup != "herbs") {
+        NPSForVeg::SiteXSpec(
+          object  = VEGDATA[[selectedPlot$Unit_Code]],
+          group   = input$MapGroup,
+          years   = selectedPlot$Year,
+          plots   = ShapeClick$id,
+          values  = input$MapValues,
+          area    = "ha",
+          common  = input$mapCommon,
+          status  = if (input$MapGroup == "trees") input$TreeStatus else "alive"
+        )[-1]
+      } else {
+        NPSForVeg::SiteXSpec(
+          object = VEGDATA[[selectedPlot$Unit_Code]],
+          group  = input$MapGroup,
+          years  = selectedPlot$Year,
+          plots  = ShapeClick$id,
+          values = input$MapValues,
+          common = input$mapCommon
+        )[-1]
+      }
+      base::names(tempData) <- fmt_common(base::names(tempData))
+      content <- base::paste0(
+        shiny::h5(NPSForVeg::getNames(VEGDATA[[selectedPlot$Unit_Code]], "long")),
+        shiny::h6("Monitoring Plot:", selectedPlot$Plot_Name),
+        shiny::h6("Year Monitored:", selectedPlot$Year),
+        shiny::h6("Species: ", MapMetaData()$Title),
+        htmltools::tagList(htmltools::tags$table(
+          base::mapply(
+            FUN = function(Name, Value) {
+              htmltools::tags$tr(
+                htmltools::tags$td(base::sprintf("%s:  ", Name)),
+                htmltools::tags$td(align = "right",
+                                   base::sprintf("%s", base::format(base::signif(Value, 2), big.mark = ",")))
+              )
+            },
+            Name     = base::names(tempData),
+            Value    = base::unlist(tempData),
+            SIMPLIFY = FALSE
+          )))
+      )
+    }
     leaflet::leafletProxy("VegMap") %>%
       leaflet::clearPopups() %>% {
         base::switch(ShapeClick$group,
-                     Circles= leaflet::addPopups(map=.,lat=ShapeClick$lat+.001, lng=ShapeClick$lng, layerId="CircleClickPopup",popup=content),
-                     Ecoregion=, Forested=, Soil= leaflet::addPopups(map=.,lat=ShapeClick$lat, lng=ShapeClick$lng, popup=ShapeClick$id)
-        )}
-    
+                     Circles   = leaflet::addPopups(map = ., lat = ShapeClick$lat + .001,
+                                                    lng = ShapeClick$lng, layerId = "CircleClickPopup", popup = content),
+                     Ecoregion =,
+                     Forested  =,
+                     Soil      = leaflet::addPopups(map = ., lat = ShapeClick$lat,
+                                                    lng = ShapeClick$lng, popup = ShapeClick$id)
+        )
+      }
   })
   
   
@@ -871,7 +1110,232 @@ shiny::shinyServer(function(input,output,session){
   
   
   
-
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  # #Build warning label
+  # disableWarnings <- shiny::reactive({
+  #   
+  #   species <- input$MapSpecies
+  #   park <- input$MapPark
+  #   
+  #   isTRUE(species == "All") && isTRUE(park == "All")
+  # })
+  # plotCounts <- shiny::reactive({
+  #   
+  #   shiny::req(MapData(), MapYears())
+  #   
+  #   all_plots <- NPSForVeg::getPlots(
+  #     VEGDATA,
+  #     years = MapYears(),
+  #     output = "dataframe",
+  #     type = "all"
+  #   )
+  #   
+  #   total <- nrow(all_plots)
+  #   filtered <- length(unique(MapData()$Plot_Name))
+  #   
+  #   list(
+  #     total = total,
+  #     filtered = filtered,
+  #     removed = total - filtered
+  #   )
+  # })
+  # 
+  # speciesWarning <- shiny::reactive({
+  #   
+  #   if (isTRUE(disableWarnings())) return(NULL)
+  #   shiny::req(plotCounts())
+  #   
+  #   pc <- plotCounts()
+  #   
+  #   spec_list <- MapSpecList()
+  #   
+  #   species_name <- if (input$MapSpecies %in% spec_list) {
+  #     names(spec_list)[spec_list == input$MapSpecies]
+  #   } else {
+  #     input$MapSpecies
+  #   }
+  #   
+  #   verb <- if (identical(input$MapSpecies, "All")) "have" else "has"
+  #   
+  #   paste0(
+  #     species_name, " ", verb,
+  #     " been observed by NCRN at ", pc$filtered, " plots. ",
+  #     pc$removed,
+  #     " points were removed from the map because NCRN has no recorded observations of ",
+  #     tolower(species_name),
+  #     " under the selected data filters."
+  #   )
+  # })
+  # 
+  # parkWarning <- shiny::reactive({
+  #   
+  #   if (isTRUE(disableWarnings())) return(NULL)
+  #   shiny::req(plotCounts())
+  #   
+  #   pc <- plotCounts()
+  #   
+  #   paste0(
+  #     pc$removed,
+  #     " plots have been removed from the map due to current park selection (",
+  #     input$MapPark,
+  #     ")."
+  #   )
+  # })
+  # 
+  # last_species_msg <- shiny::reactiveVal(NULL)
+  # last_park_msg <- shiny::reactiveVal(NULL)
+  # 
+  # last_park <- shiny::reactiveVal(NULL)
+  # 
+  # observeEvent(input$MapPark, {
+  #   
+  #   shiny::req(MapData(), MapYears())
+  #   
+  #   if (isTRUE(disableWarnings())) return()
+  #   
+  #   pc <- plotCounts()
+  #   
+  #   msg <- paste0(
+  #     pc$removed,
+  #     " plots have been removed from the map due to current park selection (",
+  #     input$MapPark,
+  #     ")."
+  #   )
+  #   
+  #   if (!identical(last_park(), msg)) {
+  #     last_park(msg)
+  #     
+  #     showNotification(
+  #       msg,
+  #       id = "park_warning",
+  #       type = "error",
+  #       duration = NULL
+  #     )
+  #   }
+  #   
+  # }, ignoreInit = TRUE)
+  # 
+  # last_species <- shiny::reactiveVal(NULL)
+  # 
+  # observeEvent(input$MapSpecies, {
+  #   
+  #   if (identical(input$MapSpecies, "All")) return()
+  #   if (isTRUE(disableWarnings())) return()
+  #   
+  #   shiny::req(MapData(), MapYears())
+  #   
+  #   pc <- plotCounts()
+  #   
+  #   spec_list <- MapSpecList()
+  #   
+  #   species_name <- if (input$MapSpecies %in% spec_list) {
+  #     names(spec_list)[spec_list == input$MapSpecies]
+  #   } else {
+  #     input$MapSpecies
+  #   }
+  #   
+  #   verb <- "has"
+  #   
+  #   msg <- paste0(
+  #     species_name, " ", verb,
+  #     " been observed by NCRN at ", pc$filtered, " plots. ",
+  #     pc$removed,
+  #     " points were removed from the map because NCRN has no recorded observations of ",
+  #     tolower(species_name),
+  #     " under the selected data filters."
+  #   )
+  #   
+  #   if (!identical(last_species(), msg)) {
+  #     last_species(msg)
+  #     
+  #     showNotification(
+  #       msg,
+  #       id = "species_warning",
+  #       type = "error",
+  #       duration = NULL
+  #     )
+  #   }
+  #   
+  # }, ignoreInit = TRUE)
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
   #### Plots Tab ####
   
   #### Park Control for Density plot  ####
