@@ -36,7 +36,7 @@ DATACYCLES<-NPSForVeg::getCycles(VEGDATA[[1]])
 
 fmt_common <- function(x) {base::ifelse(base::is.na(x) | !base::nzchar(base::trimws(x)),
     x,
-    paste0(base::toupper(base::substr(base::trimws(x), 1, 1)),
+    base::paste0(base::toupper(base::substr(base::trimws(x), 1, 1)),
            base::tolower(base::substr(base::trimws(x), 2, base::nchar(base::trimws(x))))))}
 
 ##### Begin Server Function ####
@@ -68,35 +68,28 @@ shiny::shinyServer(function(input,output,session){
   
   output$ParkZoomControl<-shiny::renderUI({
     shiny::selectInput(inputId="ParkZoom",label=NULL,selectize=FALSE,
-                       choices=base::c("All Parks"=NETWORK,PARKLIST) )
-  })
+                       choices=base::c("All Parks"=NETWORK,PARKLIST) )})
   
   
-  #  Park Filter for species list control for map 
+  #  Park control
   
   output$MapParkControl<-shiny::renderUI({
     shiny::selectizeInput(inputId="MapPark", label="Filter species list by park",
-                       choices = base::c("All Parks" = "All", PARKLIST),
-                       selected = NULL,
-                       options = base::list(placeholder = "Select a park", onInitialize = base::I('function() { this.setValue(""); }')))
-  })
+                          choices = base::c("All Parks" = "All", PARKLIST),
+                          selected = NULL,
+                          options = base::list(placeholder = "Select a park", onInitialize = base::I('function() { this.setValue(""); }')))})
   
-  # Data to display control for Map 
+  # Data control
   ValuesUse<-shiny::reactive({
     base::switch(input$MapGroup,
                  trees=,saplings=base::c(Abundance="count", "Basal Area"="size"),
                  seedlings=,shseedlings=,shrubs=,vines=base::c(Abundance="count"),
                  cwd=base::c("Volume"="size"),
-                 herbs=base::c("Percent Cover"="size")
-                 
-    )
-  })
+                 herbs=base::c("Percent Cover"="size"))})
   
   output$PlantValueControl<-shiny::renderUI({
     shiny::selectizeInput(inputId="MapValues", label="Data to Map:", choices=if (base::is.null(ValuesUse())) base::character(0) else ValuesUse(), 
-                          selected = "", options = base::list(placeholder = "Select a data type", onInitialize = base::I('function() { this.setValue(""); }')))
-    
-  })
+                          selected = "", options = base::list(placeholder = "Select a data type", onInitialize = base::I('function() { this.setValue(""); }')))})
   
   
   #### Calculations ####
@@ -114,28 +107,27 @@ shiny::shinyServer(function(input,output,session){
   
   #Map Cycles
   
+  # Cycles control
   output$MapCycleControl<-shiny::renderUI({
     shiny::req(DATACYCLES)
     shiny::selectizeInput(inputId="MapCycles", label="Display data from years:", 
-                       choices=base::rev(stats::setNames(base::as.character(DATACYCLES$Cycle), base::paste0(DATACYCLES$Name,":",
-                                                                                                            DATACYCLES$YearStart,"-",DATACYCLES$YearEnd))),
-                       selected = NULL, options = base::list(placeholder = "Select a cycle", onInitialize = base::I('function() { this.setValue(""); }')))
-  })
+                          choices=base::rev(stats::setNames(base::as.character(DATACYCLES$Cycle), base::paste0(DATACYCLES$Name,":",
+                                                                                                               DATACYCLES$YearStart,"-",DATACYCLES$YearEnd))),
+                          selected = NULL, options = base::list(placeholder = "Select a cycle", onInitialize = base::I('function() { this.setValue(""); }')))})
   
-  MapYears <- shiny::reactive({
-    shiny::req(input$MapCycles)
+  # -- Isolate year calculations; only reruns when MapCycles changes --
+  MapYears <- shiny::reactive({shiny::req(input$MapCycles)
     year_start <- DATACYCLES %>% dplyr::filter(Cycle == input$MapCycles) %>% dplyr::pull(YearStart)
     year_end <- DATACYCLES %>% dplyr::filter(Cycle == input$MapCycles) %>% dplyr::pull(YearEnd)
     
     available_years <- base::sort(base::unique(
-      NPSForVeg::getEvents(object = VEGDATA, plot.type = "all")$Event_Year
-    ))
+      NPSForVeg::getEvents(object = VEGDATA, plot.type = "all")$Event_Year))
     
     all_years <- year_start:year_end
     all_years[all_years %in% available_years]
-  })
+  }) %>% shiny::bindCache(input$MapCycles)  # cache: same cycle = same years
   
-  #Build warning label for plots removed by filter selecitons
+  #Build warning label for plots removed by filter selections
   AllPlotsCount <- shiny::reactive({
     shiny::req(MapYears())
     
@@ -196,7 +188,7 @@ shiny::shinyServer(function(input,output,session){
         (base::is.null(input$MapValues) || base::identical(input$MapValues, "count")) &&
         (base::is.null(input$MapCycles) || base::identical(input$MapCycles, default_cycle)) &&
         (base::is.null(input$MapSpecies) || base::identical(input$MapSpecies, "All")) &&
-        (base::is.null(input$MapPark) || base::identical(input$MapPark, "All"))
+        (base::is.null(input$MapPark) || input$MapPark %in% base::c("", "All"))
       
       if (!is_default) {
         showAllPlots(FALSE)}},
@@ -237,17 +229,11 @@ shiny::shinyServer(function(input,output,session){
   
   ### debug ####################################################################
   
-  MapData<-shiny::reactive({
-    shiny::req(input$MapGroup, input$MapValues, input$MapCycles, input$MapSpecies)
-    if (input$MapGroup == "trees") {shiny::req(input$TreeStatus)}
-    
-    shiny::validate(shiny::need(input$MapGroup != "", ""), shiny::need(input$MapValues != "", ""),
-                    shiny::need(input$MapCycles != "", ""), shiny::need(input$MapSpecies != "", ""))
-    
-    shiny::req(input$MapSpecies=="All" | input$MapSpecies %in% NPSForVeg::getPlants(object=VEGDATA, group=input$MapGroup, years=MapYears())$Latin_Name )
-    shiny::req(input$MapGroup!="vines" | (input$MapGroup=="vines" & input$MapValues=="count"))
-    
-    P <- dplyr::left_join(
+  # -- Build plot base once per cycle; join spec data separately --
+  # KEY CHANGE: split the heavy P-build out of MapData so it can be cached
+  PlotBase <- shiny::reactive({
+    shiny::req(MapYears())
+    dplyr::left_join(
       NPSForVeg::getPlots(VEGDATA, years=MapYears(), output="dataframe", type="all") %>%
         dplyr::select(Plot_Name, Unit_Code, Latitude, Longitude),
       NPSForVeg::getEvents(object=VEGDATA, years=MapYears(), plot.type="all") %>%
@@ -261,6 +247,19 @@ shiny::shinyServer(function(input,output,session){
         NA_real_
       }) %>%
       dplyr::ungroup()
+  }) %>% shiny::bindCache(MapYears(), input$MapGroup)
+  
+  MapData<-shiny::reactive({
+    shiny::req(input$MapGroup, input$MapValues, input$MapCycles, input$MapSpecies)
+    if (input$MapGroup == "trees") {shiny::req(input$TreeStatus)}
+    
+    shiny::validate(shiny::need(input$MapGroup != "", ""), shiny::need(input$MapValues != "", ""),
+                    shiny::need(input$MapCycles != "", ""), shiny::need(input$MapSpecies != "", ""))
+    
+    shiny::req(input$MapSpecies=="All" | input$MapSpecies %in% NPSForVeg::getPlants(object=VEGDATA, group=input$MapGroup, years=MapYears())$Latin_Name )
+    shiny::req(input$MapGroup!="vines" | (input$MapGroup=="vines" & input$MapValues=="count"))
+    
+    P <- PlotBase()
     
     # if(input$MapGroup != "herbs"){
     #   base::return(P %>% 
@@ -274,109 +273,45 @@ shiny::shinyServer(function(input,output,session){
     #   )
     # }
     
-    if (input$MapGroup != "herbs") {
-      
-      status_val <- if (input$MapGroup == "trees") {
-        shiny::req(input$TreeStatus)
-        input$TreeStatus
-      } else {
-        "alive"
-      }
-      
-      species_val <- if (input$MapSpecies == "All") NA else input$MapSpecies
-      
-      if (input$MapPark == "All") {
-        results <- base::lapply(base::names(VEGDATA), function(park) {
-          base::tryCatch(
-            NPSForVeg::SiteXSpec(
-              object = VEGDATA[[park]],
-              group = input$MapGroup,
-              years = MapYears(),
-              status = status_val,
-              species = species_val,
-              values = input$MapValues,
-              area = "ha"
-            ),
-            error = function(e) {
-              base::message("SiteXSpec failed for park: ", park, " - ", e$message)
-              NULL
-            }
-          )
-        })
-        spec_data <- dplyr::bind_rows(results[!base::sapply(results, base::is.null)])
-        } else {
-
-        spec_data <- base::tryCatch(
-          NPSForVeg::SiteXSpec(
-            object = VEGDATA[[input$MapPark]],
-            group = input$MapGroup,
-            years = MapYears(),
-            status = status_val,
-            species = species_val,
-            values = input$MapValues,
-            area = "ha"
-          ),
-            error = function(e) {
-              base::message("SiteXSpec failed for park: ", input$MapPark, " - ", e$message)
-              NULL
-            }
-          )
-        shiny::validate(shiny::need(
-          !base::is.null(spec_data),
-          base::paste("No data found for this species/group/year combination in",
-                      NPSForVeg::getNames(VEGDATA[[input$MapPark]], "long"), ".")
-        ))
-      }
-      
-      base::return(P %>% dplyr::left_join(spec_data %>% dplyr::select(Plot_Name, Values = Total), by = "Plot_Name") %>%
-                     dplyr::filter(!base::is.na(Values) & Values > 0))
+    status_val <- if (input$MapGroup == "trees") {
+      shiny::req(input$TreeStatus)
+      input$TreeStatus
+    } else {
+      "alive"
     }
     
-    if (input$MapGroup == "herbs") {
-      
-      if (input$MapPark == "All") {
-        results <- base::lapply(base::names(VEGDATA), function(park) {
-          base::tryCatch(
-            NPSForVeg::SiteXSpec(
-              object = VEGDATA[[park]],
-              group = input$MapGroup,
-              years = MapYears(),
-              species = if (input$MapSpecies == "All") NA else input$MapSpecies,
-              values = input$MapValues
-            ),
-            error = function(e) {
-              base::message("SiteXSpec failed for park: ", park, " - ", e$message)
-              NULL
-            }
-          )
-        })
-        spec_data <- dplyr::bind_rows(results[!base::sapply(results, base::is.null)])
-        } else {
-         spec_data <- base::tryCatch(
-           NPSForVeg::SiteXSpec(
-            object = VEGDATA[[input$MapPark]],
-            group = input$MapGroup,
-             years = MapYears(),
-            species = if (input$MapSpecies == "All") NA else input$MapSpecies,
-            values = input$MapValues
-          ),
-          error = function(e) {
-             base::message("SiteXSpec failed for park: ", input$MapPark, " - ", e$message)
-             NULL
-            }
-          )
-          
-        shiny::validate(shiny::need(
-          !base::is.null(spec_data),
-           base::paste("No data found for this species/group/year combination in",
-                      NPSForVeg::getNames(VEGDATA[[input$MapPark]], "long"), ".")
-         ))
-      }
-      
-      base::return(P %>% dplyr::left_join(spec_data %>% dplyr::select(Plot_Name, Values = Total), by = "Plot_Name") %>%
-                     dplyr::filter(!base::is.na(Values) & Values > 0))
+    species_val <- if (input$MapSpecies == "All") NA else input$MapSpecies
+    is_herbs    <- input$MapGroup == "herbs"
+    park_sel    <- if (input$MapPark %in% base::c("", "All")) "All" else input$MapPark
+    
+    # -- shared SiteXSpec caller; handles herb/non-herb args difference --
+    run_sxs <- function(park_obj) {
+      args <- base::list(object=park_obj, group=input$MapGroup,
+                         years=MapYears(), species=species_val,
+                         values=input$MapValues)
+      if (!is_herbs) { args$status <- status_val; args$area <- "ha" }
+      base::tryCatch(base::do.call(NPSForVeg::SiteXSpec, args),
+                     error=function(e) {
+                       base::message("SiteXSpec failed: ", e$message); NULL })
     }
-  }) ###########################################################################
+    
+    if (input$MapPark == "All") {
+      results <- base::lapply(base::names(VEGDATA), function(park) run_sxs(VEGDATA[[park]]))
+      spec_data <- dplyr::bind_rows(results[!base::sapply(results, base::is.null)])
+    } else {
+      spec_data <- run_sxs(VEGDATA[[input$MapPark]])
+      shiny::validate(shiny::need(
+        !base::is.null(spec_data),
+        base::paste("No data found for this species/group/year combination in",
+                    NPSForVeg::getNames(VEGDATA[[input$MapPark]], "long"), ".")
+      ))
+    }
+    
+    base::return(P %>% dplyr::left_join(spec_data %>% dplyr::select(Plot_Name, Values = Total), by = "Plot_Name") %>%
+                   dplyr::filter(!base::is.na(Values) & Values > 0))
+    
+  }) %>% shiny::bindCache(input$MapGroup, input$MapValues, input$MapCycles,
+                          input$MapSpecies, input$MapPark, input$TreeStatus) ###########################################################################
   
   # Map Colors
   CircleColors<-shiny::reactive({
@@ -450,10 +385,10 @@ shiny::shinyServer(function(input,output,session){
   
   # Make Attribution
   NPSATTRIB<-htmltools::HTML("<a href='https://www.nps.gov/npmap/disclaimer/'>Disclaimer</a> | 
-      &copy; <a href='http://openstreetmap.org/copyright' target='_blank'>OpenStreetMap</a> contributors |
-      <a class='improve-park-tiles' 
-      href='http://insidemaps.nps.gov/places/editor/#background=mapbox-satellite&map=4/-95.97656/39.02772&overlays=park-tiles-overlay'
-      target='_blank'>Improve Park Tiles</a>")
+    &copy; <a href='http://openstreetmap.org/copyright' target='_blank'>OpenStreetMap</a> contributors |
+    <a class='improve-park-tiles' 
+    href='http://insidemaps.nps.gov/places/editor/#background=mapbox-satellite&map=4/-95.97656/39.02772&overlays=park-tiles-overlay'
+    target='_blank'>Improve Park Tiles</a>")
   
   
   # add Monitoring plot data as circles
@@ -477,18 +412,20 @@ shiny::shinyServer(function(input,output,session){
         )
       
     } else {
-    shiny::req(!base::is.null(MapData()) && base::nrow(MapData()) > 0)
-    input$MapLayer #make sure Circles are always on top
-    
-    leaflet::leafletProxy("VegMap") %>%
-      leaflet::clearGroup("Circles") %>%
-      leaflet::addCircles(data=MapData(), radius=15*base::as.numeric(input$PlotSize), group="Circles",
-                          lng=MapData()$Longitude, lat=MapData()$Latitude,
-                          layerId=MapData()$Plot_Name,  #This is the ID of the circle to match to other data
-                          fillColor=CircleColors()(MapData()$Values),
-                          color=CircleColors()(MapData()$Values),
-                          fillOpacity=1
-      )
+      md <- MapData()  # single call; reuse local var to avoid re-evaluation
+      shiny::req(!base::is.null(md) && base::nrow(md) > 0)
+      input$MapLayer  #make sure Circles are always on top
+      cols <- CircleColors()(md$Values)
+      
+      leaflet::leafletProxy("VegMap") %>%
+        leaflet::clearGroup("Circles") %>%
+        leaflet::addCircles(data=md, radius=15*base::as.numeric(input$PlotSize), group="Circles",
+                            lng=md$Longitude, lat=md$Latitude,
+                            layerId=md$Plot_Name,  #This is the ID of the circle to match to other data
+                            fillColor=cols,
+                            color=cols,
+                            fillOpacity=1
+        )
     }
   })
   
@@ -622,6 +559,7 @@ shiny::shinyServer(function(input,output,session){
     
     base::return(vegdata_df)
   })
+  
   # 
   # getTSNlist <- shiny::reactive({
   #   # Defines a reactive function which creates a list of unique and valid TSNs from a previously created data object.
@@ -778,9 +716,6 @@ shiny::shinyServer(function(input,output,session){
   
   selected_commons <- shiny::reactive({
     
-    shiny::req(input$MapGroup)
-    shiny::req(input$MapPark)
-    
     # actual_slot_name <- PLANTSLOTLOOKUP[[input$MapGroup]]
     # shiny::validate(
     #   shiny::need(!base::is.null(actual_slot_name), "Selected plant group is not available in this network")
@@ -819,6 +754,7 @@ shiny::shinyServer(function(input,output,session){
     base::return(cn_df)
   })
   
+  # Cache the expensive filled lookup so ITIS is only called once per session
   get_vd_filled <- shiny::reactive({
     
     vegdata_df <- selected_commons()
@@ -846,11 +782,12 @@ shiny::shinyServer(function(input,output,session){
     vd_filled <- base::rbind(vd_filled, new_vd_rows)
     
     base::return(vd_filled)
-  })
+  }) %>% shiny::bindCache("static")  # never changes; compute once for the whole session
   
   #List of names, elements are Latin names, names of elements are Latin or common
   MapSpecList<-shiny::reactive({
-    shiny::req(input$MapPark, input$MapGroup)
+    shiny::req(input$MapPark, input$MapGroup, MapYears())
+    park_sel <- if (input$MapPark %in% base::c("", "All")) "All" else input$MapPark
     SpecTemp<-base::unique(NPSForVeg::getPlants(object=if(input$MapPark=="All") {VEGDATA}  else {VEGDATA[[input$MapPark]]} , group=input$MapGroup,
                                                 years=MapYears(),common=F )$Latin_Name)
     vd_filled<-get_vd_filled()
@@ -871,17 +808,17 @@ shiny::shinyServer(function(input,output,session){
     }
     
     SpecNames <- fmt_common(safeGetPlantNames(object = vd_filled %>%
-                                     dplyr::distinct(Latin_Name, .keep_all = TRUE),
-                                   names = SpecTemp,
-                                   in.style = "Latin",
-                                   out.style = base::ifelse(input$mapCommon, "common", "Latin")))
+                                                dplyr::distinct(Latin_Name, .keep_all = TRUE),
+                                              names = SpecTemp,
+                                              in.style = "Latin",
+                                              out.style = base::ifelse(input$mapCommon, "common", "Latin")))
     
     base::names(SpecTemp)<-SpecNames
     SpecTemp<-SpecTemp[order(base::tolower(base::names(SpecTemp)))]
     SpecTemp<-base::c("All Species"="All", SpecTemp)
     base::return(SpecTemp)
-  })
-
+  }) %>% shiny::bindCache(input$MapPark, input$MapGroup, MapYears(), input$mapCommon)
+  
   
   # MapSpecList<-shiny::reactive({
   #   shiny::req(input$MapPark, input$MapGroup)
@@ -895,25 +832,22 @@ shiny::shinyServer(function(input,output,session){
   #   SpecTemp<-base::c("All Species"="All", SpecTemp)
   # })
   
+  # Species control
   output$MapSpeciesControl <- shiny::renderUI({
-      shiny::selectizeInput(
-        inputId = "MapSpecies",
-        label = "Select a species present in selected park:",
-        choices = NULL,
-        selected = NULL,
-        options = base::list(
-          placeholder = "Select a species"
-        )
-      )
-    })
+    shiny::selectizeInput(
+      inputId = "MapSpecies",
+      label = "Select a species present in selected park:",
+      choices = NULL,
+      selected = NULL,
+      options = base::list(
+        placeholder = "Select a species"))})
   
-  shiny::observe({shiny::req(input$MapGroup, input$MapPark, input$MapCycles)
+  shiny::observe({shiny::req(input$MapGroup, input$MapCycles)
     shiny::updateSelectizeInput(
       session = session,
       inputId = "MapSpecies",
       choices = MapSpecList(),
-      selected = input$MapSpecies)
-  })
+      selected = input$MapSpecies)})
   
   
   # Add GeoJSON polygon layer 
@@ -963,7 +897,7 @@ shiny::shinyServer(function(input,output,session){
   })
   
   # Mouse Hover 
-    shiny::observeEvent(input$VegMap_shape_mouseover, {
+  shiny::observeEvent(input$VegMap_shape_mouseover, {
     ShapeOver <- input$VegMap_shape_mouseover
     
     if (showAllPlots()) {
@@ -986,7 +920,8 @@ shiny::shinyServer(function(input,output,session){
       base::return()
     }
     
-    selectedPlot <- MapData()[MapData()$Plot_Name == ShapeOver$id, ]
+    md <- MapData()
+    selectedPlot <- md[md$Plot_Name == ShapeOver$id, ]
     if (base::nrow(selectedPlot) == 0) base::return()
     leaflet::leafletProxy("VegMap") %>%
       leaflet::clearPopups() %>% {
@@ -1042,41 +977,31 @@ shiny::shinyServer(function(input,output,session){
       base::return()
     }
     
-    selectedPlot <- MapData()[MapData()$Plot_Name == ShapeClick$id, ]
+    md <- MapData()
+    selectedPlot <- md[md$Plot_Name == ShapeClick$id, ]
     if (base::nrow(selectedPlot) == 0) base::return()
     
+    sxs_args_base <- base::list(
+      object  = VEGDATA[[selectedPlot$Unit_Code]],
+      group   = input$MapGroup,
+      years   = selectedPlot$Year,
+      plots   = ShapeClick$id,
+      common  = input$mapCommon,
+      status  = if (input$MapGroup == "trees") input$TreeStatus else "alive")
+    
     if (base::class(base::try(
-      NPSForVeg::SiteXSpec(
-        object  = VEGDATA[[selectedPlot$Unit_Code]],
-        group   = input$MapGroup,
-        years   = selectedPlot$Year,
-        plots   = ShapeClick$id,
-        common  = input$mapCommon,
-        status  = if (input$MapGroup == "trees") input$TreeStatus else "alive"
-      ), silent = TRUE)) == "try-error") {
+      base::do.call(NPSForVeg::SiteXSpec, sxs_args_base), silent = TRUE)) == "try-error") {
       content <- base::as.character(htmltools::tagList(
         htmltools::tags$h6("None found on this plot")))
     } else {
       tempData <- if (input$MapGroup != "herbs") {
-        NPSForVeg::SiteXSpec(
-          object  = VEGDATA[[selectedPlot$Unit_Code]],
-          group   = input$MapGroup,
-          years   = selectedPlot$Year,
-          plots   = ShapeClick$id,
-          values  = input$MapValues,
-          area    = "ha",
-          common  = input$mapCommon,
-          status  = if (input$MapGroup == "trees") input$TreeStatus else "alive"
-        )[-1]
+        base::do.call(NPSForVeg::SiteXSpec,
+                      base::c(sxs_args_base, base::list(values=input$MapValues, area="ha")))[-1]
       } else {
-        NPSForVeg::SiteXSpec(
-          object = VEGDATA[[selectedPlot$Unit_Code]],
-          group  = input$MapGroup,
-          years  = selectedPlot$Year,
-          plots  = ShapeClick$id,
-          values = input$MapValues,
-          common = input$mapCommon
-        )[-1]
+        base::do.call(NPSForVeg::SiteXSpec,
+                      base::list(object=VEGDATA[[selectedPlot$Unit_Code]], group=input$MapGroup,
+                                 years=selectedPlot$Year, plots=ShapeClick$id,
+                                 values=input$MapValues, common=input$mapCommon))[-1]
       }
       base::names(tempData) <- fmt_common(base::names(tempData))
       content <- base::paste0(

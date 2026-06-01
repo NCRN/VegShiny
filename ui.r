@@ -348,7 +348,7 @@ shiny::navbarPage(
                                 shiny::uiOutput("MapParkControl")),
             htmltools::tags$div(title="Select the time period you want to work with", shiny::uiOutput("MapCycleControl")),
             htmltools::tags$div(title="Select the type of plant you want to work with", shiny::selectizeInput(inputId="MapGroup", 
-                                    label="Type of plant:", choices=PLANTTYPES, selected = NULL, options = base::list(placeholder = "Select a plant type",
+                                    label="Type of plant:", choices=PLANTTYPES, selected = "", options = base::list(placeholder = "Select a plant type",
                                         onInitialize = base::I('function() { this.setValue(""); }')))),
             htmltools::tags$div(title="Select a species of plants to map", shiny::uiOutput("MapSpeciesControl")),  
             htmltools::tags$div(title="Toggle between common and scientific names",
