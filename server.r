@@ -75,10 +75,10 @@ shiny::shinyServer(function(input,output,session){
   #  Park Filter for species list control for map 
   
   output$MapParkControl<-shiny::renderUI({
-    shiny::selectInput(inputId="MapPark", label="Filter species list by park",
-                       choices=base::c("All Parks"="All",PARKLIST)
-                       # , selected = "ANTI"
-    )
+    shiny::selectizeInput(inputId="MapPark", label="Filter species list by park",
+                       choices = base::c("All Parks" = "All", PARKLIST),
+                       selected = NULL,
+                       options = base::list(placeholder = "Select a park", onInitialize = base::I('function() { this.setValue(""); }')))
   })
   
   # Data to display control for Map 
@@ -93,8 +93,8 @@ shiny::shinyServer(function(input,output,session){
   })
   
   output$PlantValueControl<-shiny::renderUI({
-    shiny::req(ValuesUse())
-    shiny::selectInput(inputId="MapValues", label="Data to Map:", choices=ValuesUse())
+    shiny::selectizeInput(inputId="MapValues", label="Data to Map:", choices=if (base::is.null(ValuesUse())) base::character(0) else ValuesUse(), 
+                          selected = "", options = base::list(placeholder = "Select a data type", onInitialize = base::I('function() { this.setValue(""); }')))
     
   })
   
@@ -116,10 +116,10 @@ shiny::shinyServer(function(input,output,session){
   
   output$MapCycleControl<-shiny::renderUI({
     shiny::req(DATACYCLES)
-    shiny::selectInput(inputId="MapCycles", label="Display data from years:", 
+    shiny::selectizeInput(inputId="MapCycles", label="Display data from years:", 
                        choices=base::rev(stats::setNames(base::as.character(DATACYCLES$Cycle), base::paste0(DATACYCLES$Name,":",
-                                                                                                            DATACYCLES$YearStart,"-",DATACYCLES$YearEnd)))
-    )
+                                                                                                            DATACYCLES$YearStart,"-",DATACYCLES$YearEnd))),
+                       selected = NULL, options = base::list(placeholder = "Select a cycle", onInitialize = base::I('function() { this.setValue(""); }')))
   })
   
   MapYears <- shiny::reactive({
@@ -154,25 +154,15 @@ shiny::shinyServer(function(input,output,session){
     MAPLEGEND[[input$MapValues]][[input$MapGroup]] 
   })
   
-  
-  
-  
-  
-  
-  
-  
   ### all plots setting
   AllPlotLocations <- shiny::reactive({
     all_plots <- base::lapply(base::names(VEGDATA), function(park) {
       base::tryCatch(
         NPSForVeg::getPlots(VEGDATA[[park]], output = "dataframe", type = "all") %>%
           dplyr::select(Plot_Name, Unit_Code, Latitude, Longitude),
-        error = function(e) NULL
-      )
-    })
+        error = function(e) NULL)})
     dplyr::bind_rows(all_plots[!base::sapply(all_plots, base::is.null)]) %>%
-      dplyr::distinct(Plot_Name, .keep_all = TRUE)
-  })
+      dplyr::distinct(Plot_Name, .keep_all = TRUE)})
   
   showAllPlots <- shiny::reactiveVal(TRUE)
   
@@ -186,30 +176,31 @@ shiny::shinyServer(function(input,output,session){
       input$MapValues,
       input$MapCycles,
       input$MapSpecies,
-      input$MapPark
-    ),
+      input$MapPark),
     {
-      # Do nothing if a reset is in progress
-      if (resetting()) base::return()
+      shiny::req(
+        input$MapGroup,
+        input$TreeStatus,
+        input$MapValues,
+        input$MapCycles,
+        input$MapSpecies,
+        input$MapPark)
+      if (input$MapGroup == "trees") {shiny::req(input$TreeStatus)}
       
       # Do nothing if all inputs still match defaults
       default_cycle <- base::as.character(DATACYCLES$Cycle[base::nrow(DATACYCLES)])
       
       is_default <- 
-        base::identical(input$MapGroup, "trees") &&
-        base::identical(input$TreeStatus, "alive") &&
-        base::identical(input$MapValues, "count") &&
-        base::identical(input$MapCycles, default_cycle) &&
-        base::identical(input$MapSpecies, "All") &&
-        base::identical(input$MapPark, "All")
+        (base::is.null(input$MapGroup) || base::identical(input$MapGroup, "trees")) &&
+        (base::is.null(input$TreeStatus) || base::identical(input$TreeStatus, "alive")) &&
+        (base::is.null(input$MapValues) || base::identical(input$MapValues, "count")) &&
+        (base::is.null(input$MapCycles) || base::identical(input$MapCycles, default_cycle)) &&
+        (base::is.null(input$MapSpecies) || base::identical(input$MapSpecies, "All")) &&
+        (base::is.null(input$MapPark) || base::identical(input$MapPark, "All"))
       
       if (!is_default) {
-        showAllPlots(FALSE)
-      }
-    },
-    ignoreInit = TRUE,
-    ignoreNULL = TRUE
-  )
+        showAllPlots(FALSE)}},
+    ignoreInit = TRUE)
   
   output$mapModeIndicator <- shiny::renderUI({
     if (showAllPlots()) {
@@ -218,50 +209,41 @@ shiny::shinyServer(function(input,output,session){
                background-color: #e8f5e9; color: #2e7d32;
                border: 1.5px solid #a5d6a7; border-radius: 6px;
                font-size: 13px; font-weight: bold;",
-        "\u25cf  Showing every NCRN plot ever sampled \u2014 no filters below are applied"
-      )
+        "\u25cf  Showing every NCRN plot ever sampled \u2014 no filters below are applied")
     } else {
       shiny::actionButton(
         inputId = "resetMapFilters",
+        title = "Click to restore view of all unfiltered monitoring plots",
         label = "\u25cf  Showing filtered plots \u2014 Click here to show every NCRN plot ever sampled",
         style = "width: 100%; text-align: left;
                  padding: 6px 12px; margin-bottom: 8px;
                  background-color: #e3f2fd; color: #1565c0;
                  border: 1.5px solid #90caf9; border-radius: 6px;
                  font-size: 13px; font-weight: bold;
-                 cursor: pointer;"
-      )
-    }
-  })
+                 cursor: pointer;")}})
   
   shiny::observeEvent(input$resetMapFilters, {
     resetting(TRUE)
     
-    shiny::updateSelectInput(session, "MapGroup", selected = "trees")
-    shiny::updateSelectInput(session, "MapValues", selected = "count")
-    shiny::updateSelectInput(session, "MapPark", selected = "All")
-    shiny::updateSelectInput(session, "MapSpecies", selected = "All")
-    shiny::updateRadioButtons(session,"TreeStatus", selected = "alive")
-    shiny::updateSelectInput(session, "MapCycles",
-                             selected = base::as.character(DATACYCLES$Cycle[base::nrow(DATACYCLES)]))
-    
-    showAllPlots(TRUE)
-    
-    session$onFlushed(function() {
-      resetting(FALSE)
-    }, once = TRUE)
-  })
-  
-  
-  
-  
-  
+    shiny::updateSelectizeInput(session, "MapGroup", selected = "")
+    shiny::updateSelectizeInput(session, "MapValues", selected = "")
+    shiny::updateSelectizeInput(session, "MapPark", selected = "")
+    shiny::updateSelectizeInput(session, "MapSpecies", selected = "")
+    shiny::updateSelectizeInput(session,"TreeStatus", selected = "")
+    shiny::updateSelectInput(session, "MapCycles", selected = "")
+    showAllPlots(TRUE)})
   
   # Data to plot on map - always for all parks 
   
   ### debug ####################################################################
   
   MapData<-shiny::reactive({
+    shiny::req(input$MapGroup, input$MapValues, input$MapCycles, input$MapSpecies)
+    if (input$MapGroup == "trees") {shiny::req(input$TreeStatus)}
+    
+    shiny::validate(shiny::need(input$MapGroup != "", ""), shiny::need(input$MapValues != "", ""),
+                    shiny::need(input$MapCycles != "", ""), shiny::need(input$MapSpecies != "", ""))
+    
     shiny::req(input$MapSpecies=="All" | input$MapSpecies %in% NPSForVeg::getPlants(object=VEGDATA, group=input$MapGroup, years=MapYears())$Latin_Name )
     shiny::req(input$MapGroup!="vines" | (input$MapGroup=="vines" & input$MapValues=="count"))
     
@@ -529,17 +511,27 @@ shiny::shinyServer(function(input,output,session){
       leaflet::leafletProxy("VegMap") %>%
         leaflet::removeControl(layerId = "CircleLegend")
     } else {
-      shiny::req(CircleColors())
+      meta <- MapMetaData()
+      shiny::req(base::is.list(meta))
+      labels <- base::as.character(meta$Labels)
+      shiny::req(base::is.vector(labels))
+      
+      # Drop zero bins from labels
+      zero_idx <- base::which(labels %in% base::c("0", "0%"))
+      if (base::length(zero_idx) > 0) {
+        labels <- labels[-zero_idx]}
+      
+      # Use same number of colors as visible labels
+      all_colors <- BLUEOR(base::length(labels))
+      
       leaflet::leafletProxy("VegMap") %>%
         leaflet::removeControl(layerId = "CircleLegend") %>%
         leaflet::addLegend(
-          title   = MapMetaData()$Title,
-          colors  = CircleColors()(MapMetaData()$Cuts[-1] - .001),
-          labels  = MapMetaData()$Labels,
+          title   = meta$Title,
+          colors  = all_colors,
+          labels  = labels,
           layerId = "CircleLegend",
-          opacity = 1
-        )
-    }
+          opacity = 1)}
   })
   
   
@@ -616,7 +608,7 @@ shiny::shinyServer(function(input,output,session){
       shiny::need(!base::is.null(actual_slot_name), "Selected plant group is not available in this network")
     )
     
-    if (input$MapPark == "All") {
+    if (input$MapPark %in% base::c("", "All")) {
       selected_list <- VEGDATA
     } else {
       selected_list <- base::list(VEGDATA[[input$MapPark]])
@@ -887,6 +879,7 @@ shiny::shinyServer(function(input,output,session){
     base::names(SpecTemp)<-SpecNames
     SpecTemp<-SpecTemp[order(base::tolower(base::names(SpecTemp)))]
     SpecTemp<-base::c("All Species"="All", SpecTemp)
+    base::return(SpecTemp)
   })
 
   
@@ -902,10 +895,24 @@ shiny::shinyServer(function(input,output,session){
   #   SpecTemp<-base::c("All Species"="All", SpecTemp)
   # })
   
-  output$MapSpeciesControl<-shiny::renderUI({
-    shiny::req(input$MapPark, input$MapGroup)
-    shiny::selectInput(inputId="MapSpecies", label="Select a species", choices=base::c(MapSpecList() ))
-    
+  output$MapSpeciesControl <- shiny::renderUI({
+      shiny::selectizeInput(
+        inputId = "MapSpecies",
+        label = "Select a species present in selected park:",
+        choices = NULL,
+        selected = NULL,
+        options = base::list(
+          placeholder = "Select a species"
+        )
+      )
+    })
+  
+  shiny::observe({shiny::req(input$MapGroup, input$MapPark, input$MapCycles)
+    shiny::updateSelectizeInput(
+      session = session,
+      inputId = "MapSpecies",
+      choices = MapSpecList(),
+      selected = input$MapSpecies)
   })
   
   
@@ -1136,26 +1143,26 @@ shiny::shinyServer(function(input,output,session){
   
   # #Build warning label
   # disableWarnings <- shiny::reactive({
-  #   
+  # 
   #   species <- input$MapSpecies
   #   park <- input$MapPark
-  #   
+  # 
   #   isTRUE(species == "All") && isTRUE(park == "All")
   # })
   # plotCounts <- shiny::reactive({
-  #   
+  # 
   #   shiny::req(MapData(), MapYears())
-  #   
+  # 
   #   all_plots <- NPSForVeg::getPlots(
   #     VEGDATA,
   #     years = MapYears(),
   #     output = "dataframe",
   #     type = "all"
   #   )
-  #   
+  # 
   #   total <- nrow(all_plots)
   #   filtered <- length(unique(MapData()$Plot_Name))
-  #   
+  # 
   #   list(
   #     total = total,
   #     filtered = filtered,
@@ -1164,22 +1171,22 @@ shiny::shinyServer(function(input,output,session){
   # })
   # 
   # speciesWarning <- shiny::reactive({
-  #   
+  # 
   #   if (isTRUE(disableWarnings())) return(NULL)
   #   shiny::req(plotCounts())
-  #   
+  # 
   #   pc <- plotCounts()
-  #   
+  # 
   #   spec_list <- MapSpecList()
-  #   
+  # 
   #   species_name <- if (input$MapSpecies %in% spec_list) {
   #     names(spec_list)[spec_list == input$MapSpecies]
   #   } else {
   #     input$MapSpecies
   #   }
-  #   
+  # 
   #   verb <- if (identical(input$MapSpecies, "All")) "have" else "has"
-  #   
+  # 
   #   paste0(
   #     species_name, " ", verb,
   #     " been observed by NCRN at ", pc$filtered, " plots. ",
@@ -1191,12 +1198,12 @@ shiny::shinyServer(function(input,output,session){
   # })
   # 
   # parkWarning <- shiny::reactive({
-  #   
+  # 
   #   if (isTRUE(disableWarnings())) return(NULL)
   #   shiny::req(plotCounts())
-  #   
+  # 
   #   pc <- plotCounts()
-  #   
+  # 
   #   paste0(
   #     pc$removed,
   #     " plots have been removed from the map due to current park selection (",
@@ -1211,23 +1218,23 @@ shiny::shinyServer(function(input,output,session){
   # last_park <- shiny::reactiveVal(NULL)
   # 
   # observeEvent(input$MapPark, {
-  #   
+  # 
   #   shiny::req(MapData(), MapYears())
-  #   
+  # 
   #   if (isTRUE(disableWarnings())) return()
-  #   
+  # 
   #   pc <- plotCounts()
-  #   
+  # 
   #   msg <- paste0(
   #     pc$removed,
   #     " plots have been removed from the map due to current park selection (",
   #     input$MapPark,
   #     ")."
   #   )
-  #   
+  # 
   #   if (!identical(last_park(), msg)) {
   #     last_park(msg)
-  #     
+  # 
   #     showNotification(
   #       msg,
   #       id = "park_warning",
@@ -1235,30 +1242,30 @@ shiny::shinyServer(function(input,output,session){
   #       duration = NULL
   #     )
   #   }
-  #   
+  # 
   # }, ignoreInit = TRUE)
   # 
   # last_species <- shiny::reactiveVal(NULL)
   # 
   # observeEvent(input$MapSpecies, {
-  #   
+  # 
   #   if (identical(input$MapSpecies, "All")) return()
   #   if (isTRUE(disableWarnings())) return()
-  #   
+  # 
   #   shiny::req(MapData(), MapYears())
-  #   
+  # 
   #   pc <- plotCounts()
-  #   
+  # 
   #   spec_list <- MapSpecList()
-  #   
+  # 
   #   species_name <- if (input$MapSpecies %in% spec_list) {
   #     names(spec_list)[spec_list == input$MapSpecies]
   #   } else {
   #     input$MapSpecies
   #   }
-  #   
+  # 
   #   verb <- "has"
-  #   
+  # 
   #   msg <- paste0(
   #     species_name, " ", verb,
   #     " been observed by NCRN at ", pc$filtered, " plots. ",
@@ -1267,10 +1274,10 @@ shiny::shinyServer(function(input,output,session){
   #     tolower(species_name),
   #     " under the selected data filters."
   #   )
-  #   
+  # 
   #   if (!identical(last_species(), msg)) {
   #     last_species(msg)
-  #     
+  # 
   #     showNotification(
   #       msg,
   #       id = "species_warning",
@@ -1278,9 +1285,9 @@ shiny::shinyServer(function(input,output,session){
   #       duration = NULL
   #     )
   #   }
-  #   
+  # 
   # }, ignoreInit = TRUE)
-  
+
   
   
   
@@ -2731,7 +2738,7 @@ shiny::shinyServer(function(input,output,session){
                  } else {htmltools::tags$div(title = "Click here to pick the species you want to graph",
                                        shiny::selectizeInput(inputId = "IVSpecies", label = "Select one or more species",
                                                              choices = IVSpecList(), multiple = TRUE, selected = input$IVSpecies,
-                                                             options = base::list(placeholder='Select species to display',
+                                                             options = base::list(placeholder='Select a species to display',
                                                                                   plugins = base::list("remove_button"))))},
                  All = NULL)})
   
