@@ -367,44 +367,13 @@ shiny::navbarPage(
         
 #### Zoom Controls ####
      htmltools::div(id="ZoomPanel",class="panel panel-default controls",
-          shiny::h4("Zoom to:", class="panel-heading"),
-          shiny::fluidRow(
-            shiny::column(9, htmltools::tags$div(title="Select a park and click 'Go'", shiny::uiOutput("ParkZoomControl"))),
-            shiny::column(3, shiny::actionButton(inputId="MapZoom", label="Go", class="btn btn-primary btn-block action-button"))
-          ),
-          shiny::hr(),
+          shiny::h4("Map Graphics:", class="panel-heading"),
           htmltools::tags$div(title="Increases size of plots for easier viewing",
-           shiny::radioButtons(inputId="PlotSize", label="Enlarge plots: 1X = to scale", 
-             choices=base::c("1X"=1, "5X"=base::sqrt(5), "10X"=base::sqrt(10), "25X"=5), selected="1", inline=TRUE)
-          ),
-          htmltools::tags$style(
-            htmltools::HTML("@media (min-width: 678px) and (max-width: 1597px) {
-                                #ZoomPanel .row > [class*='col-'] {
-                                  float: none !important;
-                                  width: 100% !important;}
-                                #ZoomPanel .btn.action-button {
-                                  width: 100% !important;}}
-                              @media (min-width: 1598px) {                
-                                #ZoomPanel .col-sm-3 {
-                                  padding-left: 6px !important;
-                                  padding-right: 15px !important;}
-                                #ZoomPanel .col-sm-9 { 
-                                  padding-left: 15px !important; 
-                                  padding-right: 6px !important; }}
-                                .action-button {white-space: normal !important;}"))
-      ),
-
-#### Add a layer control ####
-    
-     htmltools::div(id="ExtraLayerPanel",class="panel panel-default controls",draggable=TRUE,cursor="auto",top="60%",bottom="auto",
-                          height="auto",right="auto",left=20,width=200,
-        shiny::h4("Additional Layers", class="panel-heading", style="
-      overflow: visible !important;  /* avoid clipping */
-      overflow-wrap: break-word;     /* modern word breaking */"),
-        htmltools::tags$div(title="Overlay additional data onto the parks",
-           shiny::selectizeInput(inputId="MapLayer", label="Add a map layer:", 
-                    choices=EXTRALAYERS))
-        )
+                              shiny::sliderInput(inputId = "PlotSize", label = "Scale plot markers (1x - 10x):", min = 1,
+                                                 max = 10, value = 5, step = 1, ticks = FALSE)),
+          shiny::hr(),
+          htmltools::tags$div(title="Overlay additional data onto the parks",
+                              shiny::selectizeInput(inputId="MapLayer", label="Add a map layer:", choices=EXTRALAYERS)))
       ), ## End of controls columns
 
 #### The Map ####

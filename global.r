@@ -79,7 +79,7 @@ BLUEOR<-grDevices::colorRampPalette(base::c("cyan","magenta4","orangered3")) # c
 AQUAYEL<-grDevices::colorRampPalette(base::c("aquamarine4","green","yellow","goldenrod4")) #colors for polygons
 
 #### Legend for Map ####
-MAPLEGEND <- list(
+MAPLEGEND <- base::list(
   count = base::list(
     trees = base::list(
       Title  = "Trees / hectare",

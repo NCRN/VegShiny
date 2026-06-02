@@ -23,8 +23,7 @@ VEGDATA<-base::switch(NETWORK,
                       MIDN=importMIDN("./Data/MIDN"),
                       NCRN=importNCRN("./Data/NCRN"),
                       NETN=importNETN("./Data/NETN"),
-                      SHEN=base::list(importSHEN("./Data/SHEN"))
-)
+                      SHEN=base::list(importSHEN("./Data/SHEN")))
 
 base::names(VEGDATA)<-NPSForVeg::getNames(VEGDATA, name.class="code")
 PARKLIST<-NPSForVeg::getNames(VEGDATA,name.class="code")
@@ -34,10 +33,10 @@ PARKBOUNDS<-utils::read.csv("boundboxes.csv", as.is=TRUE)
 
 DATACYCLES<-NPSForVeg::getCycles(VEGDATA[[1]])
 
-fmt_common <- function(x) {base::ifelse(base::is.na(x) | !base::nzchar(base::trimws(x)),
-    x,
-    base::paste0(base::toupper(base::substr(base::trimws(x), 1, 1)),
-           base::tolower(base::substr(base::trimws(x), 2, base::nchar(base::trimws(x))))))}
+fmt_common <- function(x) {base::ifelse(base::is.na(x) | !base::nzchar(base::trimws(x)), x,
+                                        base::paste0(base::toupper(base::substr(base::trimws(x), 1, 1)),
+                                                     base::tolower(base::substr(base::trimws(x), 2, 
+                                                                                base::nchar(base::trimws(x))))))}
 
 ##### Begin Server Function ####
 
@@ -58,23 +57,21 @@ shiny::shinyServer(function(input,output,session){
     shinyjs::onclick(id="CloseIVDisplayOptions", expr= shinyjs::toggle(id="IVOptionsPanel"))
   })
   
-  
   ####  Map Panel  ####
-  
   
   #### UI Controls ####
   
-  # Zoom control and zoom for map 
-  
-  output$ParkZoomControl<-shiny::renderUI({
-    shiny::selectInput(inputId="ParkZoom",label=NULL,selectize=FALSE,
-                       choices=base::c("All Parks"=NETWORK,PARKLIST) )})
-  
+  # # Zoom control and zoom for map 
+  # 
+  # output$ParkZoomControl<-shiny::renderUI({
+  #   shiny::selectInput(inputId="ParkZoom",label=NULL,selectize=FALSE,
+  #                      choices=base::c("All Parks"=NETWORK,PARKLIST) )})
+  # 
   
   #  Park control
   
   output$MapParkControl<-shiny::renderUI({
-    shiny::selectizeInput(inputId="MapPark", label="Filter species list by park",
+    shiny::selectizeInput(inputId="MapPark", label="Filter species list by park:",
                           choices = base::c("All Parks" = "All", PARKLIST),
                           selected = NULL,
                           options = base::list(placeholder = "Select a park", onInitialize = base::I('function() { this.setValue(""); }')))})
@@ -86,6 +83,14 @@ shiny::shinyServer(function(input,output,session){
                  seedlings=,shseedlings=,shrubs=,vines=base::c(Abundance="count"),
                  cwd=base::c("Volume"="size"),
                  herbs=base::c("Percent Cover"="size"))})
+  
+  shiny::observe({shiny::req(ValuesUse())
+    current <- input$MapValues
+    choices <- unname(ValuesUse())
+    
+    if (is.null(current) || current == "" || !(current %in% choices)) {
+      shiny::updateSelectizeInput(session, "MapValues", selected = choices[1])}
+  })
   
   output$PlantValueControl<-shiny::renderUI({
     shiny::selectizeInput(inputId="MapValues", label="Data to Map:", choices=if (base::is.null(ValuesUse())) base::character(0) else ValuesUse(), 
@@ -115,7 +120,6 @@ shiny::shinyServer(function(input,output,session){
                                                                                                                DATACYCLES$YearStart,"-",DATACYCLES$YearEnd))),
                           selected = NULL, options = base::list(placeholder = "Select a cycle", onInitialize = base::I('function() { this.setValue(""); }')))})
   
-  # -- Isolate year calculations; only reruns when MapCycles changes --
   MapYears <- shiny::reactive({shiny::req(input$MapCycles)
     year_start <- DATACYCLES %>% dplyr::filter(Cycle == input$MapCycles) %>% dplyr::pull(YearStart)
     year_end <- DATACYCLES %>% dplyr::filter(Cycle == input$MapCycles) %>% dplyr::pull(YearEnd)
@@ -160,6 +164,7 @@ shiny::shinyServer(function(input,output,session){
   
   # Track whether a reset is in progress
   resetting <- shiny::reactiveVal(FALSE)
+  userHasInteracted <- shiny::reactiveVal(FALSE)
   
   shiny::observeEvent(
     base::list(
@@ -172,12 +177,20 @@ shiny::shinyServer(function(input,output,session){
     {
       shiny::req(
         input$MapGroup,
-        input$TreeStatus,
         input$MapValues,
         input$MapCycles,
-        input$MapSpecies,
-        input$MapPark)
-      if (input$MapGroup == "trees") {shiny::req(input$TreeStatus)}
+        input$MapSpecies)
+      if (base::isTRUE(input$MapGroup == "trees")) shiny::req(input$TreeStatus)
+      
+        any_real_input <- !all(c(
+          input$MapGroup   %in% base::c("", NULL),
+          input$MapValues  %in% base::c("", NULL),
+          input$MapCycles  %in% base::c("", NULL),
+          input$MapSpecies %in% base::c("", NULL)
+        ))
+        if (any_real_input) {
+          userHasInteracted(TRUE)
+          showAllPlots(FALSE)}
       
       # Do nothing if all inputs still match defaults
       default_cycle <- base::as.character(DATACYCLES$Cycle[base::nrow(DATACYCLES)])
@@ -230,16 +243,31 @@ shiny::shinyServer(function(input,output,session){
   ### debug ####################################################################
   
   # -- Build plot base once per cycle; join spec data separately --
-  # KEY CHANGE: split the heavy P-build out of MapData so it can be cached
   PlotBase <- shiny::reactive({
-    shiny::req(MapYears())
+    shiny::req(MapYears(), input$MapGroup)
+    park_sel <- if (input$MapPark %in% base::c("", "All")) "All" else input$MapPark
+    
+    plots <- if (park_sel == "All") {
+      NPSForVeg::getPlots(VEGDATA, years=MapYears(), output="dataframe", type="all")
+    } else {NPSForVeg::getPlots(VEGDATA[[park_sel]], years=MapYears(), output="dataframe", type="all")}
+    
+    events <- if (park_sel == "All") {
+      NPSForVeg::getEvents(object=VEGDATA, years=MapYears(), plot.type="all")
+    } else {NPSForVeg::getEvents(object=VEGDATA[[park_sel]], years=MapYears(), plot.type="all")}
+    
+    # one row per plot: take the most recent year to avoid duplicate lat/lon rows
+    events_deduped <- events %>%
+      dplyr::select(Plot_Name, Year=Event_Year) %>%
+      dplyr::group_by(Plot_Name) %>%
+      dplyr::slice_max(Year, n=1, with_ties=FALSE) %>%
+      dplyr::ungroup()
+    
     dplyr::left_join(
-      NPSForVeg::getPlots(VEGDATA, years=MapYears(), output="dataframe", type="all") %>%
-        dplyr::select(Plot_Name, Unit_Code, Latitude, Longitude),
-      NPSForVeg::getEvents(object=VEGDATA, years=MapYears(), plot.type="all") %>%
-        dplyr::select(Plot_Name, Year=Event_Year),
+      plots %>% dplyr::select(Plot_Name, Unit_Code, Latitude, Longitude),
+      events_deduped,
       by="Plot_Name"
     ) %>%
+      dplyr::filter(!is.na(Latitude) & !is.na(Longitude)) %>%  # drop bad coords upfront
       dplyr::rowwise() %>%
       dplyr::mutate(Size = if (Unit_Code %in% base::names(VEGDATA)) {
         NPSForVeg::getArea(VEGDATA[[Unit_Code]], group=input$MapGroup)
@@ -247,11 +275,12 @@ shiny::shinyServer(function(input,output,session){
         NA_real_
       }) %>%
       dplyr::ungroup()
-  }) %>% shiny::bindCache(MapYears(), input$MapGroup)
+  }) %>% shiny::bindCache(MapYears(), input$MapGroup, input$MapPark)  # add MapPark to cache key
   
   MapData<-shiny::reactive({
     shiny::req(input$MapGroup, input$MapValues, input$MapCycles, input$MapSpecies)
-    if (input$MapGroup == "trees") {shiny::req(input$TreeStatus)}
+    shiny::req(PlotBase())
+    if (base::isTRUE(input$MapGroup == "trees")) shiny::req(input$TreeStatus)
     
     shiny::validate(shiny::need(input$MapGroup != "", ""), shiny::need(input$MapValues != "", ""),
                     shiny::need(input$MapCycles != "", ""), shiny::need(input$MapSpecies != "", ""))
@@ -295,15 +324,15 @@ shiny::shinyServer(function(input,output,session){
                        base::message("SiteXSpec failed: ", e$message); NULL })
     }
     
-    if (input$MapPark == "All") {
+    if (park_sel == "All") {
       results <- base::lapply(base::names(VEGDATA), function(park) run_sxs(VEGDATA[[park]]))
       spec_data <- dplyr::bind_rows(results[!base::sapply(results, base::is.null)])
     } else {
-      spec_data <- run_sxs(VEGDATA[[input$MapPark]])
+      spec_data <- run_sxs(VEGDATA[[park_sel]])
       shiny::validate(shiny::need(
         !base::is.null(spec_data),
         base::paste("No data found for this species/group/year combination in",
-                    NPSForVeg::getNames(VEGDATA[[input$MapPark]], "long"), ".")
+                    NPSForVeg::getNames(VEGDATA[[park_sel]], "long"), ".")
       ))
     }
     
@@ -321,7 +350,6 @@ shiny::shinyServer(function(input,output,session){
   })  
   
   POLYCOLORS<-grDevices::colorRamp(base::c("aquamarine4","green","yellow","goldenrod4")) #colors for polygons
-  
   
   
   #### Render Map  ####
@@ -471,7 +499,6 @@ shiny::shinyServer(function(input,output,session){
           opacity = 1)}
   })
   
-  
   # Species list control for map 
   
   ### function to get common names ###
@@ -538,8 +565,7 @@ shiny::shinyServer(function(input,output,session){
     #   vegdata_df <- selected_object()
     
     shiny::req(input$MapGroup)
-    shiny::req(input$MapPark)
-    
+
     actual_slot_name <- PLANTSLOTLOOKUP[[input$MapGroup]]
     shiny::validate(
       shiny::need(!base::is.null(actual_slot_name), "Selected plant group is not available in this network")
@@ -639,8 +665,6 @@ shiny::shinyServer(function(input,output,session){
   #   
   #   base::return(plants_lookup)
   # })  
-  
-  
   
   ### Now that I realize CommonNames.csv exists... ###
   getCNdf <- function(tsn_list) {
@@ -782,13 +806,14 @@ shiny::shinyServer(function(input,output,session){
     vd_filled <- base::rbind(vd_filled, new_vd_rows)
     
     base::return(vd_filled)
-  }) %>% shiny::bindCache("static")  # never changes; compute once for the whole session
+  })
   
   #List of names, elements are Latin names, names of elements are Latin or common
   MapSpecList<-shiny::reactive({
-    shiny::req(input$MapPark, input$MapGroup, MapYears())
+    shiny::req(input$MapGroup, input$MapCycles)
+    shiny::req(base::length(MapYears()) > 0)
     park_sel <- if (input$MapPark %in% base::c("", "All")) "All" else input$MapPark
-    SpecTemp<-base::unique(NPSForVeg::getPlants(object=if(input$MapPark=="All") {VEGDATA}  else {VEGDATA[[input$MapPark]]} , group=input$MapGroup,
+    SpecTemp<-base::unique(NPSForVeg::getPlants(object=if(park_sel=="All") {VEGDATA}  else {VEGDATA[[park_sel]]} , group=input$MapGroup,
                                                 years=MapYears(),common=F )$Latin_Name)
     vd_filled<-get_vd_filled()
     safeGetPlantNames <- function(object, names, in.style, out.style) {
@@ -819,7 +844,6 @@ shiny::shinyServer(function(input,output,session){
     base::return(SpecTemp)
   }) %>% shiny::bindCache(input$MapPark, input$MapGroup, MapYears(), input$mapCommon)
   
-  
   # MapSpecList<-shiny::reactive({
   #   shiny::req(input$MapPark, input$MapGroup)
   #   SpecTemp<-base::unique(NPSForVeg::getPlants(object=if(input$MapPark=="All") {VEGDATA}  else {VEGDATA[[input$MapPark]]} , group=input$MapGroup,
@@ -849,7 +873,6 @@ shiny::shinyServer(function(input,output,session){
       choices = MapSpecList(),
       selected = input$MapSpecies)})
   
-  
   # Add GeoJSON polygon layer 
   
   shiny::observe({
@@ -874,11 +897,23 @@ shiny::shinyServer(function(input,output,session){
   
   # Zoom the map
   
-  shiny::observeEvent(input$MapZoom, {
-    BoundsUse<-shiny::reactive({ base::as.numeric(PARKBOUNDS[PARKBOUNDS$ParkCode==input$ParkZoom,2:5]) })
-    leaflet::leafletProxy("VegMap") %>% leaflet::fitBounds(lat1=BoundsUse()[1], lng1=BoundsUse()[2], lat2=BoundsUse()[3], lng2=BoundsUse()[4])
-  })
+  # Zoom map when park filter changes
   
+  shiny::observe({
+    zoom_target <- if (!base::is.null(input$MapPark) && input$MapPark != "" && input$MapPark != "All") {input$MapPark
+    } else {NETWORK}
+    
+    bounds_row <- PARKBOUNDS[PARKBOUNDS$ParkCode == zoom_target, ]
+    
+    shiny::req(base::nrow(bounds_row) > 0)
+    
+    leaflet::leafletProxy("VegMap") %>%
+      leaflet::fitBounds(
+        lng1 = bounds_row$LongW,
+        lat1 = bounds_row$LatS,
+        lng2 = bounds_row$LongE,
+        lat2 = bounds_row$LatN)
+  })
   
   # Add layer legends 
   
@@ -1038,181 +1073,86 @@ shiny::shinyServer(function(input,output,session){
   })
   
   
+  #Build warning labels
+  disableWarnings <- shiny::reactive({
+    species <- input$MapSpecies
+    park <- input$MapPark
+    base::isTRUE(species == "All") && base::isTRUE(park %in% base::c("", "All"))})
   
+  plotCounts <- shiny::reactive({
+    shiny::req(MapData(), MapYears())
+    all_plots <- NPSForVeg::getPlots(
+      VEGDATA,
+      years = MapYears(),
+      output = "dataframe",
+      type = "all")
+    total <- base::nrow(all_plots)
+    filtered <- base::length(base::unique(MapData()$Plot_Name))
+    base::list(total = total, filtered = filtered, removed = total - filtered)})
   
+  # helpers
+  clearWarnings <- function() {
+    shiny::removeNotification(id = "park_warning")
+    shiny::removeNotification(id = "species_warning")}
   
+  last_park <- shiny::reactiveVal(NULL)
+  last_species <- shiny::reactiveVal(NULL)
   
+  # park warning: when plotCounts() or MapPark changes
+  shiny::observe({
+    if (base::isTRUE(disableWarnings()) || showAllPlots()) {
+      clearWarnings()
+      last_park(NULL)
+      last_species(NULL)
+      return()}
+    
+    # Park warning only relevant when viewing all species
+    if (!base::isTRUE(input$MapSpecies == "All")) {
+      shiny::removeNotification(id = "park_warning")
+      last_park(NULL)
+      return()}
+    
+    shiny::req(MapYears(), input$MapPark, input$MapPark != "")
+    shiny::req(plotCounts())
+    
+    pc <- plotCounts()
+    
+    msg <- base::paste0("Warning: ", pc$removed, " plots have been removed from the map due to current park selection (", input$MapPark, ").")
+    
+    if (!base::identical(last_park(), msg)) {
+      last_park(msg)
+      shiny::showNotification(msg, id = "park_warning", type = "message", duration = NULL)}})
   
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  # #Build warning label
-  # disableWarnings <- shiny::reactive({
-  # 
-  #   species <- input$MapSpecies
-  #   park <- input$MapPark
-  # 
-  #   isTRUE(species == "All") && isTRUE(park == "All")
-  # })
-  # plotCounts <- shiny::reactive({
-  # 
-  #   shiny::req(MapData(), MapYears())
-  # 
-  #   all_plots <- NPSForVeg::getPlots(
-  #     VEGDATA,
-  #     years = MapYears(),
-  #     output = "dataframe",
-  #     type = "all"
-  #   )
-  # 
-  #   total <- nrow(all_plots)
-  #   filtered <- length(unique(MapData()$Plot_Name))
-  # 
-  #   list(
-  #     total = total,
-  #     filtered = filtered,
-  #     removed = total - filtered
-  #   )
-  # })
-  # 
-  # speciesWarning <- shiny::reactive({
-  # 
-  #   if (isTRUE(disableWarnings())) return(NULL)
-  #   shiny::req(plotCounts())
-  # 
-  #   pc <- plotCounts()
-  # 
-  #   spec_list <- MapSpecList()
-  # 
-  #   species_name <- if (input$MapSpecies %in% spec_list) {
-  #     names(spec_list)[spec_list == input$MapSpecies]
-  #   } else {
-  #     input$MapSpecies
-  #   }
-  # 
-  #   verb <- if (identical(input$MapSpecies, "All")) "have" else "has"
-  # 
-  #   paste0(
-  #     species_name, " ", verb,
-  #     " been observed by NCRN at ", pc$filtered, " plots. ",
-  #     pc$removed,
-  #     " points were removed from the map because NCRN has no recorded observations of ",
-  #     tolower(species_name),
-  #     " under the selected data filters."
-  #   )
-  # })
-  # 
-  # parkWarning <- shiny::reactive({
-  # 
-  #   if (isTRUE(disableWarnings())) return(NULL)
-  #   shiny::req(plotCounts())
-  # 
-  #   pc <- plotCounts()
-  # 
-  #   paste0(
-  #     pc$removed,
-  #     " plots have been removed from the map due to current park selection (",
-  #     input$MapPark,
-  #     ")."
-  #   )
-  # })
-  # 
-  # last_species_msg <- shiny::reactiveVal(NULL)
-  # last_park_msg <- shiny::reactiveVal(NULL)
-  # 
-  # last_park <- shiny::reactiveVal(NULL)
-  # 
-  # observeEvent(input$MapPark, {
-  # 
-  #   shiny::req(MapData(), MapYears())
-  # 
-  #   if (isTRUE(disableWarnings())) return()
-  # 
-  #   pc <- plotCounts()
-  # 
-  #   msg <- paste0(
-  #     pc$removed,
-  #     " plots have been removed from the map due to current park selection (",
-  #     input$MapPark,
-  #     ")."
-  #   )
-  # 
-  #   if (!identical(last_park(), msg)) {
-  #     last_park(msg)
-  # 
-  #     showNotification(
-  #       msg,
-  #       id = "park_warning",
-  #       type = "error",
-  #       duration = NULL
-  #     )
-  #   }
-  # 
-  # }, ignoreInit = TRUE)
-  # 
-  # last_species <- shiny::reactiveVal(NULL)
-  # 
-  # observeEvent(input$MapSpecies, {
-  # 
-  #   if (identical(input$MapSpecies, "All")) return()
-  #   if (isTRUE(disableWarnings())) return()
-  # 
-  #   shiny::req(MapData(), MapYears())
-  # 
-  #   pc <- plotCounts()
-  # 
-  #   spec_list <- MapSpecList()
-  # 
-  #   species_name <- if (input$MapSpecies %in% spec_list) {
-  #     names(spec_list)[spec_list == input$MapSpecies]
-  #   } else {
-  #     input$MapSpecies
-  #   }
-  # 
-  #   verb <- "has"
-  # 
-  #   msg <- paste0(
-  #     species_name, " ", verb,
-  #     " been observed by NCRN at ", pc$filtered, " plots. ",
-  #     pc$removed,
-  #     " points were removed from the map because NCRN has no recorded observations of ",
-  #     tolower(species_name),
-  #     " under the selected data filters."
-  #   )
-  # 
-  #   if (!identical(last_species(), msg)) {
-  #     last_species(msg)
-  # 
-  #     showNotification(
-  #       msg,
-  #       id = "species_warning",
-  #       type = "error",
-  #       duration = NULL
-  #     )
-  #   }
-  # 
-  # }, ignoreInit = TRUE)
-
+  # species warning: when MapSpecies or plotCounts() changes
+  shiny::observe({
+    if (base::isTRUE(disableWarnings()) || showAllPlots()) {
+      clearWarnings()
+      last_park(NULL)
+      last_species(NULL)
+      return()}
+    
+    if (base::isTRUE(input$MapSpecies == "All") || base::isTRUE(input$MapSpecies == "")) {
+      shiny::removeNotification(id = "species_warning")
+      last_species(NULL)
+      return()}
+    
+    shiny::req(input$MapSpecies, input$MapSpecies != "", input$MapSpecies != "All")
+    shiny::req(MapData(), MapYears())
+    
+    pc <- plotCounts()
+    spec_list <- MapSpecList()
+    
+    species_name <- if (input$MapSpecies %in% spec_list) {
+      base::names(spec_list)[spec_list == input$MapSpecies]
+    } else {input$MapSpecies}
+    
+    msg <- base::paste0("Warning: ", species_name, " has been observed by NCRN at ", pc$filtered, " plots. ",
+                        pc$removed, " points were removed from the map because NCRN has no recorded observations of ",
+                        (species_name), " under the selected data filters.")
+    
+    if (!base::identical(last_species(), msg)) {
+      last_species(msg)
+      shiny::showNotification(msg, id = "species_warning", type = "message", duration = NULL)}})
   
   
   
@@ -1681,10 +1621,10 @@ shiny::shinyServer(function(input,output,session){
   })
   
   #### common names checkbox ####
-  species_col <- shiny::reactive(if (base::isTRUE(input$densCommon)) "Common_Name" else "Latin_Name")
+  species_col <- shiny::reactive(if (base::base::isTRUE(input$densCommon)) "Common_Name" else "Latin_Name")
   
   ### summary statistics checkbox ###
-  text_on <- shiny::reactive(base::isTRUE(input$plotlyText))
+  text_on <- shiny::reactive(base::base::isTRUE(input$plotlyText))
   
   #### create base plotting df #####
   densDf <- shiny::reactive({
@@ -1739,8 +1679,8 @@ shiny::shinyServer(function(input,output,session){
     } else {
       df <- df %>% dplyr::mutate(
         LabelOpp = dplyr::case_when(
-          base::isTRUE(input$densCommon) ~ Latin,
-          !base::isTRUE(input$densCommon) ~ dplyr::coalesce(Common, Latin)))}
+          base::base::isTRUE(input$densCommon) ~ Latin,
+          !base::base::isTRUE(input$densCommon) ~ dplyr::coalesce(Common, Latin)))}
     
     df <- df %>%
       dplyr::mutate(.tie = base::seq_along(Species)) %>%   # keeps stable order
@@ -1912,7 +1852,7 @@ shiny::shinyServer(function(input,output,session){
         dplyr::mutate(LabelOpp = "All species")} else {
           df <- df %>% dplyr::mutate(
             LabelOpp = dplyr::case_when(
-              base::isTRUE(input$densCommon) ~ Latin,
+              base::base::isTRUE(input$densCommon) ~ Latin,
               TRUE                     ~ dplyr::coalesce(Common, Latin)))}
     
     # zero-fill base species missing from compare
@@ -2382,7 +2322,7 @@ shiny::shinyServer(function(input,output,session){
       years = densYears(),
       values = input$densvalues,
       area = base::ifelse(input$densvalues == "size", "ha", "plot"),
-      common = base::isTRUE(input$densCommon))})
+      common = base::base::isTRUE(input$densCommon))})
   
   #### reactive label for dataset column ####
   densDatasetLabels <- shiny::reactive({
@@ -2453,7 +2393,7 @@ shiny::shinyServer(function(input,output,session){
           out.style = "common"),
         error = function(e) base::rep(NA_character_, base::nrow(raw)))}
     
-    name_col <- if (base::isTRUE(input$densCommon)) "Common_Name" else "Latin_Name"
+    name_col <- if (base::base::isTRUE(input$densCommon)) "Common_Name" else "Latin_Name"
     
     build_half <- function(df_raw, name_col_arg) {
       df_raw %>%
@@ -2713,7 +2653,7 @@ shiny::shinyServer(function(input,output,session){
     raw$Species <- fmt_common(raw$Species)
     
     # LabelOpp = the opposite of whatever Species currently is
-    if (base::isTRUE(input$IVCommon)) {
+    if (base::base::isTRUE(input$IVCommon)) {
       raw$LabelOpp <- raw_latin$Species
     } else {
       raw$LabelOpp <- fmt_common(base::tryCatch(
@@ -2729,7 +2669,7 @@ shiny::shinyServer(function(input,output,session){
     raw})
   
   ### IV checkbox ###
-  iv_text_on <- shiny::reactive(base::isTRUE(input$IVPlotlyText))
+  iv_text_on <- shiny::reactive(base::base::isTRUE(input$IVPlotlyText))
   
   # IV Colors
   pickColor <- function(val, fallback) {
@@ -2771,7 +2711,7 @@ shiny::shinyServer(function(input,output,session){
                          Pick = {shiny::req(input$IVSpecies)
                            IVdf %>%
                              dplyr::filter(
-                               if (base::isTRUE(input$IVCommon)) LabelOpp %in% input$IVSpecies
+                               if (base::base::isTRUE(input$IVCommon)) LabelOpp %in% input$IVSpecies
                                else Species %in% input$IVSpecies) %>%
                              dplyr::arrange(Total)},
                          All = IVdf %>%
@@ -2947,7 +2887,7 @@ shiny::shinyServer(function(input,output,session){
                          shiny::req(input$IVSpecies)
                          df %>%
                            dplyr::filter(
-                             if (base::isTRUE(input$IVCommon)) LabelOpp %in% input$IVSpecies
+                             if (base::base::isTRUE(input$IVCommon)) LabelOpp %in% input$IVSpecies
                              else Species %in% input$IVSpecies) %>%
                            dplyr::arrange(dplyr::desc(Total))},
                        All = df %>%
@@ -3101,30 +3041,30 @@ shiny::shinyServer(function(input,output,session){
     if (input$SpListType != "NPSpecies") {base::return(NULL)}
     
     link_info <- switch(input$SpListPark, 
-      "ANTI" = list(url = "https://irma.nps.gov/NPSpecies/Search/SpeciesList/ANTI",
+      "ANTI" = base::list(url = "https://irma.nps.gov/NPSpecies/Search/SpeciesList/ANTI",
         label = "View full Antietam species list"),
-      "CATO" = list(url = "https://irma.nps.gov/NPSpecies/Search/SpeciesList/CATO",
+      "CATO" = base::list(url = "https://irma.nps.gov/NPSpecies/Search/SpeciesList/CATO",
         label = "View full Catoctin species list"),
-      "CHOH" = list(url = "https://irma.nps.gov/NPSpecies/Search/SpeciesList/CHOH",
+      "CHOH" = base::list(url = "https://irma.nps.gov/NPSpecies/Search/SpeciesList/CHOH",
         label = "View full C&O Canal species list"),
-      "GWMP" = list(url = "https://irma.nps.gov/NPSpecies/Search/SpeciesList/GWMP",
+      "GWMP" = base::list(url = "https://irma.nps.gov/NPSpecies/Search/SpeciesList/GWMP",
         label = "View full GW Parkway species list"),
-      "HAFE" = list(url = "https://irma.nps.gov/NPSpecies/Search/SpeciesList/HAFE",
+      "HAFE" = base::list(url = "https://irma.nps.gov/NPSpecies/Search/SpeciesList/HAFE",
         label = "View full Harpers Ferry species list"),
-      "MANA" = list(url = "https://irma.nps.gov/NPSpecies/Search/SpeciesList/MANA",
+      "MANA" = base::list(url = "https://irma.nps.gov/NPSpecies/Search/SpeciesList/MANA",
         label = "View full Manassas species list"),
-      "MONO" = list(url = "https://irma.nps.gov/NPSpecies/Search/SpeciesList/MONO",
+      "MONO" = base::list(url = "https://irma.nps.gov/NPSpecies/Search/SpeciesList/MONO",
         label = "View full Monocacy species list"),
-      "NACE" = list(url = "https://irma.nps.gov/NPSpecies/Search/SpeciesList/NACE",
+      "NACE" = base::list(url = "https://irma.nps.gov/NPSpecies/Search/SpeciesList/NACE",
         label = "View full National Capital Parks – East species list"),
-      "PRWI" = list(url = "https://irma.nps.gov/NPSpecies/Search/SpeciesList/PRWI",
+      "PRWI" = base::list(url = "https://irma.nps.gov/NPSpecies/Search/SpeciesList/PRWI",
         label = "View full Prince William species list"),
-      "ROCR" = list(url = "https://irma.nps.gov/NPSpecies/Search/SpeciesList/ROCR",
+      "ROCR" = base::list(url = "https://irma.nps.gov/NPSpecies/Search/SpeciesList/ROCR",
         label = "View full Rock Creek species list"),
-      "WOTR" = list(url = "https://irma.nps.gov/NPSpecies/Search/SpeciesList/WOTR",
+      "WOTR" = base::list(url = "https://irma.nps.gov/NPSpecies/Search/SpeciesList/WOTR",
         label = "View full Wolf Trap species list"),
       
-      list(url = base::paste0("https://irma.nps.gov/NPSpecies/Search/SpeciesList/",
+      base::list(url = base::paste0("https://irma.nps.gov/NPSpecies/Search/SpeciesList/",
           input$SpListPark), label = "View full NPSpecies list"))
     
     shiny::tags$a(href = link_info$url, target = "_blank", link_info$label)})
