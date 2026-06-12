@@ -21,12 +21,12 @@ PLANTSLOTLOOKUP<-base::switch(NETWORK,
     NCRN=base::c(
       trees = "Trees",
       saplings = "Saplings",
-      seedlings = "Tree seedlings",
+      seedlings = "Seedlings",
       shrubs = "Shrubs",
-      shseedlings = "Shrub seedlings",
-      herbs = "Understory plants",
-      vines = "Vines on Trees",
-      cwd = "Coarse Woody Debris"
+      shseedlings = "ShSeedlings",
+      herbs = "Herbs",
+      vines = "Vines",
+      cwd = "CWD"
     )
 )
 
