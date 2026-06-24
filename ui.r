@@ -409,8 +409,6 @@ tags$head(tags$style(HTML("
 
 ######################################## Graphs Panel ##########################################################
 
-    shiny::navbarMenu(htmltools::tags$div(title="Graph the data", "Graphs"),
-                      
 #############  densplot() based plots
       shiny::tabPanel(htmltools::tags$div(title="Graph abundance, basal area, percent cover, etc","Data by Park and Species"),
                shinyjs::useShinyjs(),
@@ -501,8 +499,6 @@ tags$head(tags$style(HTML("
                  htmltools::div(class="panel-footer",
                         shiny::actionButton(inputId="CloseDisplayOptions",class="btn btn-primary",label="Close"))
                   )
-                  
-                  
                 ),
               shiny::tabPanel(
                 htmltools::tags$div(title="See all data in a table","Data table"),
@@ -510,6 +506,7 @@ tags$head(tags$style(HTML("
                 shiny::column(10, style="padding: 5px",
                  shiny::h3(shiny::textOutput("densTableTitle")),
                  shiny::hr(),
+                 shiny::uiOutput("densTableMessage"),
                  shiny::uiOutput("densMissingWarningTable"),
                  shiny::uiOutput("densOnePlotWarningTable"),
                  shiny::uiOutput("densMessageTable"),
@@ -523,6 +520,165 @@ tags$head(tags$style(HTML("
           )#close column
         )
       ),
+
+###############Time Series Plot
+shiny::tabPanel(
+  htmltools::tags$div(title="Graph data across monitoring cycles", "Data Trends Over Time"),
+  shiny::fluidRow(
+
+    # ---- Side Panel ----
+    shiny::column(3, id = "tsDataPanel",
+                  htmltools::tags$head(htmltools::tags$style(
+                    htmltools::HTML(".action-button {
+                            white-space: normal !important;
+                            word-wrap: break-word !important;}"))),
+                  shiny::wellPanel(class="panel panel-default controls",
+                                   shiny::h4("Data:", class="panel-heading"),
+
+                                   # Park selector — multi, required
+                                   htmltools::tags$div(
+                                     title="Select one or more parks to display. At least one park is required.",
+                                     shiny::uiOutput(outputId="tsParkControl")
+                                   ),
+
+                                   # Plant type
+                                   htmltools::tags$div(
+                                     title="Select the type of plant you want to work with",
+                                     shiny::selectizeInput(inputId="tsGroup", label="Type of plant:", choices=PLANTTYPES)
+                                   ),
+
+                                   # Common/Latin toggle
+                                   htmltools::tags$div(
+                                     title="Toggle between common and scientific names",
+                                     shiny::checkboxInput(inputId="tsCommon", label="Display common names?", value=TRUE)
+                                   ),
+                                   
+                                   checkboxInput(
+                                     inputId = "tsShowCI",
+                                     label = "Show 95% confidence intervals",
+                                     value = TRUE
+                                   ),
+
+                                   # Species selection — same three-way pattern as dens/IV
+                                   htmltools::tags$div(
+                                     title="Graph the most common species, species you select, or all species observed",
+                                     shiny::radioButtons(inputId="tsSpeciesType", label="Which species?",
+                                                         choices=base::c("Most common species"="Common",
+                                                                         "Pick individual species"="Pick",
+                                                                         "All species combined"="All"),
+                                                         inline=FALSE)
+                                   ),
+                                   
+                                   # Y-axis value picklist
+                                   htmltools::tags$div(
+                                     title="Select the measurement to display on the y-axis",
+                                     shiny::uiOutput(outputId="tsValControl")
+                                   ),
+                                   shiny::uiOutput(outputId="tsSpeciesControl"),
+                                   htmltools::tags$div(
+                                     title = "Select the range of monitoring cycles to display",
+                                     shiny::uiOutput(outputId = "tsCycleControl")
+                                   ),
+
+                                   # Conditionally show Display Options or Download button
+                                   shiny::conditionalPanel(
+                                     condition="input.tsPanel=='Graph'",
+                                     shiny::hr(),
+                                     shiny::actionButton(inputId="tsGraphButton", label="Display Options",
+                                                         class="btn btn-primary btn-block action-button")
+                                   ),
+                                   shiny::conditionalPanel(
+                                     condition="input.tsPanel=='Table'",
+                                     shiny::hr(),
+                                     shiny::radioButtons(
+                                       inputId  = "tsTableOrder",
+                                       label    = "Order table by:",
+                                       choices  =base::c("Species" = "species", "Cycle" = "cycle"),
+                                       selected = "species",
+                                       inline   = TRUE
+                                     ),
+                                     shiny::downloadButton(outputId="tsTableDownload", label="Save Table (.csv)",
+                                                           class="btn btn-primary btn-block")
+                                   )
+                  )
+    ), # close side column
+
+    # ---- Main Content ----
+    shiny::column(9,
+                  shiny::tabsetPanel(id="tsPanel", type="pills",
+
+                                     # Graph tab
+                                     shiny::tabPanel(
+                                       title=htmltools::tags$div(title="Graph the data", "Graph"), value="Graph",
+                                       htmltools::tags$div(id="tsPlotContainer",
+                                                           title="Time series of mean and 95% confidence interval by monitoring cycle",
+                                                           shiny::uiOutput("tsMissingWarning"),
+                                                           shiny::uiOutput("tsLimitWarning"),
+                                                           shiny::uiOutput("tsCycleSpeciesMissingWarning"),
+                                                           uiOutput("tsSinglePlotWarning"),
+                                                           plotly::plotlyOutput(outputId="tsPlot", height="600px")
+                                       ),
+
+                                       # Display Options floater
+                                       shiny::fixedPanel(class="panel panel-primary controls", draggable=TRUE,
+                                                         cursor="auto", id="TSOptionsPanel", style="padding: 0px; display: none; z-index: 1995;",
+                                                         title="Display Options",
+                                                         htmltools::div(class="panel-heading", shiny::h4("Display Options")),
+                                                         htmltools::div(class="panel-body",
+                                                                        shiny::flowLayout(cellArgs=base::list(style="width: 160px"),
+                                                                                          shiny::sliderInput("tsLineThickness", "Line Thickness",
+                                                                                                             min=0.5, max=5, value=1.5, step=0.5, width=150),
+                                                                                          shiny::sliderInput("tsFontSize", "Font Size",
+                                                                                                             min=12, max=24, value=12, step=2, width=150)
+                                                                        ),
+                                                                        shiny::br(),
+                                                                        shiny::flowLayout(cellArgs=base::list(style="width: 160px"),
+                                                                                          shiny::sliderInput("tsRibbonOpacity", "CI Ribbon Opacity",
+                                                                                                             min=0.1, max=0.5, value=0.2, step=0.05, width=150),
+                                                                                          shiny::selectizeInput("tsColorPalette", "Color Palette:",
+                                                                                                                choices=base::c("Bright"  = "set1",
+                                                                                                                                "Pastel"  = "set2",
+                                                                                                                                "Dark" = "dark2",
+                                                                                                                                "Paired" = "paired"),
+                                                                                                                selected="set1", width=150)
+                                                                        )
+                                                         ),
+                                                         htmltools::div(class="panel-footer",
+                                                                        shiny::actionButton(inputId="CloseTSDisplayOptions",
+                                                                                            class="btn btn-primary", label="Close"))
+                                       )
+                                     ), # close Graph tabPanel
+
+                                     # ================= TABLE TAB =================
+                                     shiny::tabPanel(
+                                       title = htmltools::tags$div("Data table"),
+                                       value = "Table",
+                                       
+                                       htmltools::tags$div(
+                                         style = "padding: 5px",
+                                         
+                                         shiny::h3(shiny::textOutput("tsTableTitle")),
+                                         shiny::hr(),
+                                         
+                                         shiny::uiOutput("tsMessageTable"),
+                                         shiny::uiOutput("tsMissingWarningTable"),
+                                         shiny::uiOutput("tsCycleSpeciesMissingWarningTable"),
+                                         uiOutput("tsSinglePlotWarningTable"),
+                                         DT::dataTableOutput("tsTable")
+                                       )
+                                     ),
+
+                                     # About tab
+                                     shiny::tabPanel(
+                                       title=htmltools::tags$div(title="Explanation of the graph", "About this graph..."),
+                                       htmltools::includeHTML("www/AboutTS.html")
+                                     )
+
+                  ) # close tabsetPanel
+    ) # close main column
+
+  ) # close fluidRow
+), # close tabPanel "Data Trends"
 
 ###############IV Plots
       shiny::tabPanel(htmltools::tags$div(title="Graph Importance Values", "Forestry Importance Values (IV)"),
@@ -609,7 +765,6 @@ tags$head(tags$style(HTML("
                   shiny::hr(),
                   shiny::uiOutput("IVMessage"),
                   DT::dataTableOutput("IVData"),
-                  #verbatimTextOutput("IVDebug")
                 )
               ),
               shiny::tabPanel(htmltools::tags$div(title="Explanation of the graph","About this graph..."),
@@ -618,8 +773,7 @@ tags$head(tags$style(HTML("
             )
           )
         )
-      )
-    ),
+      ),
 
 ############################## Species Lists
     shiny::tabPanel(id="SpeciesPanel",

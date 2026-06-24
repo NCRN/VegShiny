@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html>
+  <body>
+  <h4>Data Trends Over Time</h4>
+  
+<p>These graphs show how estimates of forest vegetation abundance, size, and plot occupancy have changed across monitoring cycles for a selected park. 
+Each line represents a species (or all species combined), and each point on the line represents the mean value for that species during a given monitoring cycle.
+Confidence intervals are represented by opaque ribbons of the same color and are optionally shown on the figure.
+The table shows the same data in a structured format. You can view this by selecting the "Data table" tab at the top of the page.</p>
+
+<p>
+  There are three options for selecting species to graph:
+<ul>
+  <li><strong>Most common species:</strong> 
+  This displays the species with the highest mean abundance, basal area, or proportion of plot occupied. 
+  You can adjust the number of species to display.  </li>
+  <li><strong>Pick individual species:</strong> 
+  This allows you to pick which species to display. 
+  Click in the box to see a list of species or type to search. Click on a species or hit "Enter" to choose it. 
+  To unselect a species, click on the X next to its name or press the backspace key. 
+  You can choose as many species as you like. </li>
+  <li><strong>All species combined:</strong> 
+  This graphs the summed data for every observed species matching the chosen data measures.</li>
+</ul>
+</p>
+
+<p>Depending on the type of plant selected there are a variety of measurements that can be graphed (<a href="https://irma.nps.gov/DataStore/Reference/Profile/2210263">NCRN forest vegetation monitoring protocol</a>):</p>
+<p>
+    <ul>
+    <li><strong>Abundance: </strong>
+    This is an estimate of how many individuals of a given species are found in each forested hectare of a park. 
+    A hectare is 2.47 acres, or approximately the size of two football fields. 
+    This measure is available for trees, saplings, tree seedlings, shrubs, shrub seedlings, and vines on trees. 
+    It is expressed as #/ha. </li>
+    <li><strong>Basal Area: </strong> 
+    This is the area of the cross-section of a tree or sapling at 1.37 meters (4.5 feet) above the ground. 
+    This measure is available for trees and saplings.  </li>
+    <li><strong>Percent of Plots Occupied: </strong> 
+    This measure indicates the percentage of monitoring plots in a park that contain a particular species. 
+    This measure, along with the map, can indicate how widespread a species and is available for all plant types.  </li>
+  <li><strong>Percent Cover: </strong> 
+  This is a measure of what percent of a plot is covered by the leaves and stems of a plant species. 
+  It can be used as a measure of size or abundance. 
+  This is particularly useful for species which grow as numerous small individuals, such as blades of grass, which cannot be easily counted.  
+  This measure is available for understory plants.  </li> </ul>
+</p>
+
+<p>Gaps in a species line indicate that the species was not observed during that monitoring cycle. 
+Cycles with no observations for any species of the selected plant type are excluded from the figure and table entirely.</p>
+
+<h4>Statistical Details</h4>
+<p> 
+Statistical calculations were performed using the <a href="https://github.com/NCRN/NPSForVeg"> NPSForVeg R package developed by Schmit et al. (2024).</a>
+Mean values (averages) are always calculated by first summing the values for the monitoring plots in a park and then dividing by the number of plots in the park.  
+The means and confidence intervals are first calculated on a per-plot basis and then converted to a per-hectare basis. 
+The 95% confidence intervals are more complicated to calculate and depend on the type of data graphed.</p>
+   <p><strong>Abundance:</strong> 
+   The 95% confidence interval is calculated by fitting the number of plants found in each plot to a negative binomial distribution. 
+   Using negative binomial estimation ensures that the 95% confidence interval will never include negative numbers of plants, and often results in confidence intervals that are not symmetric around the mean.</p>
+  <p><strong>Basal Area:</strong> 
+  Basal area measurements often do not fit any standard statistical distribution. 
+  To account for this, the 95% confidence interval is calculated by bootstrapping the observed data.</p>
+  <p><strong>Percent of Plots Occupied:</strong> 
+  95% confidence intervals are calculated by fitting the data to a binomial distribution.</p>
+  <p><strong>Percent Cover:</strong> 
+  Like basal area, confidence intervals are calculated using bootstrapping.</p>
+
+<p>When only one monitoring plot exists for a park during a given cycle, confidence intervals cannot be estimated and are shown as NA in the table and omitted from the figure.</p>
+</body>
+<html>
