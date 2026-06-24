@@ -1216,7 +1216,8 @@ shiny::shinyServer(function(input,output,session){
     
     if (!base::identical(last_park(), msg)) {
       last_park(msg)
-      shiny::showNotification(msg, id = "park_warning", type = "message", duration = NULL)}})
+      if (base::isTRUE(input$mainTabset == "Map")) {shiny::showNotification(msg, id = "park_warning", type = "message", duration = NULL)
+      } else {shiny::showNotification(msg, id = "park_warning", type = "message", duration = NULL)}}})
   
   # species warning: when MapSpecies or plotCounts() changes
   shiny::observe({
@@ -1257,7 +1258,8 @@ shiny::shinyServer(function(input,output,session){
     
     if (!base::identical(last_species(), msg)) {
       last_species(msg)
-      shiny::showNotification(msg, id = "species_warning", type = "message", duration = NULL)}})
+      if (base::isTRUE(input$mainTabset == "Map")) {shiny::showNotification(msg, id = "species_warning", type = "message", duration = NULL)
+      } else {shiny::showNotification(msg, id = "species_warning", type = "message", duration = NULL)}}})
   
   # cycle warning: only when all parks and all species selected
   shiny::observe({
@@ -1295,11 +1297,19 @@ shiny::shinyServer(function(input,output,session){
     
     if (!base::identical(last_cycle(), msg)) {
       last_cycle(msg)
-      shiny::showNotification(msg, id = "cycle_warning", type = "message", duration = NULL)}})
+      if (base::isTRUE(input$mainTabset == "Map")) {shiny::showNotification(msg, id = "cycle_warning", type = "message", duration = NULL)
+      } else {shiny::showNotification(msg, id = "cycle_warning", type = "message", duration = NULL)}}})
   
   shiny::observe({
     if (!base::is.null(input$MapGroup) && input$MapGroup != "") {
       lastValidGroup(input$MapGroup)}})
+  
+  # clear all popups when navigating away from map page
+  shiny::observeEvent(input$MainNavBar, {
+    if (!base::isTRUE(input$MainNavBar == "Map")) {
+      shiny::removeNotification(id = "park_warning")
+      shiny::removeNotification(id = "species_warning")
+      shiny::removeNotification(id = "cycle_warning")}})
   
   output$incompleteInputWarning <- shiny::renderUI({
     if (showAllPlots()) base::return(NULL)
@@ -1567,10 +1577,10 @@ shiny::shinyServer(function(input,output,session){
                      area = if (input$densvalues == "presab") "plot" else "ha"))},
                  "Growth Stage"=base::return(base::list(object=VEGDATA[[input$densPark]], group=input$CompareGroup, years=densYears(),
                                                         values=input$densvalues,
-                                                        common=input$densCommon,area=if(input$densvalues=="size") "ha" else "plot")),
+                                                        common=input$densCommon,area= if (input$densvalues == "presab") "plot" else "ha")),
                  Time=base::return(base::list(object=VEGDATA[[input$densPark]], group=input$densGroup, years=compYears(),
                                               values=input$densvalues, 
-                                              common=input$densCommon,area=if(input$densvalues=="size") "ha" else "plot")))
+                                              common=input$densCommon,area= if (input$densvalues == "presab") "plot" else "ha")))
   })
   
   DENSLABELDATA<-base::data.frame(Name=base::c("trees","saplings","seedlings","shrubs","shseedlings","herbs","vines"), Label=base::c("Trees","Saplings","Tree Seedlings", "Shrubs","Shrub Seedlings","Understory Plants","Vines in Trees"), stringsAsFactors=FALSE)
@@ -1860,9 +1870,11 @@ shiny::shinyServer(function(input,output,session){
       df <- df %>%
         dplyr::summarise(
           Species = "All species",
-          Mean    = agg_fun(Mean,   na.rm = TRUE),
-          err_up  = agg_fun(err_up, na.rm = TRUE),
-          err_dn  = agg_fun(err_dn, na.rm = TRUE)) %>%
+          Latin = "All species",
+          Common = "All species",
+          Mean = agg_fun(Mean, na.rm = TRUE),
+          err_up = agg_fun(err_up, na.rm = TRUE),
+          err_dn = agg_fun(err_dn, na.rm = TRUE)) %>%
         dplyr::mutate(LabelOpp = "All species")
     } else {
       df <- df %>% dplyr::mutate(
@@ -2019,14 +2031,14 @@ shiny::shinyServer(function(input,output,session){
     
     ###selection rules
     # Pick
-    if (base::identical(input$densSpeciesType, "Pick")) {
-      shiny::req(input$densSpecies)
+    if (base::identical(input$densSpeciesType, "Pick")) {shiny::req(input$densSpecies)
       df <- df %>% dplyr::filter(Latin %in% input$densSpecies)}
     
-    # Common = top N from BASE (important!)
+    # Common = top N from BASE — align by Latin not display name
     if (base::identical(input$densSpeciesType, "Common")) {
-      base_species <- densDf()$Species
-      df <- df %>% dplyr::filter(Species %in% densDf()$Species)}
+      base_latin <- if ("Latin" %in% base::names(densDf())) {base::as.character(densDf()$Latin)
+      } else {base::as.character(densDf()$Species)}
+      df <- df %>% dplyr::filter(Latin %in% base_latin)}
     
     # All species combined
     if (base::identical(input$densSpeciesType, "All")) {
@@ -2034,33 +2046,40 @@ shiny::shinyServer(function(input,output,session){
       df <- df %>%
         dplyr::summarise(
           Species = "All species",
-          Mean    = agg_fun(Mean,   na.rm = TRUE),
-          err_up  = agg_fun(err_up, na.rm = TRUE),
-          err_dn  = agg_fun(err_dn, na.rm = TRUE)) %>%
-        dplyr::mutate(LabelOpp = "All species")} else {
-          df <- df %>% dplyr::mutate(
-            LabelOpp = dplyr::case_when(
-              base::isTRUE(input$densCommon) ~ Latin,
-              TRUE                     ~ dplyr::coalesce(Common, Latin)))}
+          Latin = "All species",
+          Common = "All species",
+          Mean = agg_fun(Mean,   na.rm = TRUE),
+          err_up = agg_fun(err_up, na.rm = TRUE),
+          err_dn = agg_fun(err_dn, na.rm = TRUE)) %>%
+        dplyr::mutate(LabelOpp = "All species")
+      # return early — no zero-fill or factor alignment needed for All
+      base::return(df)}
     
-    # zero-fill base species missing from compare
-    if (!base::identical(input$densSpeciesType, "All")) {
-      base_latin <- densDf()$Latin
-      missing <- base::setdiff(base_latin, df$Latin)
-      if (base::length(missing) > 0) {
-        zero_rows <- base::data.frame(
-          Species  = base::as.character(densDf()$Species[densDf()$Latin %in% missing]),
-          Latin = missing,
-          Common  = NA_character_,
-          Mean = 0,
-          err_up = NA_real_,
-          err_dn = NA_real_,
-          LabelOpp = base::as.character(densDf()$Species[densDf()$Latin %in% missing]),
-          stringsAsFactors = FALSE)
-        df <- dplyr::bind_rows(df, zero_rows)}
-      df$Species <- base::factor(df$Species, levels = base::union(
-        base::levels(densDf()$Species),
-        base::as.character(df$Species)))}
+    df <- df %>% dplyr::mutate(
+      LabelOpp = dplyr::case_when(
+        base::isTRUE(input$densCommon) ~ Latin,
+        TRUE ~ dplyr::coalesce(Common, Latin)))
+    
+    # zero-fill base species missing from compare — use Latin for matching
+    base_latin <- if ("Latin" %in% base::names(densDf())) {base::as.character(densDf()$Latin)
+    } else {base::as.character(densDf()$Species)}
+    missing_latin <- base::setdiff(base_latin, df$Latin)
+    if (base::length(missing_latin) > 0) {
+      base_df_ref <- densDf()
+      zero_rows <- base::data.frame(
+        Species = base::as.character(base_df_ref$Species[base_df_ref$Latin %in% missing_latin]),
+        Latin = missing_latin,
+        Common = NA_character_,
+        Mean = 0,
+        err_up = NA_real_,
+        err_dn = NA_real_,
+        LabelOpp = base::as.character(base_df_ref$LabelOpp[base_df_ref$Latin %in% missing_latin]),
+        stringsAsFactors = FALSE)
+      df <- dplyr::bind_rows(df, zero_rows)}
+    
+    df$Species <- base::factor(df$Species, levels = base::union(
+      base::levels(densDf()$Species),
+      base::as.character(df$Species)))
     
     df
   })
@@ -2193,7 +2212,7 @@ shiny::shinyServer(function(input,output,session){
       htmltools::tags$button("×", style = "position: absolute; right: 10px; top: 5px; border: none; background: none; font-size: 18px; cursor: pointer;",
                              onclick = "Shiny.setInputValue('dismiss_dens_warning', Math.random())"))})
   
-  # summary table
+  # summary report
   densReportText <- shiny::reactive({
     shiny::req(input$densPark, input$densGroup, input$densvalues, densYears())
     df <- base::tryCatch(densDf(), error = function(e) NULL)
@@ -2291,13 +2310,16 @@ shiny::shinyServer(function(input,output,session){
                                   Park = {if (base::identical(input$ComparePark, "ALL")) "All Parks"
                                     else {cmp_obj <- VEGDATA[[input$ComparePark]]
                                     if (!base::is.null(cmp_obj)) NPSForVeg::getNames(cmp_obj, "long") else input$ComparePark}},
-                                  "Growth Stage" = stage_labels[[input$CompareGroup]],
+                                  "Growth Stage" = {lbl <- stage_labels[[input$CompareGroup]]
+                                    if (base::identical(input$densGroup, input$CompareGroup)) {base::paste0(lbl, " (compare)")
+                                    } else { lbl }},
                                   Time = {row <- DATACYCLES[DATACYCLES$Cycle == input$compCycles, ]
                                   if (base::nrow(row) == 1L) base::paste0("Cycle ", row$Cycle, ": ", row$YearStart, "\u2013", row$YearEnd)
                                   else base::as.character(input$compCycles)}, "Comparison")
         
-        df_cmp_clean <- df_cmp %>%
-          dplyr::filter(!base::tolower(base::as.character(Species)) %in% base::c("total", "all species"))
+        df_cmp_clean <- if (base::identical(input$densSpeciesType, "All")) {df_cmp
+        } else {df_cmp %>%
+            dplyr::filter(!base::tolower(base::as.character(Species)) %in% base::c("total", "all species"))}
         
         paired_bullets <- base::lapply(base::seq_len(n_sp), function(i) {
           sp <- base::as.character(df$Species[i])
@@ -2307,23 +2329,36 @@ shiny::shinyServer(function(input,output,session){
           
           # base values
           base_mean <- base::round(df$Mean[i], 2)
-          base_low <- if (!base::is.na(df$err_dn[i])) base::round(df$Mean[i] - df$err_dn[i], 2) else NA
+          base_low  <- if (!base::is.na(df$err_dn[i])) base::round(df$Mean[i] - df$err_dn[i], 2) else NA
           base_high <- if (!base::is.na(df$err_up[i])) base::round(df$Mean[i] + df$err_up[i], 2) else NA
-          base_ci <- if (!base::is.na(base_low) && !base::is.na(base_high)) {base::sprintf(" | 95%% CI: %.2f\u2013%.2f", base_low, base_high)
+          base_ci   <- if (!base::is.na(base_low) && !base::is.na(base_high)) {
+            base::sprintf(" | 95%% CI: %.2f\u2013%.2f", base_low, base_high)
           } else { "" }
           
           # base row label
           base_row_label <- base::switch(input$CompareType,
                                          Park = park_label,
-                                         "Growth Stage" = stage_labels[[input$densGroup]],
+                                         "Growth Stage" = {lbl <- stage_labels[[input$densGroup]]
+                                           if (base::identical(input$densGroup, input$CompareGroup)) {base::paste0(lbl, " (base)")
+                                           } else { lbl }},
                                          Time = base_cycle_label,
                                          park_label)
           
-          # compare values
-          cmp_row <- df_cmp_clean %>% dplyr::filter(base::as.character(Species) == sp)
+          # get latin for stable matching
+          base_latin <- if ("Latin" %in% base::names(df)) {base::as.character(df$Latin[i])
+          } else { sp }
+          
+          # match compare row by Latin first, fall back to Species
+          cmp_row <- if (base::identical(input$densSpeciesType, "All")) {df_cmp_clean
+          } else {matched <- df_cmp_clean %>%
+            dplyr::filter(if ("Latin" %in% base::names(df_cmp_clean)) {base::as.character(Latin) == base_latin
+              } else {base::as.character(Species) == sp})
+            if (base::nrow(matched) == 0) {df_cmp_clean %>% dplyr::filter(base::as.character(Species) == sp)
+            } else { matched }}
+          
           cmp_str <- if (base::nrow(cmp_row) > 0 && !base::is.na(cmp_row$Mean[1]) && cmp_row$Mean[1] > 0) {
             cmp_mean <- base::round(cmp_row$Mean[1], 2)
-            cmp_low <- if (!base::is.na(cmp_row$err_dn[1])) base::round(cmp_row$Mean[1] - cmp_row$err_dn[1], 2) else NA
+            cmp_low  <- if (!base::is.na(cmp_row$err_dn[1])) base::round(cmp_row$Mean[1] - cmp_row$err_dn[1], 2) else NA
             cmp_high <- if (!base::is.na(cmp_row$err_up[1])) base::round(cmp_row$Mean[1] + cmp_row$err_up[1], 2) else NA
             cmp_ci <- if (!base::is.na(cmp_low) && !base::is.na(cmp_high)) {
               base::sprintf(" | 95%% CI: %.2f\u2013%.2f", cmp_low, cmp_high)
@@ -2933,89 +2968,98 @@ shiny::shinyServer(function(input,output,session){
         dplyr::arrange(Species)
       base::return(fmt(base_half))}
     
-      cmp_half <- df_cmp_raw %>%
-        dplyr::transmute(
-          Species = base::as.character(Species),
-          Mean = base::as.numeric(Mean),
-          Lower95 = base::as.numeric(Mean) - base::as.numeric(err_dn),
-          Upper95 = base::as.numeric(Mean) + base::as.numeric(err_up)) %>%
-        dplyr::filter(!base::tolower(Species) %in% base::c("total", "all species"))
+    cmp_half <- df_cmp_raw %>%
+      dplyr::transmute(
+        Species  = base::as.character(Species),
+        Mean     = base::as.numeric(Mean),
+        Lower95  = base::as.numeric(Mean) - base::as.numeric(err_dn),
+        Upper95  = base::as.numeric(Mean) + base::as.numeric(err_up))
     
-    # fill 0 if species is absent in compare
+    # for All species — do NOT filter out "All species" row
+    if (!base::identical(input$densSpeciesType, "All")) {
+      cmp_half <- cmp_half %>%
+        dplyr::filter(!base::tolower(Species) %in% base::c("total"))}
+    
+    # fill 0 if species is absent in compare (not needed for All)
     if (!base::identical(input$densSpeciesType, "All")) {
       base_species <- base::as.character(base_half$Species)
       missing <- base::setdiff(base_species, base::as.character(cmp_half$Species))
       if (base::length(missing) > 0) {
         zero_rows <- base::data.frame(
-          Species = missing,
-          Mean = 0,
-          Lower95 = NA_real_,
-          Upper95 = NA_real_,
+          Species  = missing,
+          Mean     = 0,
+          Lower95  = NA_real_,
+          Upper95  = NA_real_,
           stringsAsFactors = FALSE)
         cmp_half <- dplyr::bind_rows(cmp_half, zero_rows)}}
     
     # reactive labels
     base_obj   <- VEGDATA[[input$densPark]]
-    base_label <- base::switch(input$CompareType, 
-                         Park = NPSForVeg::getNames(base_obj, "long"),
-                         "Growth Stage" = DENSLABELDATA$Label[DENSLABELDATA$Name == input$densGroup],
-                         Time = {row <- DATACYCLES[DATACYCLES$Cycle == input$densCycles, ]
-                           if (base::nrow(row) == 1L) base::paste0(row$Name, ":", row$YearStart, "-", row$YearEnd)
-                           else base::as.character(input$densCycles)},
-                         "Base")
+    base_label <- base::switch(input$CompareType,
+                               Park         = NPSForVeg::getNames(base_obj, "long"),
+                               "Growth Stage" = DENSLABELDATA$Label[DENSLABELDATA$Name == input$densGroup],
+                               Time         = {row <- DATACYCLES[DATACYCLES$Cycle == input$densCycles, ]
+                               if (base::nrow(row) == 1L) base::paste0(row$Name, ":", row$YearStart, "-", row$YearEnd)
+                               else base::as.character(input$densCycles)},
+                               "Base")
     
     cmp_label <- base::switch(input$CompareType,
-                        Park = {if (base::identical(input$ComparePark, "ALL")) "All Parks"
-                          else {cmp_obj <- VEGDATA[[input$ComparePark]]
-                            if (!base::is.null(cmp_obj)) NPSForVeg::getNames(cmp_obj, "long") else input$ComparePark}},
-                        "Growth Stage" = DENSLABELDATA$Label[DENSLABELDATA$Name == input$CompareGroup],
-                        Time = {row <- DATACYCLES[DATACYCLES$Cycle == input$compCycles, ]
-                          if (base::nrow(row) == 1L) base::paste0(row$Name, ":", row$YearStart, "-", row$YearEnd)
-                          else base::as.character(input$compCycles)},
-                        "Compare")
+                              Park         = {if (base::identical(input$ComparePark, "ALL")) "All Parks"
+                                else {cmp_obj <- VEGDATA[[input$ComparePark]]
+                                if (!base::is.null(cmp_obj)) NPSForVeg::getNames(cmp_obj, "long") else input$ComparePark}},
+                              "Growth Stage" = DENSLABELDATA$Label[DENSLABELDATA$Name == input$CompareGroup],
+                              Time         = {row <- DATACYCLES[DATACYCLES$Cycle == input$compCycles, ]
+                              if (base::nrow(row) == 1L) base::paste0(row$Name, ":", row$YearStart, "-", row$YearEnd)
+                              else base::as.character(input$compCycles)},
+                              "Compare")
     
-    # follow the same ordering rules as the plot
     base_on_top <- base::switch(input$CompareType,
-                          Park = TRUE,
-                          "Growth Stage" = {
-                            stage_order <- base::c("seedlings", "saplings", "trees", "shseedlings", "shrubs")
-                            base_idx <- base::match(input$densGroup, stage_order)
-                            cmp_idx <- base::match(input$CompareGroup, stage_order)
-                            base_idx <= cmp_idx},
-                          Time = {
-                            base_yr <- DATACYCLES$YearStart[DATACYCLES$Cycle == input$densCycles]
-                            cmp_yr  <- DATACYCLES$YearStart[DATACYCLES$Cycle == input$compCycles]
-                            base_yr <= cmp_yr},
-                          TRUE)
+                                Park           = TRUE,
+                                "Growth Stage" = {
+                                  stage_order <- base::c("seedlings", "saplings", "trees", "shseedlings", "shrubs")
+                                  base_idx <- base::match(input$densGroup,    stage_order)
+                                  cmp_idx  <- base::match(input$CompareGroup, stage_order)
+                                  base_idx <= cmp_idx},
+                                Time = {
+                                  base_yr <- DATACYCLES$YearStart[DATACYCLES$Cycle == input$densCycles]
+                                  cmp_yr  <- DATACYCLES$YearStart[DATACYCLES$Cycle == input$compCycles]
+                                  base_yr <= cmp_yr},
+                                TRUE)
     
     dataset_levels <- base::unique(
-      if (base_on_top) {base::c(base_label, cmp_label)
-      } else {base::c(cmp_label, base_label)})
+      if (base_on_top) base::c(base_label, cmp_label) else base::c(cmp_label, base_label))
     
     base_half$Dataset <- base_label
     cmp_half$Dataset  <- cmp_label
     
+    # for All species — simple two-row bind, no factor alignment needed
+    if (base::identical(input$densSpeciesType, "All")) {
+      combined <- dplyr::bind_rows(
+        base_half %>% dplyr::mutate(Dataset = base_label),
+        cmp_half  %>% dplyr::mutate(Dataset = cmp_label)) %>%
+        dplyr::arrange(base::factor(Dataset, levels = dataset_levels)) %>%
+        dplyr::select(Species, Dataset, Mean, Lower95, Upper95)
+      base::return(fmt(combined))}
+    
     sp_levels <- base::unique(base_half$Species)
     
-    # only group species labels when comparison is selected
-    if (!base::identical(input$CompareType, "None")) {
-      combined <- dplyr::bind_rows(
-        base_half %>% 
-          dplyr::mutate(Species = base::factor(base::as.character(Species), levels = sp_levels),
-                        Dataset = base_label),
-        cmp_half %>% 
-          dplyr::mutate(Species = base::factor(base::as.character(Species), levels = sp_levels),
-                        Dataset = cmp_label)) %>%
-        dplyr::arrange(Species, base::factor(Dataset, levels = dataset_levels)) %>%
-        dplyr::group_by(Species) %>%
-        dplyr::mutate(Species = dplyr::if_else(
-          dplyr::row_number() == 1,
-          as.character(Species),
-          "")) %>%
-        dplyr::ungroup() %>%
-        dplyr::select(Species, Dataset, Mean, Lower95, Upper95)
-      
-      fmt(combined)}
+    combined <- dplyr::bind_rows(
+      base_half %>%
+        dplyr::mutate(
+          Species = base::factor(base::as.character(Species), levels = sp_levels),
+          Dataset = base_label),
+      cmp_half %>%
+        dplyr::mutate(
+          Species = base::factor(base::as.character(Species), levels = sp_levels),
+          Dataset = cmp_label)) %>%
+      dplyr::arrange(Species, base::factor(Dataset, levels = dataset_levels)) %>%
+      dplyr::group_by(Species) %>%
+      dplyr::mutate(Species = dplyr::if_else(
+        dplyr::row_number() == 1,
+        base::as.character(Species),
+        "")) %>%
+      dplyr::ungroup() %>%
+      dplyr::select(Species, Dataset, Mean, Lower95, Upper95)
     
     fmt(combined)})
   
