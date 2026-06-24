@@ -477,6 +477,7 @@ tags$head(tags$style(HTML("
             shiny::tabsetPanel(id="densPanel",type="pills", 
                 shiny::tabPanel(title=htmltools::tags$div(title="Graph the data", "Graph"),value="Graph",
                   htmltools::tags$div(id = "densPlotContainer", title="Graph of Mean and 95% Confidence Interval",
+                                      shiny::uiOutput("densReportGraph"),
                                       shiny::uiOutput("densMissingWarningGraph"),
                                       shiny::uiOutput("densOnePlotWarningGraph"),
                                       shiny::uiOutput("DensLimitWarning"),
@@ -504,6 +505,7 @@ tags$head(tags$style(HTML("
                 htmltools::tags$div(title="See all data in a table","Data table"),
                 value="Table",
                 shiny::column(10, style="padding: 5px",
+                shiny::uiOutput("densReportTable"),
                  shiny::h3(shiny::textOutput("densTableTitle")),
                  shiny::hr(),
                  shiny::uiOutput("densTableMessage"),
@@ -530,8 +532,8 @@ shiny::tabPanel(
     shiny::column(3, id = "tsDataPanel",
                   htmltools::tags$head(htmltools::tags$style(
                     htmltools::HTML(".action-button {
-                            white-space: normal !important;
-                            word-wrap: break-word !important;}"))),
+                    white-space: normal !important;
+                    word-wrap: break-word !important;}"))),
                   shiny::wellPanel(class="panel panel-default controls",
                                    shiny::h4("Data:", class="panel-heading"),
 
@@ -612,6 +614,7 @@ shiny::tabPanel(
                                        title=htmltools::tags$div(title="Graph the data", "Graph"), value="Graph",
                                        htmltools::tags$div(id="tsPlotContainer",
                                                            title="Time series of mean and 95% confidence interval by monitoring cycle",
+                                                           shiny::uiOutput("tsReport"),
                                                            shiny::uiOutput("tsMissingWarning"),
                                                            shiny::uiOutput("tsLimitWarning"),
                                                            shiny::uiOutput("tsCycleSpeciesMissingWarning"),
@@ -656,6 +659,8 @@ shiny::tabPanel(
                                        
                                        htmltools::tags$div(
                                          style = "padding: 5px",
+                                         
+                                         shiny::uiOutput("tsReportTable"),
                                          
                                          shiny::h3(shiny::textOutput("tsTableTitle")),
                                          shiny::hr(),
@@ -731,6 +736,7 @@ shiny::tabPanel(
               shiny::tabPanel(value="Graph",
                 htmltools::tags$div(title="Graph the data","Graph"),
                 htmltools::tags$div(title="Graph of IV", 
+                                    shiny::uiOutput("ivReport"),
                                     shiny::uiOutput("IVLimitWarning"),
                                     plotly::plotlyOutput("IVPlot",height="600px")),
               
@@ -760,7 +766,7 @@ shiny::tabPanel(
               ),
               shiny::tabPanel(value="Table",
                 htmltools::tags$div(title="See all data in a table","Data table"),
-                shiny::column(10,
+                shiny::column(10, shiny::uiOutput("ivReportTable"),
                   shiny::h3(shiny::textOutput("IVTableTitle")),
                   shiny::hr(),
                   shiny::uiOutput("IVMessage"),

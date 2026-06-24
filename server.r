@@ -1500,8 +1500,7 @@ shiny::shinyServer(function(input,output,session){
     base::switch(input$CompareType, 
                  None=,base::return(),
                  Park= htmltools::tags$div(title= "Select a second park",
-                                           shiny::selectizeInput(inputId="ComparePark",choices=c("All Parks" = "ALL", PARKLIST), label="Park:",
-                                                                 options = base::list(placeholder='Select a park',onInitialize = base::I('function() { this.setValue(""); }') ))),
+                                           shiny::selectizeInput(inputId="ComparePark",choices=c("All Parks" = "ALL", PARKLIST), label="Park:", selected = "ALL")),
                  "Growth Stage"=htmltools::tags$div(title="Select an additional growth stage",
                                                     shiny::selectizeInput(inputId="CompareGroup", label="Growth Stage:", 
                                                                           choices=base::switch(input$densGroup,
@@ -2193,6 +2192,238 @@ shiny::shinyServer(function(input,output,session){
       msg, 
       htmltools::tags$button("×", style = "position: absolute; right: 10px; top: 5px; border: none; background: none; font-size: 18px; cursor: pointer;",
                              onclick = "Shiny.setInputValue('dismiss_dens_warning', Math.random())"))})
+  
+  # summary table
+  densReportText <- shiny::reactive({
+    shiny::req(input$densPark, input$densGroup, input$densvalues, densYears())
+    df <- base::tryCatch(densDf(), error = function(e) NULL)
+    if (base::is.null(df) || base::nrow(df) == 0) base::return(NULL)
+    
+    park_label <- NPSForVeg::getNames(VEGDATA[[input$densPark]], "long")
+    group_label <- base::switch(input$densGroup,
+                                trees = "trees", saplings = "saplings", seedlings = "tree seedlings",
+                                shrubs = "shrubs", shseedlings = "shrub seedlings",
+                                herbs = "understory plants", vines = "vines", input$densGroup)
+    val_label <- base::switch(input$densvalues,
+                              count = base::switch(input$densGroup,
+                                                   trees = "trees per hectare", saplings = "saplings per hectare",
+                                                   seedlings = "tree seedlings per hectare", shrubs = "shrubs per hectare",
+                                                   shseedlings = "shrub seedlings per hectare", vines = "vines per hectare",
+                                                   "individuals per hectare"),
+                              size = base::switch(input$densGroup,
+                                                  trees =, saplings = "square meters of basal area per hectare",
+                                                  herbs = "percent cover", cwd = "cubic meters per hectare",
+                                                  "size units per hectare"),
+                              presab = "proportion of plots occupied")
+    period <- base::paste0(base::min(densYears()), "\u2013", base::max(densYears()))
+    
+    status_phrase <- if (input$densGroup == "trees") {
+      base::switch(input$TreeStatus, alive = "living trees", snag = "snags (dead standing trees)", all = "all trees (living and dead)", "trees")
+    } else { group_label }
+    
+    n_sp <- base::nrow(df)
+    
+    stage_order <- base::c("seedlings", "saplings", "trees", "shseedlings", "shrubs")
+    stage_labels <- base::c(trees = "Trees", saplings = "Saplings", seedlings = "Tree seedlings", shrubs = "Shrubs", shseedlings = "Shrub seedlings")
+    
+    # compare label intro
+    cmp_label_intro <- if (!base::identical(input$CompareType, "None")) {
+      base::switch(input$CompareType,
+                   Park = {if (base::identical(input$ComparePark, "ALL")) "All Parks"
+                     else {cmp_obj <- VEGDATA[[input$ComparePark]]
+                     if (!base::is.null(cmp_obj)) NPSForVeg::getNames(cmp_obj, "long") else input$ComparePark}},
+                   "Growth Stage" = stage_labels[[input$CompareGroup]],
+                   Time = {row <- DATACYCLES[DATACYCLES$Cycle == input$compCycles, ]
+                   if (base::nrow(row) == 1L) base::paste0("Cycle ", row$Cycle, ": ", row$YearStart, "\u2013", row$YearEnd)
+                   else base::as.character(input$compCycles)},
+                   "Comparison")
+    } else { NULL }
+    
+    base_cycle_label <- {row <- DATACYCLES[DATACYCLES$Cycle == input$densCycles, ]
+    if (base::nrow(row) == 1L) base::paste0("Cycle ", row$Cycle, ": ", row$YearStart, "\u2013", row$YearEnd)
+    else period}
+    
+    # intro sentence
+    intro <- if (base::identical(input$CompareType, "None")) {base::sprintf("Showing %d species of %s recorded at %s from %s.", n_sp, status_phrase, park_label, period)
+    } else {base::switch(input$CompareType,
+                   Park = base::sprintf("Comparing %d species of %s at %s vs. %s (%s).", n_sp, status_phrase, park_label, cmp_label_intro, period),
+                   "Growth Stage" = {
+                     base_idx <- base::match(input$densGroup, stage_order)
+                     cmp_idx <- base::match(input$CompareGroup, stage_order)
+                     base_stage <- stage_labels[[input$densGroup]]
+                     cmp_stage <- stage_labels[[input$CompareGroup]]
+                     if (base_idx <= cmp_idx) {base::sprintf("Comparing %d species: %s vs. %s at %s (%s).", n_sp, base_stage, cmp_stage, park_label, period)
+                     } else {base::sprintf("Comparing %d species: %s vs. %s at %s (%s).", n_sp, cmp_stage, base_stage, park_label, period)}},
+                   Time = {
+                     base_yr <- DATACYCLES$YearStart[DATACYCLES$Cycle == input$densCycles]
+                     cmp_yr <- DATACYCLES$YearStart[DATACYCLES$Cycle == input$compCycles]
+                     if (base_yr <= cmp_yr) {base::sprintf("Comparing %d species of %s at %s: %s vs. %s.", n_sp, status_phrase, park_label, base_cycle_label, cmp_label_intro)
+                     } else {base::sprintf("Comparing %d species of %s at %s: %s vs. %s.", n_sp, status_phrase, park_label, cmp_label_intro, base_cycle_label)}},
+                   base::sprintf("Showing %d species of %s recorded at %s from %s.", n_sp, status_phrase, park_label, period))}
+    
+    # bullet points
+    bullet_tags <- base::lapply(base::seq_len(n_sp), function(i) {
+      sp <- base::as.character(df$Species[i])
+      opp <- if (!base::is.null(df$LabelOpp) && !base::is.na(df$LabelOpp[i]) && base::nzchar(df$LabelOpp[i])) {base::paste0(" (", df$LabelOpp[i], ")")
+      } else { "" }
+      mean <- base::round(df$Mean[i], 2)
+      low <- if (!base::is.na(df$err_dn[i])) base::round(df$Mean[i] - df$err_dn[i], 2) else NA
+      high <- if (!base::is.na(df$err_up[i])) base::round(df$Mean[i] + df$err_up[i], 2) else NA
+      ci_str <- if (!base::is.na(low) && !base::is.na(high)) {base::sprintf(" | 95%% CI: %.2f\u2013%.2f", low, high)
+      } else { "" }
+      htmltools::tags$li(htmltools::tags$strong(sp), opp, base::sprintf(" \u2014 Mean: %.2f %s%s.", mean, val_label, ci_str))})
+    
+    # sentence, no compare
+    max_row <- df[base::which.max(df$Mean), ]
+    min_row <- df[base::which.min(df$Mean), ]
+    top_sentence <- if (n_sp > 1 && base::identical(input$CompareType, "None")) {
+      base::sprintf("Among the %d species shown, %s had the highest mean %s (%.2f), while %s had the lowest (%.2f).",
+                    n_sp, base::as.character(max_row$Species[1]), val_label, base::round(max_row$Mean[1], 2), base::as.character(min_row$Species[1]), base::round(min_row$Mean[1], 2))
+    } else { NULL }
+    
+    # compare section
+    compare_section <- if (!base::identical(input$CompareType, "None")) {
+      df_cmp <- base::tryCatch(compareDf(), error = function(e) NULL)
+      
+      if (!base::is.null(df_cmp) && base::nrow(df_cmp) > 0) {
+        
+        cmp_label <- base::switch(input$CompareType,
+                                  Park = {if (base::identical(input$ComparePark, "ALL")) "All Parks"
+                                    else {cmp_obj <- VEGDATA[[input$ComparePark]]
+                                    if (!base::is.null(cmp_obj)) NPSForVeg::getNames(cmp_obj, "long") else input$ComparePark}},
+                                  "Growth Stage" = stage_labels[[input$CompareGroup]],
+                                  Time = {row <- DATACYCLES[DATACYCLES$Cycle == input$compCycles, ]
+                                  if (base::nrow(row) == 1L) base::paste0("Cycle ", row$Cycle, ": ", row$YearStart, "\u2013", row$YearEnd)
+                                  else base::as.character(input$compCycles)}, "Comparison")
+        
+        df_cmp_clean <- df_cmp %>%
+          dplyr::filter(!base::tolower(base::as.character(Species)) %in% base::c("total", "all species"))
+        
+        paired_bullets <- base::lapply(base::seq_len(n_sp), function(i) {
+          sp <- base::as.character(df$Species[i])
+          opp <- if (!base::is.null(df$LabelOpp) && !base::is.na(df$LabelOpp[i]) && base::nzchar(df$LabelOpp[i])) {
+            base::paste0(" (", df$LabelOpp[i], ")")
+          } else { "" }
+          
+          # base values
+          base_mean <- base::round(df$Mean[i], 2)
+          base_low <- if (!base::is.na(df$err_dn[i])) base::round(df$Mean[i] - df$err_dn[i], 2) else NA
+          base_high <- if (!base::is.na(df$err_up[i])) base::round(df$Mean[i] + df$err_up[i], 2) else NA
+          base_ci <- if (!base::is.na(base_low) && !base::is.na(base_high)) {base::sprintf(" | 95%% CI: %.2f\u2013%.2f", base_low, base_high)
+          } else { "" }
+          
+          # base row label
+          base_row_label <- base::switch(input$CompareType,
+                                         Park = park_label,
+                                         "Growth Stage" = stage_labels[[input$densGroup]],
+                                         Time = base_cycle_label,
+                                         park_label)
+          
+          # compare values
+          cmp_row <- df_cmp_clean %>% dplyr::filter(base::as.character(Species) == sp)
+          cmp_str <- if (base::nrow(cmp_row) > 0 && !base::is.na(cmp_row$Mean[1]) && cmp_row$Mean[1] > 0) {
+            cmp_mean <- base::round(cmp_row$Mean[1], 2)
+            cmp_low <- if (!base::is.na(cmp_row$err_dn[1])) base::round(cmp_row$Mean[1] - cmp_row$err_dn[1], 2) else NA
+            cmp_high <- if (!base::is.na(cmp_row$err_up[1])) base::round(cmp_row$Mean[1] + cmp_row$err_up[1], 2) else NA
+            cmp_ci <- if (!base::is.na(cmp_low) && !base::is.na(cmp_high)) {
+              base::sprintf(" | 95%% CI: %.2f\u2013%.2f", cmp_low, cmp_high)
+            } else { "" }
+            base::sprintf("%s: %.2f %s%s", cmp_label, cmp_mean, val_label, cmp_ci)
+          } else { base::sprintf("%s: not observed", cmp_label) }
+          
+          # order bullets
+          base_li <- htmltools::tags$li(base::sprintf("%s: %.2f %s%s", base_row_label, base_mean, val_label, base_ci))
+          cmp_li <- htmltools::tags$li(cmp_str)
+          
+          sub_bullets <- if (base::identical(input$CompareType, "Time")) {
+            base_yr <- DATACYCLES$YearStart[DATACYCLES$Cycle == input$densCycles]
+            cmp_yr <- DATACYCLES$YearStart[DATACYCLES$Cycle == input$compCycles]
+            if (base_yr <= cmp_yr) base::list(base_li, cmp_li) else base::list(cmp_li, base_li)
+          } else if (base::identical(input$CompareType, "Growth Stage")) {
+            base_idx <- base::match(input$densGroup, stage_order)
+            cmp_idx <- base::match(input$CompareGroup, stage_order)
+            if (base_idx <= cmp_idx) base::list(base_li, cmp_li) else base::list(cmp_li, base_li)
+          } else { base::list(base_li, cmp_li) }
+          
+          htmltools::tags$li(htmltools::tags$strong(sp), opp, htmltools::tags$ul(style = "list-style: none; margin: 2px 0 2px 16px; padding: 0;", sub_bullets))})
+        
+        htmltools::tagList(paired_bullets)
+        
+      } else { NULL }
+    } else { NULL }
+
+    htmltools::tagList(
+      htmltools::tags$p(htmltools::tags$span(style = "font-size: 30px; font-weight: bold;", "Summary Report:")),
+      htmltools::tags$p(style = "font-size: 15px;", htmltools::tags$strong(style = "font-size: 20px;", park_label), " \u2014 ", intro),
+      if (base::identical(input$CompareType, "None")) {htmltools::tags$ul(style = "font-size: 15px; margin: 6px 0 6px 16px; padding: 0;", bullet_tags)
+      } else {htmltools::tags$ul(style = "font-size: 15px; margin: 6px 0 6px 16px; padding: 0;", compare_section)},
+      if (!base::is.null(top_sentence)) htmltools::tags$p(style = "font-size: 15px;", top_sentence) else NULL,
+      htmltools::tags$p(style = "font-size: 15px;",htmltools::tags$em("Species averages with 95% confidence intervals.")))})
+  
+  output$densReportGraph <- shiny::renderUI({
+    txt <- base::tryCatch(densReportText(), error = function(e) NULL)
+    if (base::is.null(txt)) base::return(NULL)
+    htmltools::tagList(
+      htmltools::tags$div(
+        style = "margin-bottom: 12px;",
+        htmltools::tags$div(
+          id = "densReportHeader",
+          style = "cursor: pointer; font-size: 13px; font-weight: bold; padding: 8px 12px;
+                 background-color: #f8f9fa; border: 1px solid #dee2e6; border-radius: 6px;
+                 user-select: none; display: flex; align-items: center; gap: 6px;",
+          onclick = "var b = document.getElementById('densReportBody');
+                   var c = document.getElementById('densReportCaret');
+                   if (b.style.display === 'none') {
+                     b.style.display = 'block';
+                     c.style.transform = 'rotate(0deg)';
+                   } else {
+                     b.style.display = 'none';
+                     c.style.transform = 'rotate(-90deg)';
+                   }",
+          htmltools::tags$span(
+            id = "densReportCaret",
+            style = "display: inline-block; transition: transform 0.2s ease; transform: rotate(0deg);",
+            "\u25bc"),
+          "Summary Report"),
+        htmltools::tags$div(
+          id = "densReportBody",
+          style = "display: block; padding: 12px 16px; background-color: #f8f9fa;
+                 border: 1px solid #dee2e6; border-top: none;
+                 border-radius: 0 0 6px 6px; font-size: 13px; line-height: 1.8;",
+          txt)))})
+  
+  output$densReportTable <- shiny::renderUI({
+    txt <- base::tryCatch(densReportText(), error = function(e) NULL)
+    if (base::is.null(txt)) base::return(NULL)
+    htmltools::tagList(
+      htmltools::tags$div(
+        style = "margin-bottom: 12px;",
+        htmltools::tags$div(
+          id = "densReportHeaderTable",
+          style = "cursor: pointer; font-size: 13px; font-weight: bold; padding: 8px 12px;
+                 background-color: #f8f9fa; border: 1px solid #dee2e6; border-radius: 6px;
+                 user-select: none; display: flex; align-items: center; gap: 6px;",
+          onclick = "var b = document.getElementById('densReportBodyTable');
+                   var c = document.getElementById('densReportCaretTable');
+                   if (b.style.display === 'none') {
+                     b.style.display = 'block';
+                     c.style.transform = 'rotate(0deg)';
+                   } else {
+                     b.style.display = 'none';
+                     c.style.transform = 'rotate(-90deg)';
+                   }",
+          htmltools::tags$span(
+            id = "densReportCaretTable",
+            style = "display: inline-block; transition: transform 0.2s ease; transform: rotate(0deg);",
+            "\u25bc"),
+          "Summary Report"),
+        htmltools::tags$div(
+          id = "densReportBodyTable",
+          style = "display: block; padding: 12px 16px; background-color: #f8f9fa;
+                 border: 1px solid #dee2e6; border-top: none;
+                 border-radius: 0 0 6px 6px; font-size: 13px; line-height: 1.8;",
+          txt)))})
+  
   
   output$DensPlotly <- plotly::renderPlotly({
     
@@ -3498,7 +3729,7 @@ shiny::shinyServer(function(input,output,session){
                                 vines = "vine",
                                 input$tsGroup)
     
-    # summarise by species for a readable message
+    # summarize by species for a readable message
     by_species <- missing_combos %>%
       dplyr::group_by(Species) %>%
       dplyr::summarise(cycles = base::paste(CycleLabel, collapse = "; "), .groups = "drop")
@@ -3537,6 +3768,163 @@ shiny::shinyServer(function(input,output,session){
          input$tsCycles,
          input$tsValues),
     {tsSinglePlotWarningDismissed(FALSE)})
+  
+   # summary report
+   tsReportText <- shiny::reactive({
+    shiny::req(input$tsPark, input$tsGroup, input$tsValues, input$tsCycles)
+    shiny::req(base::nzchar(input$tsPark))
+    df <- base::tryCatch(tsDf(), error = function(e) NULL)
+    if (base::is.null(df) || base::nrow(df) == 0) base::return(NULL)
+    
+    park_label <- if (input$tsPark == "All") "All NCRN parks" else NPSForVeg::getNames(VEGDATA[[input$tsPark]], "long")
+    group_label <- base::switch(input$tsGroup,
+                                trees = "trees", saplings = "saplings", seedlings = "tree seedlings",
+                                shrubs = "shrubs", shseedlings = "shrub seedlings",
+                                herbs = "understory plants", vines = "vines", input$tsGroup)
+    val_label <- base::switch(input$tsValues,
+                              count = base::switch(input$tsGroup,
+                                                   trees = "trees per hectare", saplings = "saplings per hectare",
+                                                   seedlings = "tree seedlings per hectare", shrubs = "shrubs per hectare",
+                                                   shseedlings = "shrub seedlings per hectare", vines = "vines per hectare",
+                                                   "individuals per hectare"),
+                              size  = base::switch(input$tsGroup,
+                                                   trees =, saplings = "square meters of basal area per hectare",
+                                                   herbs = "percent cover","size units per hectare"),
+                              presab = "proportion of plots occupied")
+    
+    all_c <- base::sort(base::unique(DATACYCLES$Cycle))
+    cycles_use <- all_c[all_c >= input$tsCycles[1] & all_c <= input$tsCycles[2]]
+    yr_start <- base::min(DATACYCLES$YearStart[DATACYCLES$Cycle %in% cycles_use])
+    yr_end <- base::max(DATACYCLES$YearEnd[DATACYCLES$Cycle   %in% cycles_use])
+    period <- base::paste0(yr_start, "\u2013", yr_end)
+    n_cycles <- base::length(cycles_use)
+    cycle_word <- if (n_cycles == 1) "cycle" else "cycles"
+    
+    species_list <- base::unique(stats::na.omit(df$Species))
+    species_list <- species_list[species_list != "All species"]
+    if (base::identical(input$tsSpeciesType, "All")) species_list <- "all species combined"
+    n_sp <- base::length(species_list)
+
+    intro <- base::sprintf("Showing %s %s of %s across %d monitoring %s (%s) at %s.",
+      if (base::identical(input$tsSpeciesType, "All")) "" else base::as.character(n_sp),
+      if (base::identical(input$tsSpeciesType, "All")) "all species combined" else "species",
+      group_label, n_cycles, cycle_word, period, park_label)
+    intro <- base::trimws(intro)
+    
+    # per-species summary across cycles
+    df_valid <- df %>% dplyr::filter(!base::is.na(Mean), !base::is.na(Species))
+    
+    bullet_tags <- if (!base::identical(input$tsSpeciesType, "All") && n_sp > 0) {
+      base::lapply(species_list, function(sp) {sp_df <- df_valid %>% dplyr::filter(Species == sp) %>% dplyr::arrange(Cycle)
+        if (base::nrow(sp_df) == 0) {base::return(htmltools::tags$li(htmltools::tags$strong(sp), " \u2014 no observations recorded."))}
+        overall_mean <- base::round(base::mean(sp_df$Mean, na.rm = TRUE), 2)
+        opp <- if (!base::is.null(sp_df$LabelOpp) && !base::is.na(sp_df$LabelOpp[1]) && base::nzchar(sp_df$LabelOpp[1])) {base::paste0(" (", sp_df$LabelOpp[1], ")")
+        } else { "" }
+        trend_str <- if (base::nrow(sp_df) >= 2) {first_mean <- sp_df$Mean[1]; last_mean <- sp_df$Mean[base::nrow(sp_df)]
+        percent_change <- base::round(((last_mean - first_mean) / base::max(first_mean, 0.0001)) * 100, 1)
+        direction <- if (last_mean > first_mean) "increased" else if (last_mean < first_mean) "decreased" else "remained stable"
+        base::sprintf("%s by %.1f%% from %s to %s",
+                      direction, base::abs(percent_change),
+                      base::as.character(sp_df$CycleLabel[1]),
+                      base::as.character(sp_df$CycleLabel[base::nrow(sp_df)]))
+        } else { "only one cycle" }
+        htmltools::tags$li(htmltools::tags$strong(sp), opp, base::sprintf(" \u2014 Overall mean: %.2f %s | Trend: %s.", overall_mean, val_label, trend_str))})
+    } else {
+      sp_df <- df_valid %>% dplyr::arrange(Cycle)
+      overall_mean <- base::round(base::mean(sp_df$Mean, na.rm = TRUE), 2)
+      trend_str <- if (base::nrow(sp_df) >= 2) {first_mean <- sp_df$Mean[1]; last_mean <- sp_df$Mean[base::nrow(sp_df)]
+      percent_change <- base::round(((last_mean - first_mean) / base::max(first_mean, 0.0001)) * 100, 1)
+      direction <- if (last_mean > first_mean) "increased" else if (last_mean < first_mean) "decreased" else "remained stable"
+      base::sprintf("%s by %.1f%% from %s to %s",
+                    direction, base::abs(percent_change),
+                    base::as.character(sp_df$CycleLabel[1]),
+                    base::as.character(sp_df$CycleLabel[base::nrow(sp_df)]))
+      } else { "only one cycle" }
+      base::list(htmltools::tags$li(htmltools::tags$strong("All species combined"), base::sprintf(" \u2014 Overall mean: %.2f %s | Trend: %s.", overall_mean, val_label, trend_str)))}
+    
+    intro <- base::sprintf(
+      "Showing %s %s of %s across %d monitoring %s (%s) at %s.",
+      if (base::identical(input$tsSpeciesType, "All")) "" else base::as.character(n_sp),
+      if (base::identical(input$tsSpeciesType, "All")) "all species combined" else "species",
+      group_label, n_cycles, cycle_word, period, park_label)
+    
+    htmltools::tagList(htmltools::tags$p(htmltools::tags$span(style = "font-size: 30px; font-weight: bold;", "Summary Report:")),
+      htmltools::tags$p(style = "font-size: 15px;",
+        htmltools::tags$strong(style = "font-size: 20px;", park_label), " \u2014 ", base::trimws(intro)),
+      htmltools::tags$ul(style = "font-size: 15px; margin: 6px 0 6px 16px; padding: 0;", bullet_tags),
+      htmltools::tags$p(style = "font-size: 15px;",
+        htmltools::tags$em("Overall means averaged across all cycles shown; trend compares first to last displayed cycle.")))})
+  
+  output$tsReport <- shiny::renderUI({
+    txt <- base::tryCatch(tsReportText(), error = function(e) NULL)
+    if (base::is.null(txt)) base::return(NULL)
+    htmltools::tagList(
+      htmltools::tags$div(
+        style = "margin-bottom: 12px;",
+        htmltools::tags$div(
+          id = "tsReportHeader",
+          style = "cursor: pointer; font-size: 13px; font-weight: bold; padding: 8px 12px;
+                 background-color: #f8f9fa; border: 1px solid #dee2e6; border-radius: 6px;
+                 user-select: none; display: flex; align-items: center; gap: 6px;",
+          onclick = "var b = document.getElementById('tsReportBody');
+                   var c = document.getElementById('tsReportCaret');
+                   if (b.style.display === 'none') {
+                     b.style.display = 'block';
+                     c.style.transform = 'rotate(0deg)';
+                   } else {
+                     b.style.display = 'none';
+                     c.style.transform = 'rotate(-90deg)';
+                   }",
+          htmltools::tags$span(
+            id = "tsReportCaret",
+            style = "display: inline-block; transition: transform 0.2s ease; transform: rotate(0deg);",
+            "\u25bc"),
+          "Summary Report"),
+        htmltools::tags$div(
+          id = "tsReportBody",
+          style = "display: block; padding: 12px 16px; background-color: #f8f9fa;
+                 border: 1px solid #dee2e6; border-top: none;
+                 border-radius: 0 0 6px 6px; font-size: 13px; line-height: 1.8;",
+          txt)))
+  })
+  
+  output$tsReportTable <- shiny::renderUI({
+    txt <- base::tryCatch(tsReportText(), error = function(e) NULL)
+    if (base::is.null(txt)) base::return(NULL)
+    htmltools::tagList(
+      htmltools::tags$div(
+        style = "margin-bottom: 12px;",
+        htmltools::tags$div(
+          id = "tsReportHeaderTable",
+          style = "cursor: pointer; font-size: 13px; font-weight: bold; padding: 8px 12px;
+                 background-color: #f8f9fa; border: 1px solid #dee2e6; border-radius: 6px;
+                 user-select: none; display: flex; align-items: center; gap: 6px;",
+          onclick = "var b = document.getElementById('tsReportBodyTable');
+                   var c = document.getElementById('tsReportCaretTable');
+                   if (b.style.display === 'none') {
+                     b.style.display = 'block';
+                     c.style.transform = 'rotate(0deg)';
+                   } else {
+                     b.style.display = 'none';
+                     c.style.transform = 'rotate(-90deg)';
+                   }",
+          htmltools::tags$span(
+            id = "tsReportCaretTable",
+            style = "display: inline-block; transition: transform 0.2s ease; transform: rotate(0deg);",
+            "\u25bc"),
+          "Summary Report"),
+        htmltools::tags$div(
+          id = "tsReportBodyTable",
+          style = "display: block; padding: 12px 16px; background-color: #f8f9fa;
+                 border: 1px solid #dee2e6; border-top: none;
+                 border-radius: 0 0 6px 6px; font-size: 13px; line-height: 1.8;",
+          txt)))
+  })
+  
+  
+  
+  
+  
   
   shiny::observeEvent(
     input$dismiss_ts_singleplot_warning,
@@ -3910,6 +4298,126 @@ shiny::shinyServer(function(input,output,session){
       font = base::list(size = IVFontSize),
       autosize = TRUE)
     p})
+  
+  # summary report
+  ivReportText <- shiny::reactive({shiny::req(input$IVPark, base::nzchar(input$IVPark), IVYears())
+    df_full <- base::tryCatch(IVData(), error = function(e) NULL)
+    if (base::is.null(df_full) || base::nrow(df_full) == 0) base::return(NULL)
+    
+    df <- base::switch(input$IVSpeciesType,
+                       Common = {shiny::req(input$IVTop)
+                         df_full %>% dplyr::slice_max(order_by = Total, n = input$IVTop, with_ties = FALSE) %>%
+                           dplyr::arrange(dplyr::desc(Total))},
+                       Pick = {shiny::req(input$IVSpecies)
+                         df_full %>% dplyr::filter(if (base::isTRUE(input$IVCommon)) LabelOpp %in% input$IVSpecies
+                                                   else Species %in% input$IVSpecies) %>%
+                           dplyr::arrange(dplyr::desc(Total))},
+                       All = df_full %>%
+                         dplyr::summarise(
+                           Species = "All species", LabelOpp = "All species",
+                           Density = base::round(base::mean(Density, na.rm = TRUE), 2),
+                           Size = base::round(base::mean(Size, na.rm = TRUE), 2),
+                           Distribution = base::round(base::mean(Distribution, na.rm = TRUE), 2),
+                           Total = base::round(base::mean(Total, na.rm = TRUE), 2)))
+    
+    if (base::is.null(df) || base::nrow(df) == 0) base::return(NULL)
+    
+    park_label <- NPSForVeg::getNames(VEGDATA[[input$IVPark]], "long")
+    group_label <- base::switch(input$IVGroup, trees = "trees", saplings = "saplings", seedlings = "tree seedlings", shseedlings = "shrub seedlings", input$IVGroup)
+    period <- base::paste0(base::min(IVYears()), "\u2013", base::max(IVYears()))
+    n_sp <- base::nrow(df)
+    
+    intro <- base::sprintf("Showing importance values for %d species of %s at %s from %s.", n_sp, group_label, park_label, period)
+    
+    top_sentence <- if (n_sp > 1) {
+      base::sprintf("%s had the highest importance value (%.2f) and %s had the lowest (%.2f) among the species shown.", base::as.character(df$Species[1]), base::round(df$Total[1], 2),
+                    base::as.character(df$Species[n_sp]), base::round(df$Total[n_sp], 2))
+      } else { NULL }
+    
+    bullet_tags <- base::lapply(base::seq_len(n_sp), function(i) {
+      sp <- base::as.character(df$Species[i])
+      opp <- if (!base::is.null(df$LabelOpp) && !base::is.na(df$LabelOpp[i]) && base::nzchar(df$LabelOpp[i]) && df$LabelOpp[i] != sp) {base::paste0(" (", df$LabelOpp[i], ")")
+      } else { "" }
+      htmltools::tags$li(htmltools::tags$strong(sp), opp, base::sprintf(" \u2014 Total IV: %.2f | Density: %.2f | Size: %.2f | Distribution: %.2f.",
+                                                                        base::round(df$Total[i], 2),
+                                                                        base::round(df$Density[i], 2),
+                                                                        base::round(df$Size[i], 2),
+                                                                        base::round(df$Distribution[i], 2)))})
+    
+    footnote <- "Importance value (IV) is the sum of relative density (Density), relative size (Size, based on basal area), and relative distribution (Distribution). 
+                Each component ranges from 0 to 1; total IV ranges from 0 to 1."
+    
+    htmltools::tagList(
+      htmltools::tags$p(htmltools::tags$span(style = "font-size: 30px; font-weight: bold;", "Summary Report:")),
+      htmltools::tags$p(style = "font-size: 15px;", htmltools::tags$strong(style = "font-size: 20px;", park_label), " \u2014 ", intro),
+      htmltools::tags$ul(style = "font-size: 15px; margin: 6px 0 6px 16px; padding: 0;", bullet_tags),
+      if (!base::is.null(top_sentence)) htmltools::tags$p(style = "font-size: 15px;", top_sentence) else NULL,
+      htmltools::tags$p(style = "font-size: 15px;", htmltools::tags$em(footnote)))})
+  
+  output$ivReport <- shiny::renderUI({
+    txt <- base::tryCatch(ivReportText(), error = function(e) NULL)
+    if (base::is.null(txt)) base::return(NULL)
+    htmltools::tagList(
+      htmltools::tags$div(
+        style = "margin-bottom: 12px;",
+        htmltools::tags$div(
+          id = "ivReportHeader",
+          style = "cursor: pointer; font-size: 13px; font-weight: bold; padding: 8px 12px;
+                 background-color: #f8f9fa; border: 1px solid #dee2e6; border-radius: 6px;
+                 user-select: none; display: flex; align-items: center; gap: 6px;",
+          onclick = "var b = document.getElementById('ivReportBody');
+                   var c = document.getElementById('ivReportCaret');
+                   if (b.style.display === 'none') {
+                     b.style.display = 'block';
+                     c.style.transform = 'rotate(0deg)';
+                   } else {
+                     b.style.display = 'none';
+                     c.style.transform = 'rotate(-90deg)';
+                   }",
+          htmltools::tags$span(
+            id = "ivReportCaret",
+            style = "display: inline-block; transition: transform 0.2s ease; transform: rotate(0deg);",
+            "\u25bc"),
+          "Summary Report"),
+        htmltools::tags$div(
+          id = "ivReportBody",
+          style = "display: block; padding: 12px 16px; background-color: #f8f9fa;
+                 border: 1px solid #dee2e6; border-top: none;
+                 border-radius: 0 0 6px 6px; font-size: 13px; line-height: 1.8;",
+          txt)))})
+  
+  output$ivReportTable <- shiny::renderUI({
+    txt <- base::tryCatch(ivReportText(), error = function(e) NULL)
+    if (base::is.null(txt)) base::return(NULL)
+    htmltools::tagList(
+      htmltools::tags$div(
+        style = "margin-bottom: 12px;",
+        htmltools::tags$div(
+          id = "ivReportHeaderTable",
+          style = "cursor: pointer; font-size: 13px; font-weight: bold; padding: 8px 12px;
+                 background-color: #f8f9fa; border: 1px solid #dee2e6; border-radius: 6px;
+                 user-select: none; display: flex; align-items: center; gap: 6px;",
+          onclick = "var b = document.getElementById('ivReportBodyTable');
+                   var c = document.getElementById('ivReportCaretTable');
+                   if (b.style.display === 'none') {
+                     b.style.display = 'block';
+                     c.style.transform = 'rotate(0deg)';
+                   } else {
+                     b.style.display = 'none';
+                     c.style.transform = 'rotate(-90deg)';
+                   }",
+          htmltools::tags$span(
+            id = "ivReportCaretTable",
+            style = "display: inline-block; transition: transform 0.2s ease; transform: rotate(0deg);",
+            "\u25bc"),
+          "Summary Report"),
+        htmltools::tags$div(
+          id = "ivReportBodyTable",
+          style = "display: block; padding: 12px 16px; background-color: #f8f9fa;
+                 border: 1px solid #dee2e6; border-top: none;
+                 border-radius: 0 0 6px 6px; font-size: 13px; line-height: 1.8;",
+          txt)))})
+  
   
   output$IVPlot <- plotly::renderPlotly({
     shiny::validate(
