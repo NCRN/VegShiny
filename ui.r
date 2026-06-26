@@ -16,6 +16,12 @@ shiny::navbarPage(
     shiny::includeScript("https://www.nps.gov/common/commonspot/templates/js/federated-analytics.js"),
     htmltools::tags$style(
       htmltools::HTML("
+      .action-button {
+        white-space: normal !important;
+        word-wrap: break-word !important;}
+        
+      #SpeciesControls{height:400px}
+        
       .navbar-inverse .navbar-brand {
         font-size: calc(1.5rem + 1.5vw);      
         font-family: 'Times New Roman';
@@ -164,10 +170,7 @@ shiny::navbarPage(
           width: 375px !important;
           height: 350px !important}
         #GraphOptionsPanel .panel-body {height: 225px !important; overflow-y: auto;}
-        
-        
-        
-        
+
         #IVOptionsPanel{
           top: 85px;
           right: 15px;
@@ -175,11 +178,6 @@ shiny::navbarPage(
           height: 575px !important}
         #IVOptionsPanel .panel-body {height: 450px !important; overflow-y: auto;}}
 
-     
-     
-     
-     
-     
       @media (min-width: 631px) and (max-width: 767px) {
         #AboutMapPanel {
           top: 85px;
@@ -379,24 +377,7 @@ shiny::navbarPage(
 
 #### The Map ####
        shiny::column(10,style="padding: 0 0 0 0px",
-          htmltools::div(leaflet::leafletOutput("VegMap", height="1000px"))   
-       ),
-# CSS
-tags$head(tags$style(HTML("
-  /* Desktop default: keep your 1000px if desired */
-  #VegMapContainer { height: 1000px; }
-
-  /* On small screens, make map fill available viewport */
-  @media (max-width: 768px) {
-    #VegMapContainer {
-      height: calc(100vh - 120px); /* subtract navbar+some margin */
-    }
-    #VegMapContainer .leaflet-container {
-      height: 100% !important;
-    }
-  }")))
-
-     ),
+          htmltools::div(leaflet::leafletOutput("VegMap", height="1000px")))),
 # #### Floating "About the map" Panel ####
   shiny::fixedPanel(class="panel panel-primary controls",draggable=TRUE,
              cursor="auto", id="AboutMapPanel",style="padding: 0px; display:none; z-index: 1995;",
@@ -411,13 +392,8 @@ tags$head(tags$style(HTML("
 
 #############  densplot() based plots
       shiny::tabPanel(htmltools::tags$div(title="Graph abundance, basal area, percent cover, etc","Data by Park and Species"),
-               shinyjs::useShinyjs(),
         shiny::fluidRow(
           shiny::column(3, id = "densDataPanel",
-                        htmltools::tags$head(htmltools::tags$style(
-                          htmltools::HTML(".action-button {
-                                              white-space: normal !important;
-                                              word-wrap: break-word !important;}"))),
             shiny::wellPanel(class="panel panel-default controls",
               shiny::h4("Data:", class="panel-heading"),
               htmltools::tags$div(title="Select the park you want to work with", shiny::uiOutput(outputId="densParkControl")),
@@ -530,15 +506,11 @@ shiny::tabPanel(
     
     # Side Panel
     shiny::column(3, id = "tsDataPanel",
-                  htmltools::tags$head(htmltools::tags$style(
-                    htmltools::HTML(".action-button {
-                    white-space: normal !important;
-                    word-wrap: break-word !important;}"))),
                   shiny::wellPanel(class="panel panel-default controls", shiny::h4("Data:", class="panel-heading"),
                                    htmltools::tags$div(title="Select one or more parks to display. At least one park is required.", shiny::uiOutput(outputId="tsParkControl")),
                                    htmltools::tags$div(title="Select the type of plant you want to work with", shiny::selectizeInput(inputId="tsGroup", label="Type of plant:", choices=PLANTTYPES)),
                                    htmltools::tags$div(title="Toggle between common and scientific names", shiny::checkboxInput(inputId="tsCommon", label="Display common names?", value=TRUE)),
-                                   checkboxInput(inputId = "tsShowCI", label = "Show 95% confidence intervals", value = TRUE),
+                                   shiny::checkboxInput(inputId = "tsShowCI", label = "Show 95% confidence intervals", value = TRUE),
                                    htmltools::tags$div(title="Graph the most common species, species you select, or all species observed", shiny::radioButtons(inputId="tsSpeciesType", label="Which species?",
                                                                            choices=base::c("Most common species"="Common", "Pick individual species"="Pick", "All species combined"="All"), inline=FALSE)),
                                    htmltools::tags$div(title="Select the measurement to display on the y-axis", shiny::uiOutput(outputId="tsValControl")),
@@ -561,8 +533,6 @@ shiny::tabPanel(
                                                         htmltools::tags$div(id="tsPlotContainer", title="Time series of mean and 95% confidence interval by monitoring cycle",
                                                                             shiny::uiOutput("tsReport"),
                                                                             shiny::uiOutput("tsMissingWarning"),
-                                                                            shiny::uiOutput("tsLimitWarning"),
-                                                                            shiny::uiOutput("tsCycleSpeciesMissingWarning"),
                                                                             shiny::uiOutput("tsSinglePlotWarning"),
                                                                             plotly::plotlyOutput(outputId="tsPlot", height="600px")),
                                                         # Display Options floater
@@ -593,7 +563,6 @@ shiny::tabPanel(
                                                                             shiny::hr(),
                                                                             shiny::uiOutput("tsMessageTable"),
                                                                             shiny::uiOutput("tsMissingWarningTable"),
-                                                                            shiny::uiOutput("tsCycleSpeciesMissingWarningTable"),
                                                                             shiny::uiOutput("tsSinglePlotWarningTable"),
                                                                             DT::dataTableOutput("tsTable"))),
                                         
@@ -610,10 +579,6 @@ shiny::tabPanel(
       shiny::tabPanel(htmltools::tags$div(title="Graph Importance Values", "Forestry Importance Values (IV)"),
         shiny::fluidRow(
           shiny::column(3, id = "IVDataPanel",
-                        htmltools::tags$head(htmltools::tags$style(
-                          htmltools::HTML(".action-button {
-                                              white-space: normal !important;
-                                              word-wrap: break-word !important;}"))),
             shiny::wellPanel(class="panel panel-default controls",
               shiny::h4("Data:", class="panel-heading"),
               htmltools::tags$div(title="Select the park you want to work with",shiny::uiOutput("IVParkControl")),
@@ -708,7 +673,6 @@ shiny::tabPanel(
         title="Lists of plants found in the parks", "Species Lists"
       ),
       shiny::column(4,id="SpeciesControls",
-        htmltools::tags$head(htmltools::tags$style(htmltools::HTML("#SpeciesControls{height:400px}"))),
         shiny::wellPanel(id = "specDataPanel", class="panel panel-default controls",
                          shiny::h4("Species Data:", class="panel-heading"),
           htmltools::tags$div(

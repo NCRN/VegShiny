@@ -33,6 +33,8 @@ PARKBOUNDS<-utils::read.csv("boundboxes.csv", as.is=TRUE)
 
 DATACYCLES<-NPSForVeg::getCycles(VEGDATA[[1]])
 
+DENSLABELDATA<-base::data.frame(Name=base::c("trees","saplings","seedlings","shrubs","shseedlings","herbs","vines"), Label=base::c("Trees","Saplings","Tree Seedlings", "Shrubs","Shrub Seedlings","Understory Plants","Vines in Trees"), stringsAsFactors=FALSE)
+
 fmt_common <- function(x) {base::ifelse(base::is.na(x) | !base::nzchar(base::trimws(x)), x,
                                         base::paste0(base::toupper(base::substr(base::trimws(x), 1, 1)),
                                                      base::tolower(base::substr(base::trimws(x), 2, 
@@ -147,40 +149,11 @@ shiny::shinyServer(function(input,output,session){
     dplyr::bind_rows(all_plots[!base::sapply(all_plots, base::is.null)]) %>%
       dplyr::distinct(Plot_Name, .keep_all = TRUE)})
   
-  ## check all plots and remove any plots with no data/were never sampled
-  test <- base::lapply(base::names(VEGDATA), function(park) {
-    base::tryCatch(
-      NPSForVeg::getPlots(
-        VEGDATA[[park]],
-        output = "dataframe",
-        type = "all"
-      ) %>%
-        dplyr::select(
-          Plot_Name,
-          Unit_Code,
-          Latitude,
-          Longitude
-        ),
-      error = function(e) NULL
-    )
-  })
-
-  test <- dplyr::bind_rows(
-    test[!base::sapply(test, base::is.null)]
-  ) %>%
-    dplyr::distinct(Plot_Name, .keep_all = TRUE)
-
- base::nrow(test)
-
-  
   showAllPlots <- shiny::reactiveVal(TRUE)
   
   # Track whether a reset is in progress
-  resetting <- shiny::reactiveVal(FALSE)
-  userHasInteracted <- shiny::reactiveVal(FALSE)
   groupNoData <- shiny::reactiveVal(FALSE)
-  groupNoDataLabel <- shiny::reactiveVal("")
-  
+
   shiny::observeEvent(
     base::list(input$MapPark, input$MapCycles),
     {groupNoData(FALSE)},
@@ -253,7 +226,6 @@ shiny::shinyServer(function(input,output,session){
           input$MapSpecies %in% base::c("", NULL)
         ))
         if (any_real_input) {
-          userHasInteracted(TRUE)
           showAllPlots(FALSE)}
       
       # Do nothing if all inputs still match defaults
@@ -292,8 +264,7 @@ shiny::shinyServer(function(input,output,session){
                  cursor: pointer;")}})
   
   shiny::observeEvent(input$resetMapFilters, {
-    resetting(TRUE)
-    
+
     shiny::updateSelectizeInput(session, "MapGroup", selected = "")
     shiny::updateSelectizeInput(session, "MapValues", selected = "")
     shiny::updateSelectizeInput(session, "MapPark", selected = "")
@@ -1583,8 +1554,6 @@ shiny::shinyServer(function(input,output,session){
                                               common=input$densCommon,area= if (input$densvalues == "presab") "plot" else "ha")))
   })
   
-  DENSLABELDATA<-base::data.frame(Name=base::c("trees","saplings","seedlings","shrubs","shseedlings","herbs","vines"), Label=base::c("Trees","Saplings","Tree Seedlings", "Shrubs","Shrub Seedlings","Understory Plants","Vines in Trees"), stringsAsFactors=FALSE)
-  
   #### Y axis labels for density plot ####
   densYlabel<-shiny::reactive({
     base::switch(input$densvalues,
@@ -1695,21 +1664,15 @@ shiny::shinyServer(function(input,output,session){
   #### Base Density Plot Function ####
   
   # single plot warning label
-  densOnePlotWarning <- shiny::reactiveVal(FALSE)
   densOnePlotWarningDismissed <- shiny::reactiveVal(FALSE)
   
-  shiny::observeEvent(
-    base::list(input$densPark, input$densGroup, input$densCycles, input$densvalues),
-    {densOnePlotWarningDismissed(FALSE)})
+  shiny::observeEvent(base::list(input$densPark, input$densGroup, input$densCycles, input$densvalues), {densOnePlotWarningDismissed(FALSE)})
   
-  shiny::observeEvent(input$dismiss_dens_onePlot_warning,
-                      {densOnePlotWarningDismissed(TRUE)})
+  shiny::observeEvent(input$dismiss_dens_onePlot_warning, {densOnePlotWarningDismissed(TRUE)})
   
   output$densOnePlotWarningGraph <- shiny::renderUI({
     shiny::req(input$densPark, input$densGroup, input$densvalues, densYears())
     if (densOnePlotWarningDismissed()) base::return(NULL)
-    df <- base::tryCatch(densData(), error = function(e) NULL)
-    if (base::is.null(df) || base::nrow(df) == 0) base::return(NULL)
     veg <- VEGDATA[[input$densPark]]
     shiny::req(veg)
     n_plots <- base::tryCatch(
@@ -1723,8 +1686,6 @@ shiny::shinyServer(function(input,output,session){
   
   output$densOnePlotWarningTable <- shiny::renderUI({shiny::req(input$densPark, input$densGroup, input$densvalues, densYears())
     if (densOnePlotWarningDismissed()) base::return(NULL)
-    df <- base::tryCatch(densData(), error = function(e) NULL)
-    if (base::is.null(df) || base::nrow(df) == 0) base::return(NULL)
     veg <- VEGDATA[[input$densPark]]
     shiny::req(veg)
     n_plots <- base::tryCatch(base::nrow(NPSForVeg::getPlots(veg, years = densYears(), type = "all")), error = function(e) NA_integer_)
@@ -1734,30 +1695,17 @@ shiny::shinyServer(function(input,output,session){
                         htmltools::tags$button("\u00d7", style = "position: absolute; right: 10px; top: 5px; border: none; background: none; font-size: 18px; cursor: pointer;",
                                                onclick = "Shiny.setInputValue('dismiss_dens_onePlot_warning', Math.random())"))})
   
-  densOnePlotWarningDismissed <- shiny::reactiveVal(FALSE)
-
-  shiny::observeEvent(base::list(input$densPark, input$densGroup, input$densCycles, input$densvalues),
-    {densOnePlotWarningDismissed(FALSE)})
-  
-  shiny::observeEvent(input$dismiss_dens_onePlot_warning, {densOnePlotWarningDismissed(TRUE)})
-
   ##############bugfix
   densData <- shiny::reactive({
     shiny::req(input$densPark, input$densGroup, input$densvalues, densYears())
     veg <- VEGDATA[[input$densPark]]
     shiny::req(veg)
     
-    densOnePlotWarning(FALSE)
-    
     if (input$densvalues == "size" && input$densGroup %in% base::c("vines", "seedlings", "shseedlings")) {
       shiny::validate(shiny::need(FALSE,base::paste("Basal area / percent cover is not available for", input$densGroup,
                                                     "- try 'Abundance' or 'Proportion of Plots Occupied'.")))}
     
     n_plots <- base::tryCatch(base::nrow(NPSForVeg::getPlots(veg, years = densYears(), type = "all")), error = function(e) NA_integer_)
-    
-    group_label <- base::switch(input$densGroup, trees = "tree", saplings = "sapling", seedlings = "tree seedling",
-                                shrubs = "shrub", shseedlings = "shrub seedling", herbs = "understory plant",
-                                vines = "vine", input$densGroup)
     
     if (!base::is.na(n_plots) && n_plots < 2) {
       sxs <- base::tryCatch({
@@ -1903,7 +1851,7 @@ shiny::shinyServer(function(input,output,session){
             years  = years,
             values = values,
             common = common,
-            area   = if (values == "presab") "plot" else "ha",,
+            area   = if (values == "presab") "plot" else "ha",
             Total  = FALSE),
           warning = function(w) {
             # suppress NaN/glm warnings that don't prevent a result
@@ -2138,6 +2086,12 @@ shiny::shinyServer(function(input,output,session){
                                                                                              base::as.character(base::max(compYears()))), "vs.", period1)}}))})
   
   ### generate dens warning label ###
+  park_long_name <- function(park_key) {
+    if (base::is.null(park_key) || !base::nzchar(park_key)) base::return(park_key)
+    obj <- VEGDATA[[park_key]]
+    if (!base::is.null(obj)) {NPSForVeg::getNames(obj, "long")
+    } else {park_key}}
+  
   densMissingWarningData <- shiny::reactive({
     base_df <- base::tryCatch(densDf(), error = function(e) NULL)
     cmp_df <- base::tryCatch(compareDf(), error = function(e) NULL)
@@ -2170,12 +2124,6 @@ shiny::shinyServer(function(input,output,session){
   
   shiny::observeEvent(input$dismiss_dens_warning,
     {densWarningDismissed(TRUE)})
-  
-  park_long_name <- function(park_key) {
-    if (base::is.null(park_key) || !base::nzchar(park_key)) base::return(park_key)
-    obj <- VEGDATA[[park_key]]
-    if (!base::is.null(obj)) {NPSForVeg::getNames(obj, "long")
-    } else {park_key}}
   
   output$densGraphMessage <- shiny::renderUI({
     if (base::identical(input$densSpeciesType, "Pick") &&
@@ -2311,7 +2259,7 @@ shiny::shinyServer(function(input,output,session){
                                     else {cmp_obj <- VEGDATA[[input$ComparePark]]
                                     if (!base::is.null(cmp_obj)) NPSForVeg::getNames(cmp_obj, "long") else input$ComparePark}},
                                   "Growth Stage" = {lbl <- stage_labels[[input$CompareGroup]]
-                                    if (base::identical(input$densGroup, input$CompareGroup)) {base::paste0(lbl, " (compare)")
+                                    if (base::identical(input$densGroup, input$CompareGroup)) {base::paste0(lbl)
                                     } else { lbl }},
                                   Time = {row <- DATACYCLES[DATACYCLES$Cycle == input$compCycles, ]
                                   if (base::nrow(row) == 1L) base::paste0("Cycle ", row$Cycle, ": ", row$YearStart, "\u2013", row$YearEnd)
@@ -2339,7 +2287,7 @@ shiny::shinyServer(function(input,output,session){
           base_row_label <- base::switch(input$CompareType,
                                          Park = park_label,
                                          "Growth Stage" = {lbl <- stage_labels[[input$densGroup]]
-                                           if (base::identical(input$densGroup, input$CompareGroup)) {base::paste0(lbl, " (base)")
+                                           if (base::identical(input$densGroup, input$CompareGroup)) {base::paste0(lbl)
                                            } else { lbl }},
                                          Time = base_cycle_label,
                                          park_label)
@@ -2417,12 +2365,12 @@ shiny::shinyServer(function(input,output,session){
                    }",
           htmltools::tags$span(
             id = "densReportCaret",
-            style = "display: inline-block; transition: transform 0.2s ease; transform: rotate(0deg);",
+            style = "display: inline-block; transition: transform 0.2s ease; transform: rotate(-90deg);",
             "\u25bc"),
           "Summary Report"),
         htmltools::tags$div(
           id = "densReportBody",
-          style = "display: block; padding: 12px 16px; background-color: #f8f9fa;
+          style = "display: none; padding: 12px 16px; background-color: #f8f9fa;
                  border: 1px solid #dee2e6; border-top: none;
                  border-radius: 0 0 6px 6px; font-size: 13px; line-height: 1.8;",
           txt)))})
@@ -2449,12 +2397,12 @@ shiny::shinyServer(function(input,output,session){
                    }",
           htmltools::tags$span(
             id = "densReportCaretTable",
-            style = "display: inline-block; transition: transform 0.2s ease; transform: rotate(0deg);",
+            style = "display: inline-block; transition: transform 0.2s ease; transform: rotate(-90deg);",
             "\u25bc"),
           "Summary Report"),
         htmltools::tags$div(
           id = "densReportBodyTable",
-          style = "display: block; padding: 12px 16px; background-color: #f8f9fa;
+          style = "display: none; padding: 12px 16px; background-color: #f8f9fa;
                  border: 1px solid #dee2e6; border-top: none;
                  border-radius: 0 0 6px 6px; font-size: 13px; line-height: 1.8;",
           txt)))})
@@ -2490,8 +2438,6 @@ shiny::shinyServer(function(input,output,session){
     #  if (!base::is.null(df_cmp) && base::nrow(df_cmp) > 0) {
     #    df_cmp$y_cmp <- species_idx[df_cmp$Species] - offset}
     
-    show_compare <- input$CompareType != "None"
-    
     species_levels <- if (!base::is.null(df) && base::nrow(df) > 0) {
       base::as.character(df$Species)} else {
         base::unique(base::c(df$Species, if (!base::is.null(df_cmp)) df_cmp$Species))}
@@ -2503,11 +2449,6 @@ shiny::shinyServer(function(input,output,session){
       df_cmp$Species <- base::factor(df_cmp$Species, levels = species_levels)}
     
     #make labels readable
-    park_long_name <- function(park_key) {
-      if (base::is.null(park_key) || !nzchar(park_key)) base::return(park_key)
-      obj <- VEGDATA[[park_key]]
-      if (!base::is.null(obj)) {return(NPSForVeg::getNames(obj, "long"))}}
-    
     cycle_long_name <- function(cycle_code) {
       if (base::is.null(cycle_code) || !nzchar(cycle_code)) base::return(cycle_code)
       row <- DATACYCLES[DATACYCLES$Cycle == cycle_code, ]
@@ -2520,12 +2461,12 @@ shiny::shinyServer(function(input,output,session){
       val <- species_group_long[group_key]
       if (base::length(val) == 0 || base::is.na(val)) group_key else val}
     
-    park_display         <- park_long_name(input$densPark)
-    cmp_park_display     <- park_long_name(input$ComparePark)
-    cycle_display_base   <- cycle_long_name(input$densCycles)
-    cycle_display_cmp    <- cycle_long_name(input$compCycles)
-    group_display_base   <- group_long_name(input$densGroup)
-    group_display_cmp    <- group_long_name(input$CompareGroup)
+    park_display <- park_long_name(input$densPark)
+    cmp_park_display <- park_long_name(input$ComparePark)
+    cycle_display_base <- cycle_long_name(input$densCycles)
+    cycle_display_cmp <- cycle_long_name(input$compCycles)
+    group_display_base <- group_long_name(input$densGroup)
+    group_display_cmp <- group_long_name(input$CompareGroup)
     
     #wire legend to selections
     base_legend <- base::paste(
@@ -2559,9 +2500,9 @@ shiny::shinyServer(function(input,output,session){
                                  "| Plant Type:",group_display_base))
     
     # graphing colors
-    densBaseColor <- shiny::reactive(toHex(pickColor(input$densBaseColor, "blue")))
-    densCmpColor  <- shiny::reactive(toHex(pickColor(input$densCompareColor, "red")))
-    densFontSize  <- shiny::reactive(if (!base::is.null(input$densFontSize)) input$densFontSize else 12)
+    densBaseColor <- toHex(pickColor(input$densBaseColor, "blue"))
+    densCmpColor <- toHex(pickColor(input$densCompareColor, "red"))
+    densFontSize <- if (!base::is.null(input$densFontSize)) input$densFontSize else 12
     
     # error bar colors
     darken <- function(hex, factor = 0.6) {rgb <- grDevices::col2rgb(hex)
@@ -2601,7 +2542,7 @@ shiny::shinyServer(function(input,output,session){
      base::c(cmp_legend, base_legend))
 
     for (grp in grp_order) {df_all <- df[df$group == grp, ]
-      bar_color <- if (grp == base_legend) densBaseColor() else densCmpColor()
+      bar_color <- if (grp == base_legend) densBaseColor else densCmpColor
       err_color <- darken(bar_color)
       
       p <- p %>% plotly::add_trace(
@@ -2636,7 +2577,7 @@ shiny::shinyServer(function(input,output,session){
         color = err_color),
       legendgroup = "dens")}
     
-    wrap_width <- dplyr::case_when(densFontSize() >= 20 ~ 70, TRUE ~ 80)
+    wrap_width <- dplyr::case_when(densFontSize >= 20 ~ 70, TRUE ~ 80)
     DensTitleWrapped <- stringr::str_wrap(DensTitle(), width = wrap_width)
     DensTitleWrapped <- base::gsub("\n", "<br>", DensTitleWrapped)
     
@@ -2645,13 +2586,13 @@ shiny::shinyServer(function(input,output,session){
       showlegend = TRUE,
       legend = base::list(
         traceorder = "reversed", 
-        font = base::list(size = densFontSize() + 3),
+        font = base::list(size = densFontSize + 3),
         orientation = "h",
         x = 0.5, xanchor = "center",
         y = .98, yanchor = "bottom"),
       title = base::list(
         text = DensTitleWrapped,
-        font = base::list(size = densFontSize() + 10),
+        font = base::list(size = densFontSize + 10),
         y = .99,
         yanchor = "top",
         pad = base::list(t = 20),
@@ -2662,52 +2603,23 @@ shiny::shinyServer(function(input,output,session){
         showgrid = TRUE,
         title = base::list(
           text = densYlabel(),
-          font = base::list(size = densFontSize()),
+          font = base::list(size = densFontSize),
           standoff = 20)),
       yaxis = base::list(
         type = "category", categoryorder = "array", categoryarray = rev(species_levels),
         showline = TRUE,
         title = base::list(
           text = "Species",
-          font = base::list(size = densFontSize()),
+          font = base::list(size = densFontSize),
           standoff = 15),
         ticks = "outside",
         ticklabelposition = "outside"),
-      margin = base::list(t = 50 + densFontSize() * 3, l = 140, r = 40),
+      margin = base::list(t = 50 + densFontSize * 3, l = 140, r = 40),
       #height = fig_height,
-      font = base::list(size = densFontSize()),
+      font = base::list(size = densFontSize),
       autosize = TRUE)
     p
   })
-
-  
-  
-  ivSpeciesLimitWarning <- shiny::reactive({shiny::req(input$IVTop)
-    
-    if (input$IVTop >= 35) {
-      "Note: The plot cannot display more than 34 species names at a time. All species are represented, but not all species names are shown in the plot below. 
-      To view all the species names and data, select the data table tab."
-    } else {NULL}})
-  
-  ivLimitWarningDismissed <- shiny::reactiveVal(FALSE)
-  
-  shiny::observeEvent(input$dismiss_iv_limit_warning, {ivLimitWarningDismissed(TRUE)})
-  
-  output$IVGraphMessage <- shiny::renderUI({
-    if (base::identical(input$IVSpeciesType, "Pick") &&
-        (base::is.null(input$IVSpecies) || base::length(input$IVSpecies) == 0)) {
-      shiny::helpText("Please select one or more species.")
-    } else { NULL }
-  })
-  
-  output$IVLimitWarning <- shiny::renderUI({
-    if (ivLimitWarningDismissed()) base::return(NULL)
-    msg <- ivSpeciesLimitWarning()
-    if (base::is.null(msg)) base::return(NULL)
-    
-    htmltools::tags$div(style = "padding: 10px 14px; margin-bottom: 10px; border: 1px solid #ffe69c; background-color: #fff3cd; color: #664d03; border-radius: 6px; position: relative;", msg,
-                        htmltools::tags$button("\u00d7", style = "position: absolute; right: 10px; top: 5px; border: none; background: none; font-size: 18px; cursor: pointer;", onclick = "Shiny.setInputValue('dismiss_iv_limit_warning', Math.random())"))})
-  
   
   ########## make dens plotly warning reactive correctly like iv example above ^^^, also check if it applies to compare plot too
   
@@ -2722,6 +2634,7 @@ shiny::shinyServer(function(input,output,session){
     } else {NULL}})
   
   densLimitWarningDismissed <- shiny::reactiveVal(FALSE)
+  shiny::observeEvent(base::list(input$densTop, input$densPark, input$densGroup, input$densCycles), {densLimitWarningDismissed(FALSE)})
   shiny::observeEvent(input$dismiss_dens_limit_warning, {densLimitWarningDismissed(TRUE)})
   
   output$DensLimitWarning <- shiny::renderUI({
@@ -2824,42 +2737,6 @@ shiny::shinyServer(function(input,output,session){
     })
   
   output$densTableTitle <- shiny::renderText({ tempDensTableTitle() })
-  
-  #### Data for Table ####
-  DensTableArgs<-shiny::reactive({
-    shiny::req(input$densPark, input$densGroup, input$densvalues, densYears())
-    veg <- VEGDATA[[input$densPark]]
-    shiny::req(veg)
-    base::list(
-      object = veg,
-      group = input$densGroup,
-      years = densYears(),
-      values = input$densvalues,
-      area = if (input$densvalues == "presab") "plot" else "ha",
-      common = base::isTRUE(input$densCommon))})
-  
-  #### reactive label for dataset column ####
-  densDatasetLabels <- shiny::reactive({
-    shiny::req(input$densPark)
-    base_obj <- VEGDATA[[input$densPark]]
-    
-    base_label <- base::switch(input$CompareType,
-                         Park = NPSForVeg::getNames(base_obj, "long"),
-                         "Growth Stage" = DENSLABELDATA$Label[DENSLABELDATA$Name == input$densGroup],
-                         Time = {row <- DATACYCLES[DATACYCLES$Cycle == input$densCycles, ]
-                           if (base::nrow(row) == 1L) base::paste0(row$Name, ":", row$YearStart, "-", row$YearEnd)
-                           else base::as.character(input$densCycles)},
-                         "Base")
-    cmp_label <- base::switch(input$CompareType,
-                        Park = {if (base::identical(input$ComparePark, "ALL")) "All Parks"
-                          else {cmp_obj <- VEGDATA[[input$ComparePark]]
-                          if (!base::is.null(cmp_obj)) NPSForVeg::getNames(cmp_obj, "long") else input$ComparePark}},
-                        "Growth Stage" = DENSLABELDATA$Label[DENSLABELDATA$Name == input$CompareGroup],
-                        Time = {row <- DATACYCLES[DATACYCLES$Cycle == input$compCycles, ]
-                          if (base::nrow(row) == 1L) base::paste0(row$Name, ":", row$YearStart, "-", row$YearEnd)
-                          else base::as.character(input$compCycles)},
-                        "Compare")
-    base::list(base = base_label, cmp = cmp_label)})
   
   # table warning label
   output$densMissingWarningTable <- shiny::renderUI({
@@ -3124,19 +3001,20 @@ shiny::shinyServer(function(input,output,session){
   
   # cycle control
   output$tsCycleControl <- shiny::renderUI({
-    shiny::req(DATACYCLES, input$tsPark, input$tsGroup)
+    shiny::req(DATACYCLES, input$tsPark, input$tsGroup, input$tsValues)
     shiny::req(!base::is.null(input$tsPark), input$tsPark == "All" | input$tsPark %in% base::names(VEGDATA))
     
     cycle_vals <- base::sort(base::unique(DATACYCLES$Cycle))
     
-    cycles_with_data <- if (input$tsPark == "All") {
-      cycle_vals
-    } else {
-      has_any <- base::tryCatch({
-        plots <- NPSForVeg::getPlots(VEGDATA[[input$tsPark]], type = "all")
-        !base::is.null(plots) && base::nrow(plots) > 0
-      }, error = function(e) FALSE)
-      if (has_any) cycle_vals else integer(0)}
+    cycles_with_data <- base::Filter(function(cyc) {
+      yrs <- DATACYCLES$YearStart[DATACYCLES$Cycle == cyc]:DATACYCLES$YearEnd[DATACYCLES$Cycle == cyc]
+      base::tryCatch({
+        if (input$tsPark == "All") {
+          base::any(base::sapply(base::names(VEGDATA), function(pk) {
+            plants <- NPSForVeg::getPlants(VEGDATA[[pk]], group = input$tsGroup, years = yrs, common = FALSE)
+            !base::is.null(plants) && base::nrow(plants) > 0}))
+        } else {plants <- NPSForVeg::getPlants(VEGDATA[[input$tsPark]], group = input$tsGroup, years = yrs, common = FALSE)
+        !base::is.null(plants) && base::nrow(plants) > 0}}, error = function(e) FALSE)}, cycle_vals)
     
     shiny::req(base::length(cycles_with_data) >= 1)
     
@@ -3146,8 +3024,7 @@ shiny::shinyServer(function(input,output,session){
       min = base::min(cycles_with_data),
       max = base::max(cycles_with_data),
       value = base::c(base::min(cycles_with_data), base::max(cycles_with_data)),
-      step = 1,
-      ticks = FALSE)})
+      step = 1, ticks = FALSE)})
 
   # value control
   tsValuesUse <- shiny::reactive({
@@ -3206,12 +3083,13 @@ shiny::shinyServer(function(input,output,session){
     
     base::names(spec_temp) <- spec_names
     spec_temp[order(names(spec_temp))]
-    }) %>% shiny::bindCache(input$tsPark, input$tsGroup, input$tsValues, input$tsCycles[1], input$tsCycles[2])
+    }) %>% shiny::bindCache(input$tsPark, input$tsGroup, input$tsValues, input$tsCycles[1], input$tsCycles[2], input$tsCommon)
   
   tsSpeciesCount <- shiny::reactive({shiny::req(input$tsPark, input$tsGroup)
     base::length(tsSpecList())})
 
   output$tsSpeciesControl <- shiny::renderUI({
+    input$tsCommon
     base::switch(input$tsSpeciesType,
                  Common = {
                    max_sp <- tsSpeciesCount()
@@ -3242,9 +3120,12 @@ shiny::shinyServer(function(input,output,session){
 
   # keep species selection when toggling common/latin
   shiny::observeEvent(input$tsCommon, {
-    shiny::req(input$tsSpeciesType == "Pick")
+    shiny::req(input$tsPark, input$tsGroup, input$tsCycles)
     current <- shiny::isolate(input$tsSpecies)
-    shiny::updateSelectizeInput(session, "tsSpecies", choices  = tsSpecList(), selected = current)})
+    new_choices <- tsSpecList()
+    shiny::req(!base::is.null(new_choices), base::length(new_choices) > 0)
+    new_selected <- current[current %in% new_choices]
+    shiny::updateSelectizeInput(session, "tsSpecies", choices = new_choices, selected = new_selected)})
 
   tsData <- shiny::reactive({
     shiny::req(input$tsPark, input$tsGroup, input$tsValues, input$tsCycles)
@@ -3252,11 +3133,6 @@ shiny::shinyServer(function(input,output,session){
     
     all_cycles <- base::sort(base::unique(DATACYCLES$Cycle))
     cycles_use <- all_cycles[all_cycles >= input$tsCycles[1] & all_cycles <= input$tsCycles[2]]
-    
-    n_plots_all <- if (input$tsPark == "All") {
-      n_plots_computed <- base::sapply(base::names(VEGDATA), function(pk) {
-        base::tryCatch(base::nrow(NPSForVeg::getPlots(VEGDATA[[pk]], type = "all")), error = function(e) 0L)})
-    } else { NULL }
     
     results <- base::lapply(cycles_use, function(cyc) {
       yr_start <- DATACYCLES$YearStart[DATACYCLES$Cycle == cyc]
@@ -3418,15 +3294,13 @@ shiny::shinyServer(function(input,output,session){
 
   # plot
   output$tsPlot <- plotly::renderPlotly({
-    shiny::validate(
-      shiny::need(
+    shiny::validate(shiny::need(
         !base::is.null(input$tsPark) && base::nzchar(input$tsPark),
-        "There is no data for this combination of choices. Please select a park, species, or plant type."
-      )
-    )
-    if (base::identical(input$tsSpeciesType, "Pick") &&
-        (base::is.null(input$tsSpecies) || base::length(input$tsSpecies) == 0)) {
-      base::return(NULL)}
+        "There is no data for this combination of choices. Please select a park, species, or plant type."))
+    shiny::validate(shiny::need(
+      !(base::identical(input$tsSpeciesType, "Pick") &&
+          (base::is.null(input$tsSpecies) || base::length(input$tsSpecies) == 0)),
+      "There is no data for this combination of choices. Please select a park, species, or plant type."))
     shiny::req(tsDf())
 
     df <- tsDf()
@@ -3473,9 +3347,6 @@ shiny::shinyServer(function(input,output,session){
                                     base::ifelse(base::is.na(Upper_95_disp), "NA", base::sprintf("%.2f", Upper_95_disp))))
       d <- d %>%
         dplyr::mutate(Mean_plot = Mean + (i * 0.0005))
-
-      label_opp <- base::unique(stats::na.omit(d$LabelOpp))
-      label_opp <- if (base::length(label_opp) > 0) label_opp[[1]] else sp
       
       # CI ribbons
       rgb_vals <- grDevices::col2rgb(col)
@@ -3571,7 +3442,8 @@ shiny::shinyServer(function(input,output,session){
                           showgrid = TRUE),
                         yaxis = base::list(
                           title = base::list(text = tsYlabel(), font = base::list(size = font_s)),
-                          tickfont = base::list(size = font_s)),
+                          tickfont = base::list(size = font_s),
+                          rangemode = "tozero"),
                         title = base::list(
                           text = ts_title_wrapped,
                           font = base::list(size = font_s + 10),
@@ -3734,56 +3606,9 @@ shiny::shinyServer(function(input,output,session){
                                 input$tsGroup)
     
     n <- base::length(missing)
-    cycle_word <- if (n == 1) "cycle" else "cycles"
     
     base::paste0("Warning: No ", group_label, " observations were recorded at ", park_label, " during: ", base::paste(missing, collapse = "; "),
                  ". ", if (n == 1) "This cycle has" else "These cycles have", " been removed from the figure and table.")})
-  
-  tsCycleSpeciesMissingDismissed <- shiny::reactiveVal(FALSE)
-  
-  shiny::observeEvent(base::list(input$tsPark, input$tsGroup, input$tsCycles, input$tsValues, input$tsSpecies, input$tsTop, input$tsSpeciesType),
-                      { tsCycleSpeciesMissingDismissed(FALSE) })
-  
-  shiny::observeEvent(input$dismiss_ts_cycle_species_warning,
-                      { tsCycleSpeciesMissingDismissed(TRUE) })
-  
-  tsCycleSpeciesMissingMsg <- shiny::reactive({
-    shiny::req(tsDf())
-    df <- tsDf()
-    
-    # only relevant when there are multiple species and multiple cycles
-    if (base::identical(input$tsSpeciesType, "All")) base::return(NULL)
-    
-    # find species/cycle combos where mean is NA but the cycle exists in the plot
-    dropped_cycle_labels <- tsMissingWarningData()  # cycles already fully removed
-    
-    missing_combos <- df %>%
-      dplyr::filter(!CycleLabel %in% base::ifelse(base::is.null(dropped_cycle_labels), "", dropped_cycle_labels), base::is.na(Mean) | Mean == 0) %>%
-      dplyr::filter(!base::is.na(Species))
-    
-    if (base::nrow(missing_combos) == 0) base::return(NULL)
-    
-    group_label <- base::switch(input$tsGroup,
-                                trees = "tree",
-                                saplings = "sapling",
-                                seedlings = "tree seedling",
-                                shrubs = "shrub",
-                                shseedlings = "shrub seedling",
-                                herbs = "understory plant",
-                                vines = "vine",
-                                input$tsGroup)
-    
-    # summarize by species for a readable message
-    by_species <- missing_combos %>%
-      dplyr::group_by(Species) %>%
-      dplyr::summarise(cycles = base::paste(CycleLabel, collapse = "; "), .groups = "drop")
-    
-    lines <- base::paste0(by_species$Species, ": ", by_species$cycles, collapse = "\n")
-    
-    n_combos <-base::nrow(by_species)
-    sp_word  <- if (n_combos == 1) "species" else "species"
-    
-    base::paste0("Warning: The following ", group_label, " ", sp_word, " had no observations during one or more cycles ", "(shown as gaps in the figure and NA in the table):\n", lines)})
   
   tsSinglePlotWarningMsg <- shiny::reactive({
     shiny::req(input$tsPark, base::nzchar(input$tsPark))
@@ -3848,12 +3673,6 @@ shiny::shinyServer(function(input,output,session){
     species_list <- species_list[species_list != "All species"]
     if (base::identical(input$tsSpeciesType, "All")) species_list <- "all species combined"
     n_sp <- base::length(species_list)
-
-    intro <- base::sprintf("Showing %s %s of %s across %d monitoring %s (%s) at %s.",
-      if (base::identical(input$tsSpeciesType, "All")) "" else base::as.character(n_sp),
-      if (base::identical(input$tsSpeciesType, "All")) "all species combined" else "species",
-      group_label, n_cycles, cycle_word, period, park_label)
-    intro <- base::trimws(intro)
     
     # per-species summary across cycles
     df_valid <- df %>% dplyr::filter(!base::is.na(Mean), !base::is.na(Species))
@@ -3886,11 +3705,9 @@ shiny::shinyServer(function(input,output,session){
       } else { "only one cycle" }
       base::list(htmltools::tags$li(htmltools::tags$strong("All species combined"), base::sprintf(" \u2014 Overall mean: %.2f %s | Trend: %s.", overall_mean, val_label, trend_str)))}
     
-    intro <- base::sprintf(
-      "Showing %s %s of %s across %d monitoring %s (%s) at %s.",
-      if (base::identical(input$tsSpeciesType, "All")) "" else base::as.character(n_sp),
-      if (base::identical(input$tsSpeciesType, "All")) "all species combined" else "species",
-      group_label, n_cycles, cycle_word, period, park_label)
+    intro <- if (base::identical(input$tsSpeciesType, "All")) {
+      base::sprintf("Showing all species combined for %s across %d monitoring %s (%s) at %s.", group_label, n_cycles, cycle_word, period, park_label)
+    } else {base::sprintf("Showing %d species of %s across %d monitoring %s (%s) at %s.", n_sp, group_label, n_cycles, cycle_word, period, park_label)}
     
     htmltools::tagList(htmltools::tags$p(htmltools::tags$span(style = "font-size: 30px; font-weight: bold;", "Summary Report:")),
       htmltools::tags$p(style = "font-size: 15px;",
@@ -3921,12 +3738,12 @@ shiny::shinyServer(function(input,output,session){
                    }",
           htmltools::tags$span(
             id = "tsReportCaret",
-            style = "display: inline-block; transition: transform 0.2s ease; transform: rotate(0deg);",
+            style = "display: inline-block; transition: transform 0.2s ease; transform: rotate(-90deg);",
             "\u25bc"),
           "Summary Report"),
         htmltools::tags$div(
           id = "tsReportBody",
-          style = "display: block; padding: 12px 16px; background-color: #f8f9fa;
+          style = "display: none; padding: 12px 16px; background-color: #f8f9fa;
                  border: 1px solid #dee2e6; border-top: none;
                  border-radius: 0 0 6px 6px; font-size: 13px; line-height: 1.8;",
           txt)))
@@ -3954,21 +3771,16 @@ shiny::shinyServer(function(input,output,session){
                    }",
           htmltools::tags$span(
             id = "tsReportCaretTable",
-            style = "display: inline-block; transition: transform 0.2s ease; transform: rotate(0deg);",
+            style = "display: inline-block; transition: transform 0.2s ease; transform: rotate(-90deg);",
             "\u25bc"),
           "Summary Report"),
         htmltools::tags$div(
           id = "tsReportBodyTable",
-          style = "display: block; padding: 12px 16px; background-color: #f8f9fa;
+          style = "display: none; padding: 12px 16px; background-color: #f8f9fa;
                  border: 1px solid #dee2e6; border-top: none;
                  border-radius: 0 0 6px 6px; font-size: 13px; line-height: 1.8;",
           txt)))
   })
-  
-  
-  
-  
-  
   
   shiny::observeEvent(
     input$dismiss_ts_singleplot_warning,
@@ -3992,28 +3804,6 @@ shiny::shinyServer(function(input,output,session){
       msg,
       htmltools::tags$button("\u00d7", style = "position: absolute; right: 10px; top: 5px; border: none; background: none; font-size: 18px; cursor: pointer;",
                              onclick = "Shiny.setInputValue('dismiss_ts_warning', Math.random())"))})
-  
-  output$tsCycleSpeciesMissingWarning <- shiny::renderUI({
-    if (tsCycleSpeciesMissingDismissed()) base::return(NULL)
-    msg <- tsCycleSpeciesMissingMsg()
-    if (base::is.null(msg)) base::return(NULL)
-    htmltools::tags$div(
-      style = "padding: 10px 14px; margin-bottom: 10px; border: 1px solid #f5c2c7; background-color: #f8d7da; color: #842029; border-radius: 6px; position: relative; white-space: pre-line;",
-      msg,
-      htmltools::tags$button("\u00d7",
-                             style   = "position: absolute; right: 10px; top: 5px; border: none; background: none; font-size: 18px; cursor: pointer;",
-                             onclick = "Shiny.setInputValue('dismiss_ts_cycle_species_warning', Math.random())"))})
-  
-  output$tsCycleSpeciesMissingWarningTable <- shiny::renderUI({
-    if (tsCycleSpeciesMissingDismissed()) base::return(NULL)
-    msg <- tsCycleSpeciesMissingMsg()
-    if (base::is.null(msg)) base::return(NULL)
-    htmltools::tags$div(
-      style = "padding: 10px 14px; margin-bottom: 10px; border: 1px solid #f5c2c7; background-color: #f8d7da; color: #842029; border-radius: 6px; position: relative; white-space: pre-line;",
-      msg,
-      htmltools::tags$button("\u00d7",
-                             style   = "position: absolute; right: 10px; top: 5px; border: none; background: none; font-size: 18px; cursor: pointer;",
-                             onclick = "Shiny.setInputValue('dismiss_ts_cycle_species_warning', Math.random())"))})
   
   output$tsSinglePlotWarning <- shiny::renderUI({
     if (tsSinglePlotWarningDismissed()) base::return(NULL)
@@ -4309,8 +4099,7 @@ shiny::shinyServer(function(input,output,session){
                                   font = base::list(size = 14, color = contrastColor(IVDistributionColor()))))}
     
     IVFontSize <- if (!base::is.null(input$IVFontSize)) input$IVFontSize else 12
-    densFontSize  <- shiny::reactive(if (!base::is.null(input$densFontSize)) input$densFontSize else 12)
-    
+
     p <- p %>% plotly::layout(
       barmode = "stack",
       showlegend = TRUE,
@@ -4420,12 +4209,12 @@ shiny::shinyServer(function(input,output,session){
                    }",
           htmltools::tags$span(
             id = "ivReportCaret",
-            style = "display: inline-block; transition: transform 0.2s ease; transform: rotate(0deg);",
+            style = "display: inline-block; transition: transform 0.2s ease; transform: rotate(-90deg);",
             "\u25bc"),
           "Summary Report"),
         htmltools::tags$div(
           id = "ivReportBody",
-          style = "display: block; padding: 12px 16px; background-color: #f8f9fa;
+          style = "display: none; padding: 12px 16px; background-color: #f8f9fa;
                  border: 1px solid #dee2e6; border-top: none;
                  border-radius: 0 0 6px 6px; font-size: 13px; line-height: 1.8;",
           txt)))})
@@ -4452,12 +4241,12 @@ shiny::shinyServer(function(input,output,session){
                    }",
           htmltools::tags$span(
             id = "ivReportCaretTable",
-            style = "display: inline-block; transition: transform 0.2s ease; transform: rotate(0deg);",
+            style = "display: inline-block; transition: transform 0.2s ease; transform: rotate(-90deg);",
             "\u25bc"),
           "Summary Report"),
         htmltools::tags$div(
           id = "ivReportBodyTable",
-          style = "display: block; padding: 12px 16px; background-color: #f8f9fa;
+          style = "display: none; padding: 12px 16px; background-color: #f8f9fa;
                  border: 1px solid #dee2e6; border-top: none;
                  border-radius: 0 0 6px 6px; font-size: 13px; line-height: 1.8;",
           txt)))})
@@ -4516,8 +4305,15 @@ shiny::shinyServer(function(input,output,session){
     } else {NULL}})
   
   ivLimitWarningDismissed <- shiny::reactiveVal(FALSE)
-  
+  shiny::observeEvent(base::list(input$IVTop, input$IVPark, input$IVGroup, input$IVCycles), {ivLimitWarningDismissed(FALSE)})
   shiny::observeEvent(input$dismiss_iv_limit_warning, {ivLimitWarningDismissed(TRUE)})
+  
+  output$IVGraphMessage <- shiny::renderUI({
+    if (base::identical(input$IVSpeciesType, "Pick") &&
+        (base::is.null(input$IVSpecies) || base::length(input$IVSpecies) == 0)) {
+      shiny::helpText("Please select one or more species.")
+    } else { NULL }
+  })
   
   output$IVLimitWarning <- shiny::renderUI({
     if (ivLimitWarningDismissed()) base::return(NULL)
@@ -4617,41 +4413,24 @@ shiny::shinyServer(function(input,output,session){
   
   #### dens/ts/iv graph/table blank input message
   
-  make_pick_message <- function(dismiss_id) {
-    shiny::validate(
-      shiny::need(FALSE,
-      "There is no data for this combination of choices. Please select a park, species, or plant type."
-    )
-    )
-  }
+  make_pick_message <- function() {shiny::validate(shiny::need(FALSE, "There is no data for this combination of choices. Please select a park, species, or plant type."))}
   
   output$densMessage <- shiny::renderUI({
-    if (base::identical(input$densSpeciesType, "Pick") &&
-        (base::is.null(input$densSpecies) || base::length(input$densSpecies) == 0)) {
-      make_pick_message()
-    } else { NULL }
-  })
+    if (base::identical(input$densSpeciesType, "Pick") && (base::is.null(input$densSpecies) || base::length(input$densSpecies) == 0)) {make_pick_message()
+    } else { NULL }})
   
   output$densTableMessage <- shiny::renderUI({
-    if (base::identical(input$densSpeciesType, "Pick") &&
-        (base::is.null(input$densSpecies) || base::length(input$densSpecies) == 0)) {
-      make_pick_message()
-    } else { NULL }
-  })
+    if (base::identical(input$densSpeciesType, "Pick") && (base::is.null(input$densSpecies) || base::length(input$densSpecies) == 0)) {make_pick_message()
+    } else { NULL }})
   
   output$IVMessage <- shiny::renderUI({
-    if (base::identical(input$IVSpeciesType, "Pick") &&
-        (base::is.null(input$IVSpecies) || base::length(input$IVSpecies) == 0)) {
-      make_pick_message()
-    } else { NULL }
-  })
+    if (base::identical(input$IVSpeciesType, "Pick") && (base::is.null(input$IVSpecies) || base::length(input$IVSpecies) == 0)) {make_pick_message()
+    } else { NULL }})
   
   output$tsMessageTable <- shiny::renderUI({
-    if (base::identical(input$tsSpeciesType, "Pick") &&
-        (base::is.null(input$tsSpecies) || base::length(input$tsSpecies) == 0)) {
-      make_pick_message()
-    } else { NULL }
-  })
+    if (base::is.null(input$tsPark) || !base::nzchar(input$tsPark)) {make_pick_message()
+    } else if (base::identical(input$tsSpeciesType, "Pick") && (base::is.null(input$tsSpecies) || base::length(input$tsSpecies) == 0)) {make_pick_message()
+    } else { NULL }})
   
   
   #### Species list plot control ####
@@ -4685,11 +4464,6 @@ shiny::shinyServer(function(input,output,session){
       NPSForVeg::getPlants(object=VEGDATA[[input$SpListPark]], group="herbs", plots=SpListPlotUse())$Latin_Name
     ))
   })
-  
-  decapitalize <- function(string) {     ########### used to hack around sorting/encoding issues
-    base::substr(string, 1, 1) <- base::toupper(base::substr(string, 1, 1))
-    base::return(string)
-  }
   
   CommonList <- shiny::reactive({
     fmt_common(NPSForVeg::getPlantNames(object = VEGDATA[[input$SpListPark]],
