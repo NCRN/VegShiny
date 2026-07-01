@@ -416,7 +416,26 @@ shiny::shinyServer(function(input,output,session){
         zoom = 9
       ) %>%
       leaflet::setMaxBounds(
-        lng1 = bounds$LongW, lng2 = bounds$LongE, lat1 = bounds$LatS, lat2 = bounds$LatN)})
+        lng1 = bounds$LongW, lng2 = bounds$LongE, lat1 = bounds$LatS, lat2 = bounds$LatN) %>%
+      htmlwidgets::onRender("
+      function(el, x) {
+        var map = this;
+        var infoControl = L.control({position: 'topleft'});
+        infoControl.onAdd = function(map) {
+          var div = L.DomUtil.create('div', 'leaflet-bar map-info-leaflet-control');
+          div.innerHTML = '<a href=\"#\" title=\"About the map\" style=\"display:flex; align-items:center; justify-content:center; font-weight:bold; font-size:16px;\">i</a>';
+          L.DomEvent.disableClickPropagation(div);
+          L.DomEvent.on(div, 'click', function(e) {
+            L.DomEvent.preventDefault(e);
+            $('#mapInfoOverlay').addClass('active');
+            $('#mapInfoBox').addClass('active');
+          });
+          return div;
+        };
+        infoControl.addTo(map);
+      }
+    ")
+  })
   #       %>%
   # Optional: enable wheel zoom only while hovering (desktop), auto-disable on leave
   #      onRender("
@@ -2350,29 +2369,18 @@ shiny::shinyServer(function(input,output,session){
       htmltools::tags$div(
         style = "margin-bottom: 12px;",
         htmltools::tags$div(
-          id = "densReportHeader",
+          class = "report-header",
           style = "cursor: pointer; font-size: 13px; font-weight: bold; padding: 8px 12px;
-                 background-color: #f8f9fa; border: 1px solid #dee2e6; border-radius: 6px;
-                 user-select: none; display: flex; align-items: center; gap: 6px;",
-          onclick = "var b = document.getElementById('densReportBody');
-                   var c = document.getElementById('densReportCaret');
-                   if (b.style.display === 'none') {
-                     b.style.display = 'block';
-                     c.style.transform = 'rotate(0deg)';
-                   } else {
-                     b.style.display = 'none';
-                     c.style.transform = 'rotate(-90deg)';
-                   }",
-          htmltools::tags$span(
-            id = "densReportCaret",
-            style = "display: inline-block; transition: transform 0.2s ease; transform: rotate(-90deg);",
-            "\u25bc"),
-          "Summary Report"),
+               background-color: #f8f9fa; border: 1px solid #dee2e6; border-radius: 6px;
+               user-select: none; display: flex; align-items: center; gap: 6px;",
+          htmltools::tags$span(class = "report-caret", "\u25bc"),
+          "Summary Report"
+        ),
         htmltools::tags$div(
-          id = "densReportBody",
-          style = "display: none; padding: 12px 16px; background-color: #f8f9fa;
-                 border: 1px solid #dee2e6; border-top: none;
-                 border-radius: 0 0 6px 6px; font-size: 13px; line-height: 1.8;",
+          class = "report-body",
+          style = "padding: 0 16px; background-color: #f8f9fa;
+               border: 1px solid #dee2e6; border-top: none;
+               border-radius: 0 0 6px 6px; font-size: 13px; line-height: 1.8;",
           txt)))})
   
   output$densReportTable <- shiny::renderUI({
@@ -2382,29 +2390,18 @@ shiny::shinyServer(function(input,output,session){
       htmltools::tags$div(
         style = "margin-bottom: 12px;",
         htmltools::tags$div(
-          id = "densReportHeaderTable",
+          class = "report-header",
           style = "cursor: pointer; font-size: 13px; font-weight: bold; padding: 8px 12px;
-                 background-color: #f8f9fa; border: 1px solid #dee2e6; border-radius: 6px;
-                 user-select: none; display: flex; align-items: center; gap: 6px;",
-          onclick = "var b = document.getElementById('densReportBodyTable');
-                   var c = document.getElementById('densReportCaretTable');
-                   if (b.style.display === 'none') {
-                     b.style.display = 'block';
-                     c.style.transform = 'rotate(0deg)';
-                   } else {
-                     b.style.display = 'none';
-                     c.style.transform = 'rotate(-90deg)';
-                   }",
-          htmltools::tags$span(
-            id = "densReportCaretTable",
-            style = "display: inline-block; transition: transform 0.2s ease; transform: rotate(-90deg);",
-            "\u25bc"),
-          "Summary Report"),
+               background-color: #f8f9fa; border: 1px solid #dee2e6; border-radius: 6px;
+               user-select: none; display: flex; align-items: center; gap: 6px;",
+          htmltools::tags$span(class = "report-caret", "\u25bc"),
+          "Summary Report"
+        ),
         htmltools::tags$div(
-          id = "densReportBodyTable",
-          style = "display: none; padding: 12px 16px; background-color: #f8f9fa;
-                 border: 1px solid #dee2e6; border-top: none;
-                 border-radius: 0 0 6px 6px; font-size: 13px; line-height: 1.8;",
+          class = "report-body",
+          style = "padding: 0 16px; background-color: #f8f9fa;
+               border: 1px solid #dee2e6; border-top: none;
+               border-radius: 0 0 6px 6px; font-size: 13px; line-height: 1.8;",
           txt)))})
   
   
@@ -2630,7 +2627,7 @@ shiny::shinyServer(function(input,output,session){
     
     if (input$densTop >= 33) {
       "Note: The plot cannot display more than 32 species names at a time. All species are represented on the figure, but not all species names are shown in the plot below. 
-      To view all the species names and data, select the data table tab."
+      To view all the species names and data, open the summary report or select the data table tab."
     } else {NULL}})
   
   densLimitWarningDismissed <- shiny::reactiveVal(FALSE)
@@ -3723,29 +3720,18 @@ shiny::shinyServer(function(input,output,session){
       htmltools::tags$div(
         style = "margin-bottom: 12px;",
         htmltools::tags$div(
-          id = "tsReportHeader",
+          class = "report-header",
           style = "cursor: pointer; font-size: 13px; font-weight: bold; padding: 8px 12px;
-                 background-color: #f8f9fa; border: 1px solid #dee2e6; border-radius: 6px;
-                 user-select: none; display: flex; align-items: center; gap: 6px;",
-          onclick = "var b = document.getElementById('tsReportBody');
-                   var c = document.getElementById('tsReportCaret');
-                   if (b.style.display === 'none') {
-                     b.style.display = 'block';
-                     c.style.transform = 'rotate(0deg)';
-                   } else {
-                     b.style.display = 'none';
-                     c.style.transform = 'rotate(-90deg)';
-                   }",
-          htmltools::tags$span(
-            id = "tsReportCaret",
-            style = "display: inline-block; transition: transform 0.2s ease; transform: rotate(-90deg);",
-            "\u25bc"),
-          "Summary Report"),
+               background-color: #f8f9fa; border: 1px solid #dee2e6; border-radius: 6px;
+               user-select: none; display: flex; align-items: center; gap: 6px;",
+          htmltools::tags$span(class = "report-caret", "\u25bc"),
+          "Summary Report"
+        ),
         htmltools::tags$div(
-          id = "tsReportBody",
-          style = "display: none; padding: 12px 16px; background-color: #f8f9fa;
-                 border: 1px solid #dee2e6; border-top: none;
-                 border-radius: 0 0 6px 6px; font-size: 13px; line-height: 1.8;",
+          class = "report-body",
+          style = "padding: 0 16px; background-color: #f8f9fa;
+               border: 1px solid #dee2e6; border-top: none;
+               border-radius: 0 0 6px 6px; font-size: 13px; line-height: 1.8;",
           txt)))
   })
   
@@ -3756,29 +3742,18 @@ shiny::shinyServer(function(input,output,session){
       htmltools::tags$div(
         style = "margin-bottom: 12px;",
         htmltools::tags$div(
-          id = "tsReportHeaderTable",
+          class = "report-header",
           style = "cursor: pointer; font-size: 13px; font-weight: bold; padding: 8px 12px;
-                 background-color: #f8f9fa; border: 1px solid #dee2e6; border-radius: 6px;
-                 user-select: none; display: flex; align-items: center; gap: 6px;",
-          onclick = "var b = document.getElementById('tsReportBodyTable');
-                   var c = document.getElementById('tsReportCaretTable');
-                   if (b.style.display === 'none') {
-                     b.style.display = 'block';
-                     c.style.transform = 'rotate(0deg)';
-                   } else {
-                     b.style.display = 'none';
-                     c.style.transform = 'rotate(-90deg)';
-                   }",
-          htmltools::tags$span(
-            id = "tsReportCaretTable",
-            style = "display: inline-block; transition: transform 0.2s ease; transform: rotate(-90deg);",
-            "\u25bc"),
-          "Summary Report"),
+               background-color: #f8f9fa; border: 1px solid #dee2e6; border-radius: 6px;
+               user-select: none; display: flex; align-items: center; gap: 6px;",
+          htmltools::tags$span(class = "report-caret", "\u25bc"),
+          "Summary Report"
+        ),
         htmltools::tags$div(
-          id = "tsReportBodyTable",
-          style = "display: none; padding: 12px 16px; background-color: #f8f9fa;
-                 border: 1px solid #dee2e6; border-top: none;
-                 border-radius: 0 0 6px 6px; font-size: 13px; line-height: 1.8;",
+          class = "report-body",
+          style = "padding: 0 16px; background-color: #f8f9fa;
+               border: 1px solid #dee2e6; border-top: none;
+               border-radius: 0 0 6px 6px; font-size: 13px; line-height: 1.8;",
           txt)))
   })
   
@@ -4194,29 +4169,18 @@ shiny::shinyServer(function(input,output,session){
       htmltools::tags$div(
         style = "margin-bottom: 12px;",
         htmltools::tags$div(
-          id = "ivReportHeader",
+          class = "report-header",
           style = "cursor: pointer; font-size: 13px; font-weight: bold; padding: 8px 12px;
-                 background-color: #f8f9fa; border: 1px solid #dee2e6; border-radius: 6px;
-                 user-select: none; display: flex; align-items: center; gap: 6px;",
-          onclick = "var b = document.getElementById('ivReportBody');
-                   var c = document.getElementById('ivReportCaret');
-                   if (b.style.display === 'none') {
-                     b.style.display = 'block';
-                     c.style.transform = 'rotate(0deg)';
-                   } else {
-                     b.style.display = 'none';
-                     c.style.transform = 'rotate(-90deg)';
-                   }",
-          htmltools::tags$span(
-            id = "ivReportCaret",
-            style = "display: inline-block; transition: transform 0.2s ease; transform: rotate(-90deg);",
-            "\u25bc"),
-          "Summary Report"),
+               background-color: #f8f9fa; border: 1px solid #dee2e6; border-radius: 6px;
+               user-select: none; display: flex; align-items: center; gap: 6px;",
+          htmltools::tags$span(class = "report-caret", "\u25bc"),
+          "Summary Report"
+        ),
         htmltools::tags$div(
-          id = "ivReportBody",
-          style = "display: none; padding: 12px 16px; background-color: #f8f9fa;
-                 border: 1px solid #dee2e6; border-top: none;
-                 border-radius: 0 0 6px 6px; font-size: 13px; line-height: 1.8;",
+          class = "report-body",
+          style = "padding: 0 16px; background-color: #f8f9fa;
+               border: 1px solid #dee2e6; border-top: none;
+               border-radius: 0 0 6px 6px; font-size: 13px; line-height: 1.8;",
           txt)))})
   
   output$ivReportTable <- shiny::renderUI({
@@ -4226,29 +4190,18 @@ shiny::shinyServer(function(input,output,session){
       htmltools::tags$div(
         style = "margin-bottom: 12px;",
         htmltools::tags$div(
-          id = "ivReportHeaderTable",
+          class = "report-header",
           style = "cursor: pointer; font-size: 13px; font-weight: bold; padding: 8px 12px;
-                 background-color: #f8f9fa; border: 1px solid #dee2e6; border-radius: 6px;
-                 user-select: none; display: flex; align-items: center; gap: 6px;",
-          onclick = "var b = document.getElementById('ivReportBodyTable');
-                   var c = document.getElementById('ivReportCaretTable');
-                   if (b.style.display === 'none') {
-                     b.style.display = 'block';
-                     c.style.transform = 'rotate(0deg)';
-                   } else {
-                     b.style.display = 'none';
-                     c.style.transform = 'rotate(-90deg)';
-                   }",
-          htmltools::tags$span(
-            id = "ivReportCaretTable",
-            style = "display: inline-block; transition: transform 0.2s ease; transform: rotate(-90deg);",
-            "\u25bc"),
-          "Summary Report"),
+               background-color: #f8f9fa; border: 1px solid #dee2e6; border-radius: 6px;
+               user-select: none; display: flex; align-items: center; gap: 6px;",
+          htmltools::tags$span(class = "report-caret", "\u25bc"),
+          "Summary Report"
+        ),
         htmltools::tags$div(
-          id = "ivReportBodyTable",
-          style = "display: none; padding: 12px 16px; background-color: #f8f9fa;
-                 border: 1px solid #dee2e6; border-top: none;
-                 border-radius: 0 0 6px 6px; font-size: 13px; line-height: 1.8;",
+          class = "report-body",
+          style = "padding: 0 16px; background-color: #f8f9fa;
+               border: 1px solid #dee2e6; border-top: none;
+               border-radius: 0 0 6px 6px; font-size: 13px; line-height: 1.8;",
           txt)))})
   
   
@@ -4301,7 +4254,7 @@ shiny::shinyServer(function(input,output,session){
     
     if (input$IVTop >= 35) {
       "Note: The plot cannot display more than 34 species names at a time. All species are represented on the figure, but not all species names are shown in the plot below. 
-      To view all the species names and data, select the data table tab."
+      To view all the species names and data, open the summary report or select the data table tab."
     } else {NULL}})
   
   ivLimitWarningDismissed <- shiny::reactiveVal(FALSE)
