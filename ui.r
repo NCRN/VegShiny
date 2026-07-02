@@ -712,9 +712,9 @@ shiny::tabPanel(
 
 ##################### About
     tabPanel(
-      tags$div(
+      htmltools::tags$div(
         title="About the project", "About"),
-      tags$base(target="_blank"),
-      includeHTML("www/AboutTab.html") 
+      htmltools::tags$base(target="_blank"),
+      htmltools::includeHTML("www/AboutTab.html") 
       )#end About menu
 )#end shiny::navbarPage()
