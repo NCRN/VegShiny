@@ -721,7 +721,7 @@ htmltools::includeHTML("www/google-analytics.html")
                                        #htmltools::tags$div(title="Select the four year period you want to work with.", shiny::sliderInput(inputId="MapYear", 
                                        #     label="Display data from the 4 years ending:", min=YEARS$Start+YEARS$Range-1, max=YEARS$End, value=YEARS$End,
                                        #    sep="", step=1,ticks=T)),
-                        ),
+                        ), 
                         
                         #### Zoom Controls ####
                         htmltools::div(id="ZoomPanel", class="panel panel-default well controls",
