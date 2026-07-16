@@ -40,6 +40,86 @@ fmt_common <- function(x) {base::ifelse(base::is.na(x) | !base::nzchar(base::tri
                                                      base::tolower(base::substr(base::trimws(x), 2, 
                                                                                 base::nchar(base::trimws(x))))))}
 
+buildPlotlyTitleLegend <- function(title_text, font_size, screen_width, legend_labels = base::character(0), plot_height = 600, smooth_breakpoint = FALSE) {
+  sw <- if (!base::is.null(screen_width)) screen_width else 1200
+  is_sm <- sw < 768
+  
+  if (smooth_breakpoint) {
+    sm_blend <- base::max(0, base::min(1, (768 - sw) / (768 - 600)))
+    title_sz <- base::round((font_size + 10) - (6 * sm_blend))
+    legend_sz <- base::round((font_size + 3) - (3 * sm_blend))
+    left_m <- base::round(140 - (60 * sm_blend))
+  } else {
+    title_sz <- if (is_sm) font_size + 4  else font_size + 10
+    legend_sz <- if (is_sm) font_size else font_size + 3
+    left_m <- if (is_sm) 80 else 140
+  }
+  
+  wrap_w_title <- base::max(24, base::floor((sw * 0.85 - left_m) / (title_sz * 0.6)))
+  title_wrapped <- base::gsub("\n", "<br>", stringr::str_wrap(title_text, width = wrap_w_title))
+  n_title_lines <- base::length(base::gregexpr("<br>", title_wrapped)[[1]]) + 1
+  title_band <- 10 + n_title_lines * (title_sz + 4)
+  
+  n_entries <- base::max(1, base::length(legend_labels))
+  usable_w <- sw * 0.85 - left_m
+  
+  if (n_entries <= 3) {
+    entry_w <- base::max(90, base::floor(usable_w / n_entries))
+    entries_per_row <- 1
+  } else {
+    longest_chars <- base::max(base::nchar(base::gsub("<[^>]+>", "", base::as.character(legend_labels))))
+    entry_w <- base::min(usable_w, base::max(70, longest_chars * legend_sz * 0.58 + 30))
+    entries_per_row <- base::max(1, base::min(n_entries, base::floor(usable_w / entry_w)))
+  }
+  
+  wrap_w_legend <- base::max(12, base::floor(entry_w / (legend_sz * 0.6)))
+  wrapped_legend <- base::lapply(legend_labels, function(lbl) {
+    base::gsub("\n", "<br>", stringr::str_wrap(lbl, width = wrap_w_legend))})
+  legend_lines <- if (base::length(wrapped_legend) == 0) {
+    base::numeric(0)
+  } else {
+    base::sapply(wrapped_legend, function(lbl) {
+      if (base::grepl("<br>", lbl)) base::length(base::gregexpr("<br>", lbl)[[1]]) + 1 else 1})
+  }
+  max_lines_per_entry <- if (base::length(legend_lines) == 0) 1 else base::max(1, base::max(legend_lines))
+  
+  n_rows <- base::ceiling(n_entries / entries_per_row)
+  leg_rows <- if (base::length(legend_lines) == 0) {
+    0
+  } else if (n_entries <= 3) {
+    base::sum(legend_lines)
+  } else {
+    n_rows * max_lines_per_entry
+  }
+  
+  narrowness <- base::max(0, base::min(1, (491 - sw) / (491 - 320)))
+  row_h <- base::ceiling(legend_sz * 1.55)
+  legend_band <- 8 + leg_rows * row_h + (6 * narrowness)
+  
+  if (n_entries > 3) legend_band <- legend_band * 1.4
+  
+  gap <- 10 + 8 * narrowness
+  top_m <- title_band + legend_band + gap
+  
+  total_height <- base::max(plot_height, 450 + top_m)
+  
+  legend_cfg <- base::list(traceorder = "reversed", font = base::list(size = legend_sz),
+                           orientation = "h", xref = "paper", x = 0.5, xanchor = "center",
+                           yref = "container", y = 1 - (title_band + 10 + legend_band * 0.5) / total_height, yanchor = "middle")
+  if (n_entries > 3) {
+    legend_cfg$entrywidth <- entry_w
+    legend_cfg$entrywidthmode <- "pixels"
+  }
+  
+  base::list(
+    title = base::list(text = title_wrapped, font = base::list(size = title_sz),
+                       xref = "paper", x = 0.5, xanchor = "center",
+                       yref = "container", y = 1 - (title_band * 0.5) / total_height, yanchor = "middle"),
+    legend = legend_cfg,
+    margin = base::list(t = top_m, l = left_m, r = 40, b = 50),
+    legend_labels = wrapped_legend,
+    height = total_height)}
+
 PLACEHOLDER_PHOTOS <- base::list.files(path = "www/photos/", pattern = "\\.(jpg|jpeg)$", ignore.case = TRUE)
 
 randomPlaceholderImg <- function() {
@@ -98,6 +178,39 @@ shiny::shinyServer(function(input,output,session){
   output$spTableImage <- shiny::renderUI({input$SpListPark; input$SpListType
     randomPlaceholderImg()})
   
+  #### disable font size sliders on narrow screens ####
+  shiny::observe({
+    sw <- input$screenW
+    small_screen <- !base::is.null(sw) && sw < 1386
+    
+    if (small_screen) {
+      shiny::updateSliderInput(session, "densFontSize", value = 12)
+      shiny::updateSliderInput(session, "tsFontSize", value = 12)
+      shiny::updateSliderInput(session, "IVFontSize", value = 12)}
+    
+    session$sendCustomMessage("toggleSliderDisable", base::list(
+      ids = base::c("densFontSize", "tsFontSize", "IVFontSize"),
+      disable = small_screen))})
+  
+  #### font size disabled notice ####
+  fontSizeDisabledMsg <- shiny::reactive({
+    sw <- input$screenW
+    small_screen <- !base::is.null(sw) && sw < 1386
+    if (small_screen) {
+      htmltools::tags$div(
+        style = "font-size: 11px; color: #888; font-style: italic; margin-top: 2px; width: 150px; text-align: center;",
+        "Font size adjustment is available on larger screens.")
+    } else { NULL }
+  })
+  
+  output$densFontSizeNotice <- shiny::renderUI({ fontSizeDisabledMsg() })
+  output$tsFontSizeNotice   <- shiny::renderUI({ fontSizeDisabledMsg() })
+  output$IVFontSizeNotice   <- shiny::renderUI({ fontSizeDisabledMsg() })
+  
+  shiny::outputOptions(output, "densFontSizeNotice", suspendWhenHidden = FALSE)
+  shiny::outputOptions(output, "tsFontSizeNotice", suspendWhenHidden = FALSE)
+  shiny::outputOptions(output, "IVFontSizeNotice", suspendWhenHidden = FALSE)
+  
   ####  Map Panel  ####
   
   #### toggles ####
@@ -117,7 +230,8 @@ shiny::shinyServer(function(input,output,session){
     shiny::selectizeInput(inputId="MapPark", label="Filter species list by park:",
                           choices = base::c("All Parks" = "All", PARKLIST),
                           selected = NULL,
-                          options = base::list(placeholder = "Select a park", onInitialize = base::I('function() { this.setValue(""); }')))})
+                          options = base::list(placeholder = "Select a park",
+                                               onInitialize = base::I('function() { this.setValue(""); }')))})
   
   # Data control
   ValuesUse<-shiny::reactive({
@@ -137,7 +251,8 @@ shiny::shinyServer(function(input,output,session){
   
   output$PlantValueControl<-shiny::renderUI({
     shiny::selectizeInput(inputId="MapValues", label="Data to Map:", choices=if (base::is.null(ValuesUse())) base::character(0) else ValuesUse(), 
-                          selected = "", options = base::list(placeholder = "Select a data type", onInitialize = base::I('function() { this.setValue(""); }')))})
+                          selected = "", options = base::list(placeholder = "Select a data type",
+                                                              onInitialize = base::I('function() { this.setValue(""); }')))})
   
   
   #### Calculations ####
@@ -159,9 +274,9 @@ shiny::shinyServer(function(input,output,session){
   output$MapCycleControl<-shiny::renderUI({
     shiny::req(DATACYCLES)
     shiny::selectizeInput(inputId="MapCycles", label="Display data from years:", 
-                          choices=base::rev(stats::setNames(base::as.character(DATACYCLES$Cycle), base::paste0(DATACYCLES$Name,":",
-                                                                                                               DATACYCLES$YearStart,"-",DATACYCLES$YearEnd))),
-                          selected = NULL, options = base::list(placeholder = "Select a cycle", onInitialize = base::I('function() { this.setValue(""); }')))})
+                          choices=base::rev(stats::setNames(base::as.character(DATACYCLES$Cycle), base::paste0(DATACYCLES$Name,":", DATACYCLES$YearStart,"-",DATACYCLES$YearEnd))),
+                          selected = NULL, options = base::list(placeholder = "Select a cycle",
+                                                                onInitialize = base::I('function() { this.setValue(""); }')))})
   
   MapYears <- shiny::reactive({shiny::req(input$MapCycles)
     year_start <- DATACYCLES %>% dplyr::filter(Cycle == input$MapCycles) %>% dplyr::pull(YearStart)
@@ -194,7 +309,7 @@ shiny::shinyServer(function(input,output,session){
   
   # Track whether a reset is in progress
   groupNoData <- shiny::reactiveVal(FALSE)
-  
+
   shiny::observeEvent(
     base::list(input$MapPark, input$MapCycles),
     {groupNoData(FALSE)},
@@ -260,14 +375,14 @@ shiny::shinyServer(function(input,output,session){
         input$MapSpecies)
       if (base::isTRUE(input$MapGroup == "trees")) shiny::req(input$TreeStatus)
       
-      any_real_input <- !all(c(
-        input$MapGroup   %in% base::c("", NULL),
-        input$MapValues  %in% base::c("", NULL),
-        input$MapCycles  %in% base::c("", NULL),
-        input$MapSpecies %in% base::c("", NULL)
-      ))
-      if (any_real_input) {
-        showAllPlots(FALSE)}
+        any_real_input <- !all(c(
+          input$MapGroup   %in% base::c("", NULL),
+          input$MapValues  %in% base::c("", NULL),
+          input$MapCycles  %in% base::c("", NULL),
+          input$MapSpecies %in% base::c("", NULL)
+        ))
+        if (any_real_input) {
+          showAllPlots(FALSE)}
       
       # Do nothing if all inputs still match defaults
       default_cycle <- base::as.character(DATACYCLES$Cycle[base::nrow(DATACYCLES)])
@@ -642,10 +757,10 @@ baseLayerControl.addTo(map);
 
 }
 ", NPSBASIC, NPSIMAGERY, NPSLIGHT, NPSSLATE,
-base::mean(base::c(bounds$LongW, bounds$LongE)),
-base::mean(base::c(bounds$LatS, bounds$LatN)),
-NPSBASIC, NPSIMAGERY, NPSLIGHT, NPSSLATE))  
-  })
+  base::mean(base::c(bounds$LongW, bounds$LongE)),
+  base::mean(base::c(bounds$LatS, bounds$LatN)),
+  NPSBASIC, NPSIMAGERY, NPSLIGHT, NPSSLATE))  
+})
   #       %>%
   # Optional: enable wheel zoom only while hovering (desktop), auto-disable on leave
   #      onRender("
@@ -829,7 +944,7 @@ NPSBASIC, NPSIMAGERY, NPSLIGHT, NPSSLATE))
     #   vegdata_df <- selected_object()
     
     shiny::req(input$MapGroup)
-    
+
     actual_slot_name <- PLANTSLOTLOOKUP[[input$MapGroup]]
     shiny::validate(
       shiny::need(!base::is.null(actual_slot_name), "Selected plant group is not available in this network")
@@ -1151,8 +1266,8 @@ NPSBASIC, NPSIMAGERY, NPSLIGHT, NPSSLATE))
   
   # Zoom map when park filter changes
   
-  shiny::observeEvent(input$MapPark, {
-    shiny::req(input$MapPark, input$MapPark != "")
+shiny::observeEvent(input$MapPark, {
+  shiny::req(input$MapPark, input$MapPark != "")
     zoom_target <- if (!base::is.null(input$MapPark) && input$MapPark != "" && input$MapPark != "All") {input$MapPark
     } else {NETWORK}
     
@@ -1167,7 +1282,7 @@ NPSBASIC, NPSIMAGERY, NPSLIGHT, NPSSLATE))
         lng2 = bounds_row$LongE,
         lat2 = bounds_row$LatN)
   }, ignoreInit = TRUE)
-  
+
   # Add layer legends 
   
   shiny::observe({shiny::req(input$MapLayer)
@@ -1324,7 +1439,7 @@ NPSBASIC, NPSIMAGERY, NPSLIGHT, NPSSLATE))
         )
       }
   })
-  
+
   
   #Build warning labels
   disableWarnings <- shiny::reactive({
@@ -1423,7 +1538,7 @@ NPSBASIC, NPSIMAGERY, NPSLIGHT, NPSSLATE))
     removed_verb <- if (removed_n == 1) "was" else "were"
     location_word <- if (removed_n == 1) "this plot" else "these plots"
     status_label <- dplyr::case_when(input$TreeStatus == "all"  ~ "", input$TreeStatus == "snag" ~ "dead", TRUE ~ input$TreeStatus)
-    
+
     msg <- base::paste0("Warning: ", species_name, " was observed at ", filtered_n, " ", filtered_plot_word,
                         " under the current filters. ", removed_n, " of 430 plots ", removed_verb, 
                         " removed because NCRN has no recorded ", status_label, " ", species_name, " observations for ", 
@@ -1500,7 +1615,7 @@ NPSBASIC, NPSIMAGERY, NPSLIGHT, NPSSLATE))
       park_label <- if (base::is.null(input$MapPark) || input$MapPark %in%base::c("", "All")) {
         "any monitored park"
       } else { NPSForVeg::getNames(VEGDATA[[input$MapPark]], "long") }
-      
+
       
       cycle_label <- if (!base::is.null(input$MapCycles) && input$MapCycles != "") {
         base::paste0("Cycle ", input$MapCycles)
@@ -1577,7 +1692,7 @@ NPSBASIC, NPSIMAGERY, NPSLIGHT, NPSSLATE))
   
   
   
-  
+
   
   
   
@@ -1613,12 +1728,6 @@ NPSBASIC, NPSIMAGERY, NPSLIGHT, NPSSLATE))
   
   
   #### Plots Tab ####
-  
-  #### toggles ####
-  shiny::observe({
-    shinyjs::onclick(id="densGraphButton", expr=shinyjs::toggle(id="GraphOptionsPanel"))
-    shinyjs::onclick(id="CloseDisplayOptions", expr= shinyjs::toggle(id="GraphOptionsPanel"))
-  })
   
   #### Park Control for Density plot  ####
   output$densParkControl<-shiny::renderUI({
@@ -1682,8 +1791,8 @@ NPSBASIC, NPSIMAGERY, NPSLIGHT, NPSSLATE))
     base::switch(input$densSpeciesType,
                  Common= {max_sp <- densSpeciesCount()
                  htmltools::tags$div(title="Select the maximum number of species to plot", 
-                                     shiny::sliderInput(inputId="densTop",label="Maximum number of species to plot (in order of mean value):",
-                                                        min = 1, max = base::max(1, max_sp, na.rm = TRUE), value = base::min(5, max_sp), step = 1, ticks = FALSE))},
+                                             shiny::sliderInput(inputId="densTop",label="Maximum number of species to plot (in order of mean value):",
+                                                                min = 1, max = base::max(1, max_sp, na.rm = TRUE), value = base::min(5, max_sp), step = 1, ticks = FALSE))},
                  Pick= if(base::is.null(input$densPark) || base::nchar(input$densPark)==0) { base::return() }
                  else{
                    htmltools::tags$div(title="Click here to pick the species you want to graph",
@@ -2124,7 +2233,7 @@ NPSBASIC, NPSIMAGERY, NPSLIGHT, NPSSLATE))
         m <- stats::weighted.mean(d$Mean, w, na.rm = TRUE)
         se_comb <- base::sqrt(1 / base::sum(w, na.rm = TRUE))
         base::data.frame(Latin_Name = sp, Mean = m, Lower.95 = m - 1.96 * se_comb, Upper.95 = m + 1.96 * se_comb, stringsAsFactors = FALSE)}})
-    
+
     dplyr::bind_rows(result_rows)
   }##########################################
   
@@ -2133,7 +2242,7 @@ NPSBASIC, NPSIMAGERY, NPSLIGHT, NPSSLATE))
     cmp <- DensCompare()
     if (base::is.null(cmp) || (base::is.atomic(cmp) && base::is.na(cmp))) base::return(NULL)
     shiny::req(base::is.list(cmp), cmp$group, cmp$years, cmp$values)
-    
+
     if (base::identical(cmp$park, "ALL")) {
       raw <- dens_all_parks(
         VEGDATA = VEGDATA,
@@ -2161,7 +2270,7 @@ NPSBASIC, NPSIMAGERY, NPSLIGHT, NPSSLATE))
       raw <- raw %>% dplyr::select(-dplyr::any_of("Park"))
       
     } else {
-      
+
       shiny::req(cmp$object)
       cmp_nplots <- base::tryCatch(
         base::nrow(NPSForVeg::getPlots(cmp$object, years = cmp$years, type = "all")),
@@ -2330,27 +2439,27 @@ NPSBASIC, NPSIMAGERY, NPSLIGHT, NPSSLATE))
                  None = base::return(base::paste(base_name, ":", grp_title, val_title, period1)),
                  Park = {if (base::is.null(input$ComparePark) || !base::nzchar(input$ComparePark)) {
                    base::paste(base_name, ":", grp_title, val_title, period1)
-                 } else if (base::identical(input$ComparePark, "ALL")) {
-                   base::paste(base_name, "vs. All Parks:", grp_title, val_title, period1)
-                 } else {cmp_obj  <- VEGDATA[[input$ComparePark]]
-                 cmp_name <- if (!base::is.null(cmp_obj)) {
-                   NPSForVeg::getNames(cmp_obj, "long")
-                 } else {input$ComparePark}
-                 base::paste(base_name, "vs.", cmp_name, ":", grp_title, val_title, period1)}},
+                   } else if (base::identical(input$ComparePark, "ALL")) {
+                     base::paste(base_name, "vs. All Parks:", grp_title, val_title, period1)
+                   } else {cmp_obj  <- VEGDATA[[input$ComparePark]]
+                   cmp_name <- if (!base::is.null(cmp_obj)) {
+                     NPSForVeg::getNames(cmp_obj, "long")
+                     } else {input$ComparePark}
+                     base::paste(base_name, "vs.", cmp_name, ":", grp_title, val_title, period1)}},
                  "Growth Stage" = base::return(
                    {stage_order <- base::c("seedlings", "saplings", "trees", "shseedlings", "shrubs")
-                   base_idx <- base::match(input$densGroup, stage_order)
-                   cmp_idx  <- base::match(input$CompareGroup, stage_order)
-                   if (base_idx <= cmp_idx) {base::paste(base_name, ":", grp_title, "vs.", compareTitleGroup(), val_title, period1)
-                   } else {base::paste(base_name, ":", compareTitleGroup(), "vs.", grp_title, val_title, period1)}}),
+                    base_idx <- base::match(input$densGroup, stage_order)
+                    cmp_idx  <- base::match(input$CompareGroup, stage_order)
+                    if (base_idx <= cmp_idx) {base::paste(base_name, ":", grp_title, "vs.", compareTitleGroup(), val_title, period1)
+                      } else {base::paste(base_name, ":", compareTitleGroup(), "vs.", grp_title, val_title, period1)}}),
                  Time = base::return(
                    {base_yr <- DATACYCLES$YearStart[DATACYCLES$Cycle == input$densCycles]
-                   cmp_yr <- DATACYCLES$YearStart[DATACYCLES$Cycle == input$compCycles]
-                   if (base_yr <= cmp_yr) {base::paste(base_name, ":", grp_title, val_title, period1, "vs.",
-                                                       base::paste0(base::as.character(base::min(compYears())), "-",
-                                                                    base::as.character(base::max(compYears()))))
-                   } else {base::paste(base_name, ":", grp_title, val_title, base::paste0(base::as.character(base::min(compYears())), "-",
-                                                                                          base::as.character(base::max(compYears()))), "vs.", period1)}}))})
+                    cmp_yr <- DATACYCLES$YearStart[DATACYCLES$Cycle == input$compCycles]
+                    if (base_yr <= cmp_yr) {base::paste(base_name, ":", grp_title, val_title, period1, "vs.",
+                                                        base::paste0(base::as.character(base::min(compYears())), "-",
+                                                                     base::as.character(base::max(compYears()))))
+                      } else {base::paste(base_name, ":", grp_title, val_title, base::paste0(base::as.character(base::min(compYears())), "-",
+                                                                                             base::as.character(base::max(compYears()))), "vs.", period1)}}))})
   
   ### generate dens warning label ###
   park_long_name <- function(park_key) {
@@ -2377,11 +2486,11 @@ NPSBASIC, NPSIMAGERY, NPSLIGHT, NPSSLATE))
     if (base::nrow(missing) == 0) base::return(NULL)
     
     base::list(n = base::nrow(missing), base_name = park_long_name(input$densPark), cmp_name = if (input$CompareType == "Park") {
-      if (base::identical(input$ComparePark, "ALL")) {"All Parks"
-      } else {park_long_name(input$ComparePark)}
-    } else if (input$CompareType == "Time") {"comparison period"
-    } else if (input$CompareType == "Growth Stage") {"comparison growth stage"
-    } else {"comparison dataset"})})
+        if (base::identical(input$ComparePark, "ALL")) {"All Parks"
+        } else {park_long_name(input$ComparePark)}
+      } else if (input$CompareType == "Time") {"comparison period"
+      } else if (input$CompareType == "Growth Stage") {"comparison growth stage"
+      } else {"comparison dataset"})})
   
   densWarningDismissed <- shiny::reactiveVal(FALSE)
   
@@ -2390,7 +2499,7 @@ NPSBASIC, NPSIMAGERY, NPSLIGHT, NPSSLATE))
     {densWarningDismissed(FALSE)})
   
   shiny::observeEvent(input$dismiss_dens_warning,
-                      {densWarningDismissed(TRUE)})
+    {densWarningDismissed(TRUE)})
   
   output$densGraphMessage <- shiny::renderUI({
     if (base::identical(input$densSpeciesType, "Pick") &&
@@ -2411,17 +2520,17 @@ NPSBASIC, NPSIMAGERY, NPSLIGHT, NPSSLATE))
     msg <- base::switch(input$CompareType, 
                         Park = base::paste0("Warning: ", n, " species in ", info$base_name, " ", verb, " not present in ", info$cmp_name, " (shown as 0 on the figure)."),
                         "Growth Stage" = {base_group <- base::switch(input$densGroup, trees = "tree", saplings = "sapling", seedlings = "seedling", 
-                                                                     shrubs = "shrub", shseedlings = "shrub seedling", input$densGroup)
-                        cmp_stage <- base::switch(input$CompareGroup, trees = "trees", saplings = "saplings", seedlings = "tree seedlings", 
-                                                  shrubs = "shrubs", shseedlings = "shrub seedlings", input$CompareGroup)
-                        base::paste0("Warning: ", n, " ", base_group, " species ", verb, "not present as ", cmp_stage, " in ", info$base_name, " (shown as 0 on the figure).")},
+                                                               shrubs = "shrub", shseedlings = "shrub seedling", input$densGroup)
+                                          cmp_stage <- base::switch(input$CompareGroup, trees = "trees", saplings = "saplings", seedlings = "tree seedlings", 
+                                                              shrubs = "shrubs", shseedlings = "shrub seedlings", input$CompareGroup)
+                                          base::paste0("Warning: ", n, " ", base_group, " species ", verb, "not present as ", cmp_stage, " in ", info$base_name, " (shown as 0 on the figure).")},
                         Time = {base_cycle <- DATACYCLES$Name[DATACYCLES$Cycle == input$densCycles]
-                        base_years <- base::paste0(DATACYCLES$YearStart[DATACYCLES$Cycle == input$densCycles], "-", DATACYCLES$YearEnd[DATACYCLES$Cycle == input$densCycles])
-                        cmp_cycle <- DATACYCLES$Name[DATACYCLES$Cycle == input$compCycles]
-                        cmp_years <- base::paste0(DATACYCLES$YearStart[DATACYCLES$Cycle == input$compCycles], "-", DATACYCLES$YearEnd[DATACYCLES$Cycle == input$compCycles])
-                        base::paste0("Warning: ", n, " species in ", info$base_name, " present in ", base_cycle, " (", base_years, ")",
-                                     " ", verb, " not present in ", cmp_cycle, " (", cmp_years, ")", " (shown as 0 on the figure).")})
-    htmltools::tags$div(
+                                base_years <- base::paste0(DATACYCLES$YearStart[DATACYCLES$Cycle == input$densCycles], "-", DATACYCLES$YearEnd[DATACYCLES$Cycle == input$densCycles])
+                                cmp_cycle <- DATACYCLES$Name[DATACYCLES$Cycle == input$compCycles]
+                                cmp_years <- base::paste0(DATACYCLES$YearStart[DATACYCLES$Cycle == input$compCycles], "-", DATACYCLES$YearEnd[DATACYCLES$Cycle == input$compCycles])
+                                base::paste0("Warning: ", n, " species in ", info$base_name, " present in ", base_cycle, " (", base_years, ")",
+                                             " ", verb, " not present in ", cmp_cycle, " (", cmp_years, ")", " (shown as 0 on the figure).")})
+  htmltools::tags$div(
       style = " padding: 10px 14px; margin-bottom: 10px; border: 1px solid #f5c2c7; background-color: #f8d7da; color: #842029; border-radius: 6px; position: relative;",
       msg, 
       htmltools::tags$button("×", style = "position: absolute; right: 10px; top: 5px; border: none; background: none; font-size: 18px; cursor: pointer;",
@@ -2480,20 +2589,20 @@ NPSBASIC, NPSIMAGERY, NPSLIGHT, NPSSLATE))
     # intro sentence
     intro <- if (base::identical(input$CompareType, "None")) {base::sprintf("Showing %d species of %s recorded at %s from %s.", n_sp, status_phrase, park_label, period)
     } else {base::switch(input$CompareType,
-                         Park = base::sprintf("Comparing %d species of %s at %s vs. %s (%s).", n_sp, status_phrase, park_label, cmp_label_intro, period),
-                         "Growth Stage" = {
-                           base_idx <- base::match(input$densGroup, stage_order)
-                           cmp_idx <- base::match(input$CompareGroup, stage_order)
-                           base_stage <- stage_labels[[input$densGroup]]
-                           cmp_stage <- stage_labels[[input$CompareGroup]]
-                           if (base_idx <= cmp_idx) {base::sprintf("Comparing %d species: %s vs. %s at %s (%s).", n_sp, base_stage, cmp_stage, park_label, period)
-                           } else {base::sprintf("Comparing %d species: %s vs. %s at %s (%s).", n_sp, cmp_stage, base_stage, park_label, period)}},
-                         Time = {
-                           base_yr <- DATACYCLES$YearStart[DATACYCLES$Cycle == input$densCycles]
-                           cmp_yr <- DATACYCLES$YearStart[DATACYCLES$Cycle == input$compCycles]
-                           if (base_yr <= cmp_yr) {base::sprintf("Comparing %d species of %s at %s: %s vs. %s.", n_sp, status_phrase, park_label, base_cycle_label, cmp_label_intro)
-                           } else {base::sprintf("Comparing %d species of %s at %s: %s vs. %s.", n_sp, status_phrase, park_label, cmp_label_intro, base_cycle_label)}},
-                         base::sprintf("Showing %d species of %s recorded at %s from %s.", n_sp, status_phrase, park_label, period))}
+                   Park = base::sprintf("Comparing %d species of %s at %s vs. %s (%s).", n_sp, status_phrase, park_label, cmp_label_intro, period),
+                   "Growth Stage" = {
+                     base_idx <- base::match(input$densGroup, stage_order)
+                     cmp_idx <- base::match(input$CompareGroup, stage_order)
+                     base_stage <- stage_labels[[input$densGroup]]
+                     cmp_stage <- stage_labels[[input$CompareGroup]]
+                     if (base_idx <= cmp_idx) {base::sprintf("Comparing %d species: %s vs. %s at %s (%s).", n_sp, base_stage, cmp_stage, park_label, period)
+                     } else {base::sprintf("Comparing %d species: %s vs. %s at %s (%s).", n_sp, cmp_stage, base_stage, park_label, period)}},
+                   Time = {
+                     base_yr <- DATACYCLES$YearStart[DATACYCLES$Cycle == input$densCycles]
+                     cmp_yr <- DATACYCLES$YearStart[DATACYCLES$Cycle == input$compCycles]
+                     if (base_yr <= cmp_yr) {base::sprintf("Comparing %d species of %s at %s: %s vs. %s.", n_sp, status_phrase, park_label, base_cycle_label, cmp_label_intro)
+                     } else {base::sprintf("Comparing %d species of %s at %s: %s vs. %s.", n_sp, status_phrase, park_label, cmp_label_intro, base_cycle_label)}},
+                   base::sprintf("Showing %d species of %s recorded at %s from %s.", n_sp, status_phrase, park_label, period))}
     
     # bullet points
     bullet_tags <- base::lapply(base::seq_len(n_sp), function(i) {
@@ -2526,8 +2635,8 @@ NPSBASIC, NPSIMAGERY, NPSLIGHT, NPSSLATE))
                                     else {cmp_obj <- VEGDATA[[input$ComparePark]]
                                     if (!base::is.null(cmp_obj)) NPSForVeg::getNames(cmp_obj, "long") else input$ComparePark}},
                                   "Growth Stage" = {lbl <- stage_labels[[input$CompareGroup]]
-                                  if (base::identical(input$densGroup, input$CompareGroup)) {base::paste0(lbl)
-                                  } else { lbl }},
+                                    if (base::identical(input$densGroup, input$CompareGroup)) {base::paste0(lbl)
+                                    } else { lbl }},
                                   Time = {row <- DATACYCLES[DATACYCLES$Cycle == input$compCycles, ]
                                   if (base::nrow(row) == 1L) base::paste0("Cycle ", row$Cycle, ": ", row$YearStart, "\u2013", row$YearEnd)
                                   else base::as.character(input$compCycles)}, "Comparison")
@@ -2554,8 +2663,8 @@ NPSBASIC, NPSIMAGERY, NPSLIGHT, NPSSLATE))
           base_row_label <- base::switch(input$CompareType,
                                          Park = park_label,
                                          "Growth Stage" = {lbl <- stage_labels[[input$densGroup]]
-                                         if (base::identical(input$densGroup, input$CompareGroup)) {base::paste0(lbl)
-                                         } else { lbl }},
+                                           if (base::identical(input$densGroup, input$CompareGroup)) {base::paste0(lbl)
+                                           } else { lbl }},
                                          Time = base_cycle_label,
                                          park_label)
           
@@ -2567,9 +2676,9 @@ NPSBASIC, NPSIMAGERY, NPSLIGHT, NPSSLATE))
           cmp_row <- if (base::identical(input$densSpeciesType, "All")) {df_cmp_clean
           } else {matched <- df_cmp_clean %>%
             dplyr::filter(if ("Latin" %in% base::names(df_cmp_clean)) {base::as.character(Latin) == base_latin
-            } else {base::as.character(Species) == sp})
-          if (base::nrow(matched) == 0) {df_cmp_clean %>% dplyr::filter(base::as.character(Species) == sp)
-          } else { matched }}
+              } else {base::as.character(Species) == sp})
+            if (base::nrow(matched) == 0) {df_cmp_clean %>% dplyr::filter(base::as.character(Species) == sp)
+            } else { matched }}
           
           cmp_str <- if (base::nrow(cmp_row) > 0 && !base::is.na(cmp_row$Mean[1]) && cmp_row$Mean[1] > 0) {
             cmp_mean <- base::round(cmp_row$Mean[1], 2)
@@ -2601,7 +2710,7 @@ NPSBASIC, NPSIMAGERY, NPSLIGHT, NPSSLATE))
         
       } else { NULL }
     } else { NULL }
-    
+
     htmltools::tagList(
       htmltools::tags$p(htmltools::tags$span(style = "font-size: 30px; font-weight: bold;", "Summary Report:")),
       htmltools::tags$p(style = "font-size: 15px;", htmltools::tags$strong(style = "font-size: 20px;", park_label), " \u2014 ", intro),
@@ -2744,23 +2853,19 @@ NPSBASIC, NPSIMAGERY, NPSLIGHT, NPSSLATE))
                                  "| <b>",cycle_display_cmp, "</b>",
                                  "| Plant Type:",group_display_base))
     
+    plotCfg <- buildPlotlyTitleLegend(
+      title_text = DensTitle(),
+      font_size = if (!base::is.null(input$densFontSize)) input$densFontSize else 12,
+      screen_width = if (!base::is.null(input$densPlotContainer_width)) input$densPlotContainer_width else input$screenW,
+      legend_labels = if (!base::is.null(df_cmp) && base::nrow(df_cmp) > 0) base::c(base_legend, cmp_legend) else base::c(base_legend))
+    
+    base_legend <- plotCfg$legend_labels[[1]]
+    if (!base::is.null(df_cmp) && base::nrow(df_cmp) > 0) cmp_legend <- plotCfg$legend_labels[[2]]
+    
     # graphing colors
     densBaseColor <- toHex(pickColor(input$densBaseColor, "blue"))
     densCmpColor <- toHex(pickColor(input$densCompareColor, "red"))
     densFontSize <- if (!base::is.null(input$densFontSize)) input$densFontSize else 12
-    
-    sw <- if (!base::is.null(input$screenW)) input$screenW else 1200
-    is_sm <- sw < 768
-    is_md <- sw >= 768 && sw < 1200
-    
-    # responsive geometry
-    title_sz <- if (is_sm) densFontSize + 4 else densFontSize + 10
-    legend_sz <- if (is_sm) densFontSize else densFontSize + 3
-    left_m <- if (is_sm) 80 else 140
-    
-    # responsive title wrap: chars-per-line scales to usable width
-    usable_px <- base::max(200, sw * 0.9 - left_m - 40)
-    wrap_w <- base::max(24, base::floor(usable_px / (title_sz * 0.6)))
     
     # error bar colors
     darken <- function(hex, factor = 0.6) {rgb <- grDevices::col2rgb(hex)
@@ -2779,20 +2884,20 @@ NPSBASIC, NPSIMAGERY, NPSLIGHT, NPSSLATE))
     p <- plotly::plot_ly()
     
     grp_order <- base::switch(input$CompareType,
-                              Time = {base_yr <- DATACYCLES$YearStart[DATACYCLES$Cycle == input$densCycles]
-                              cmp_yr <- DATACYCLES$YearStart[DATACYCLES$Cycle == input$compCycles]
-                              if (base_yr <= cmp_yr) base::c(cmp_legend, base_legend) else base::c(base_legend, cmp_legend)},
-                              "Growth Stage" = {stage_order <- base::c("seedlings", "saplings", "trees", "shseedlings", "shrubs")
-                              base_idx <- base::match(input$densGroup, stage_order)
-                              cmp_idx <- base::match(input$CompareGroup, stage_order)
-                              if (base_idx <= cmp_idx) base::c(cmp_legend, base_legend) else base::c(base_legend, cmp_legend)},
-                              base::c(cmp_legend, base_legend))
-    
+      Time = {base_yr <- DATACYCLES$YearStart[DATACYCLES$Cycle == input$densCycles]
+              cmp_yr <- DATACYCLES$YearStart[DATACYCLES$Cycle == input$compCycles]
+              if (base_yr <= cmp_yr) base::c(cmp_legend, base_legend) else base::c(base_legend, cmp_legend)},
+      "Growth Stage" = {stage_order <- base::c("seedlings", "saplings", "trees", "shseedlings", "shrubs")
+             base_idx <- base::match(input$densGroup, stage_order)
+             cmp_idx <- base::match(input$CompareGroup, stage_order)
+             if (base_idx <= cmp_idx) base::c(cmp_legend, base_legend) else base::c(base_legend, cmp_legend)},
+     base::c(cmp_legend, base_legend))
+
     for (grp in grp_order) {df_all <- df[df$group == grp, ]
-    bar_color <- if (grp == base_legend) densBaseColor else densCmpColor
-    err_color <- darken(bar_color)
-    
-    p <- p %>% plotly::add_trace(
+      bar_color <- if (grp == base_legend) densBaseColor else densCmpColor
+      err_color <- darken(bar_color)
+      
+      p <- p %>% plotly::add_trace(
       data = df_all,
       y = ~Species,
       x = ~Mean,
@@ -2824,38 +2929,11 @@ NPSBASIC, NPSIMAGERY, NPSLIGHT, NPSSLATE))
         color = err_color),
       legendgroup = "dens")}
     
-    #wrap_width <- dplyr::case_when(densFontSize >= 20 ~ 70, TRUE ~ 80)
-    DensTitleWrapped <- base::gsub("\n", "<br>", stringr::str_wrap(DensTitle(), width = wrap_w))
-    n_title_lines <- if (base::grepl("<br>", DensTitleWrapped)) {
-      base::length(base::gregexpr("<br>", DensTitleWrapped)[[1]]) + 1
-    } else 1
-    title_band <- 10 + n_title_lines * (title_sz + 4)
-    
-    leg_rows <- if (!base::is.null(df_cmp) && base::nrow(df_cmp) > 0) 2 else 1
-    legend_band <- 8 + leg_rows * (legend_sz + 6)
-    
-    gap <- 10   # space between title band and legend
-    H <- 600    # must match plotlyOutput height in the UI
-    top_m <- title_band + legend_band + gap
-    
     p <- p %>% plotly::layout(
       barmode = "group",
       showlegend = TRUE,
-      title = base::list(
-        text = DensTitleWrapped,
-        font = base::list(size = title_sz),
-        xref = "paper", x = 0.5, xanchor = "center",
-        yref = "container",
-        y = 1 - (title_band * 0.5) / H,
-        yanchor = "middle"),
-      legend = base::list(
-        traceorder = "reversed",
-        font = base::list(size = legend_sz),
-        orientation = "h",
-        xref = "paper", x = 0.5, xanchor = "center",
-        yref = "container",
-        y = 1 - (title_band + gap + legend_band * 0.5) / H,
-        yanchor = "middle"),
+      title = plotCfg$title,
+      legend = plotCfg$legend,
       xaxis = base::list(
         showgrid = TRUE,
         title = base::list(text = densYlabel(), font = base::list(size = densFontSize), standoff = 20)),
@@ -2864,7 +2942,8 @@ NPSBASIC, NPSIMAGERY, NPSLIGHT, NPSSLATE))
         showline = TRUE,
         title = base::list(text = "Species", font = base::list(size = densFontSize), standoff = 15),
         ticks = "outside", ticklabelposition = "outside"),
-      margin = base::list(t = top_m, l = left_m, r = 40, b = 50),
+      margin = plotCfg$margin,
+      height = plotCfg$height,
       font = base::list(size = densFontSize),
       autosize = TRUE)
     p
@@ -2872,29 +2951,15 @@ NPSBASIC, NPSIMAGERY, NPSLIGHT, NPSSLATE))
   
   ########## make dens plotly warning reactive correctly like iv example above ^^^, also check if it applies to compare plot too
   
-  
-  
-  # warning for plotly display
-  densSpeciesLimitWarning <- shiny::reactive({shiny::req(input$densTop)
-    
-    if (input$densTop >= 33) {
-      "Note: The plot cannot display more than 32 species names at a time. All species are represented on the figure, but not all species names are shown in the plot below. 
-      To view all the species names and data, open the summary report or select the data table tab."
-    } else {NULL}})
-  
-  densLimitWarningDismissed <- shiny::reactiveVal(FALSE)
-  shiny::observeEvent(base::list(input$densTop, input$densPark, input$densGroup, input$densCycles), {densLimitWarningDismissed(FALSE)})
-  shiny::observeEvent(input$dismiss_dens_limit_warning, {densLimitWarningDismissed(TRUE)})
-  
+  # footnote
   output$DensLimitWarning <- shiny::renderUI({
-    if (densLimitWarningDismissed()) base::return(NULL)
-    
-    msg <- densSpeciesLimitWarning()
-    if (base::is.null(msg)) base::return(NULL)
-    
-    htmltools::tags$div(style = "padding: 10px 14px; margin-bottom: 10px; border: 1px solid #ffe69c; background-color: #fff3cd; color: #664d03; border-radius: 6px; position: relative;", msg,
-                        htmltools::tags$button("\u00d7", style = "position: absolute; right: 10px; top: 5px; border: none; background: none; font-size: 18px; cursor: pointer;",
-                                               onclick = "Shiny.setInputValue('dismiss_dens_limit_warning', Math.random())"))})
+    shiny::req(
+      !base::is.null(input$densPark) && base::nzchar(input$densPark),
+      !(base::identical(input$densSpeciesType, "Pick") &&
+          (base::is.null(input$densSpecies) || base::length(input$densSpecies) == 0)))
+    htmltools::tags$div(
+      style = "font-size: 12px; color: #888; font-style: italic; margin-top: 6px; text-align: center;",
+      "* Note: Not all species names may be shown on the plot above. See the summary report or data table for the full list.")})
   
   ####### original graphs and file downloads #######
   #tempDensPlot<-shiny::reactive({
@@ -2956,8 +3021,8 @@ NPSBASIC, NPSIMAGERY, NPSLIGHT, NPSSLATE))
       
       cmp_name <- if (base::identical(input$ComparePark, "ALL")) {"All Parks"
       } else {cmp_obj <- VEGDATA[[input$ComparePark]]
-      if (!base::is.null(cmp_obj)) {NPSForVeg::getNames(cmp_obj, "long")
-      } else {input$ComparePark}}
+        if (!base::is.null(cmp_obj)) {NPSForVeg::getNames(cmp_obj, "long")
+        } else {input$ComparePark}}
       
       base::return(base::paste(base_name, "vs.", cmp_name, ":", grp_title, val_title, base_period, unit_suffix))}
     
@@ -2973,17 +3038,17 @@ NPSBASIC, NPSIMAGERY, NPSLIGHT, NPSSLATE))
         base::return(base::paste(base_name, ":", grp_title, "vs.", cmp_title, val_title, base_period, unit_suffix))
       } else {
         base::return(base::paste(base_name, ":", cmp_title, "vs.", grp_title, val_title, base_period, unit_suffix))}}
-    
+
     # time comparison selected
     if (input$CompareType == "Time") {cmp_period <- base::paste0(min(compYears()), "-", base::max(compYears()))
-    base_yr <- DATACYCLES$YearStart[DATACYCLES$Cycle == input$densCycles]
-    cmp_yr <- DATACYCLES$YearStart[DATACYCLES$Cycle == input$compCycles]
-    
-    if (base_yr <= cmp_yr) {
-      base::return(base::paste(base_name, ":", grp_title, val_title, base_period, "vs", cmp_period, unit_suffix))
-    } else {
-      base::return(base::paste(base_name, ":", grp_title, val_title, cmp_period, "vs", base_period, unit_suffix))}}
-  })
+      base_yr <- DATACYCLES$YearStart[DATACYCLES$Cycle == input$densCycles]
+      cmp_yr <- DATACYCLES$YearStart[DATACYCLES$Cycle == input$compCycles]
+      
+      if (base_yr <= cmp_yr) {
+        base::return(base::paste(base_name, ":", grp_title, val_title, base_period, "vs", cmp_period, unit_suffix))
+      } else {
+        base::return(base::paste(base_name, ":", grp_title, val_title, cmp_period, "vs", base_period, unit_suffix))}}
+    })
   
   output$densTableTitle <- shiny::renderText({ tempDensTableTitle() })
   
@@ -3000,9 +3065,9 @@ NPSBASIC, NPSIMAGERY, NPSLIGHT, NPSSLATE))
     msg <- base::switch(input$CompareType, 
                         Park = base::paste0("Warning: ", n, " species in ", info$base_name, " ", verb, " not present in ", info$cmp_name, " (shown as 0 on the figure)."),
                         "Growth Stage" = {base_group <- base::switch(input$densGroup, trees = "tree", saplings = "sapling", seedlings = "seedling", 
-                                                                     shrubs = "shrub", shseedlings = "shrub seedling", input$densGroup)
+                                                               shrubs = "shrub", shseedlings = "shrub seedling", input$densGroup)
                         cmp_stage <- base::switch(input$CompareGroup, trees = "trees", saplings = "saplings", seedlings = "tree seedlings", 
-                                                  shrubs = "shrubs", shseedlings = "shrub seedlings", input$CompareGroup)
+                                            shrubs = "shrubs", shseedlings = "shrub seedlings", input$CompareGroup)
                         base::paste0("Warning: ", n, " ", base_group, " species are not present as ", cmp_stage, " in ", info$base_name, " (shown as 0 on the figure).")},
                         Time = {base_cycle <- DATACYCLES$Name[DATACYCLES$Cycle == input$densCycles]
                         base_years <- base::paste0(DATACYCLES$YearStart[DATACYCLES$Cycle == input$densCycles], "-", DATACYCLES$YearEnd[DATACYCLES$Cycle == input$densCycles])
@@ -3015,7 +3080,7 @@ NPSBASIC, NPSIMAGERY, NPSLIGHT, NPSSLATE))
       msg, 
       htmltools::tags$button("×", style = "position: absolute; right: 10px; top: 5px; border: none; background: none; font-size: 18px; cursor: pointer;",
                              onclick = "Shiny.setInputValue('dismiss_dens_warning', Math.random())"))})
-  
+
   #### Make Table ####
   tempDensTable <- shiny::reactive({
     shiny::validate(shiny::need(!base::is.null(input$densPark) && base::nzchar(input$densPark),
@@ -3071,10 +3136,10 @@ NPSBASIC, NPSIMAGERY, NPSLIGHT, NPSSLATE))
       tbl %>%
         dplyr::rename(`Lower 95% CI` = Lower95, `Upper 95% CI` = Upper95) %>%
         dplyr::mutate(dplyr::across(dplyr::all_of(base::c("Lower 95% CI", "Upper 95% CI")),
-                                    ~ dplyr::if_else(base::is.na(Mean) | Mean == 0, NA_real_, .x))) %>%
+          ~ dplyr::if_else(base::is.na(Mean) | Mean == 0, NA_real_, .x))) %>%
         # make sure rounding is consistent
         dplyr::mutate(dplyr::across(dplyr::all_of(base::c("Mean", "Lower 95% CI", "Upper 95% CI")),
-                                    ~ base::ifelse(base::is.na(.x), "NA", base::format(base::round(base::as.numeric(.x), 2), nsmall = 2, scientific = FALSE))))}
+          ~ base::ifelse(base::is.na(.x), "NA", base::format(base::round(base::as.numeric(.x), 2), nsmall = 2, scientific = FALSE))))}
     
     base_half <- build_half(raw, name_col) %>% filter_half() %>% dplyr::select(-Latin_Name)
     
@@ -3200,7 +3265,7 @@ NPSBASIC, NPSIMAGERY, NPSLIGHT, NPSSLATE))
       df <- tempDensTable()
       shiny::req(!base::is.null(df), base::nrow(df) > 0)
       utils::write.csv(df, file, row.names = FALSE)})
-  
+
   
   
   
@@ -3208,7 +3273,7 @@ NPSBASIC, NPSIMAGERY, NPSLIGHT, NPSSLATE))
   
   
   #### Time Series Panel ####
-  
+
   # park control
   output$tsParkControl <- shiny::renderUI({
     shiny::selectizeInput(inputId = "tsPark", choices = base::c("All Parks" = "All", PARKLIST), label = "Park:",
@@ -3274,7 +3339,7 @@ NPSBASIC, NPSIMAGERY, NPSLIGHT, NPSSLATE))
       max = base::max(cycles_with_data),
       value = base::c(base::min(cycles_with_data), base::max(cycles_with_data)),
       step = 1, ticks = FALSE)})
-  
+
   # value control
   tsValuesUse <- shiny::reactive({
     base::switch(input$tsGroup,
@@ -3282,10 +3347,10 @@ NPSBASIC, NPSIMAGERY, NPSLIGHT, NPSSLATE))
                  seedlings =, shseedlings =, shrubs =, vines = base::c(Abundance = "count", "Proportion of Plots Occupied" = "presab"),
                  herbs = base::c("Percent Cover" = "size", "Proportion of Plots Occupied" = "presab"),
                  cwd  = base::c("Volume" = "size"))})
-  
+
   output$tsValControl <- shiny::renderUI({
     shiny::selectInput(inputId = "tsValues", label = "Data to Graph:", choices = tsValuesUse())})
-  
+
   # axis label
   tsYlabel <- shiny::reactive({
     shiny::req(input$tsValues, input$tsGroup)
@@ -3302,7 +3367,7 @@ NPSBASIC, NPSIMAGERY, NPSLIGHT, NPSSLATE))
                                      herbs = "Percent Cover",
                                      cwd = "(m\u00B3) / ha"),
                  presab = "Proportion of Plots Occupied")})
-  
+
   # species list
   tsSpecList <- shiny::reactive({
     shiny::req(input$tsPark, input$tsGroup, base::nzchar(input$tsPark))
@@ -3321,7 +3386,7 @@ NPSBASIC, NPSIMAGERY, NPSLIGHT, NPSSLATE))
         base::tryCatch(NPSForVeg::getPlants(VEGDATA[[pk]], group = input$tsGroup, years = all_yrs, common = FALSE)$Latin_Name, error = function(e) character(0))})))
     } else {all_yrs <- unlist(base::lapply(cycles_use, function(cyc)
       DATACYCLES$YearStart[DATACYCLES$Cycle == cyc]:DATACYCLES$YearEnd[DATACYCLES$Cycle == cyc]))
-    base::tryCatch(NPSForVeg::getPlants(name_obj, group = input$tsGroup, years = all_yrs, common = FALSE)$Latin_Name, error = function(e) character(0))}
+      base::tryCatch(NPSForVeg::getPlants(name_obj, group = input$tsGroup, years = all_yrs, common = FALSE)$Latin_Name, error = function(e) character(0))}
     spec_temp <- base::unique(spec_temp)
     
     shiny::req(base::length(spec_temp) > 0)
@@ -3332,11 +3397,11 @@ NPSBASIC, NPSIMAGERY, NPSLIGHT, NPSSLATE))
     
     base::names(spec_temp) <- spec_names
     spec_temp[order(names(spec_temp))]
-  }) %>% shiny::bindCache(input$tsPark, input$tsGroup, input$tsValues, input$tsCycles[1], input$tsCycles[2], input$tsCommon)
+    }) %>% shiny::bindCache(input$tsPark, input$tsGroup, input$tsValues, input$tsCycles[1], input$tsCycles[2], input$tsCommon)
   
   tsSpeciesCount <- shiny::reactive({shiny::req(input$tsPark, input$tsGroup)
     base::length(tsSpecList())})
-  
+
   output$tsSpeciesControl <- shiny::renderUI({
     input$tsCommon
     base::switch(input$tsSpeciesType,
@@ -3353,20 +3418,20 @@ NPSBASIC, NPSIMAGERY, NPSLIGHT, NPSSLATE))
                        step = 1,
                        ticks = FALSE))},
                  Pick = {if (base::is.null(input$tsPark) || base::length(input$tsPark) == 0) {base::return()
-                 } else {
-                   htmltools::tags$div(
-                     title = "Click here to pick the species you want to graph",
-                     shiny::selectizeInput(
-                       inputId  = "tsSpecies",
-                       label = "Select one or more species",
-                       choices = tsSpecList(),
-                       multiple = TRUE,
-                       selected = input$tsSpecies,
-                       options = base::list(
-                         placeholder = "Select species to display",
-                         plugins = base::list("remove_button"))))}},
+                   } else {
+                     htmltools::tags$div(
+                       title = "Click here to pick the species you want to graph",
+                       shiny::selectizeInput(
+                         inputId  = "tsSpecies",
+                         label = "Select one or more species",
+                         choices = tsSpecList(),
+                         multiple = TRUE,
+                         selected = input$tsSpecies,
+                         options = base::list(
+                           placeholder = "Select species to display",
+                           plugins = base::list("remove_button"))))}},
                  All = NULL)})
-  
+
   # keep species selection when toggling common/latin
   shiny::observeEvent(input$tsCommon, {
     shiny::req(input$tsPark, input$tsGroup, input$tsCycles)
@@ -3375,7 +3440,7 @@ NPSBASIC, NPSIMAGERY, NPSLIGHT, NPSSLATE))
     shiny::req(!base::is.null(new_choices), base::length(new_choices) > 0)
     new_selected <- current[current %in% new_choices]
     shiny::updateSelectizeInput(session, "tsSpecies", choices = new_choices, selected = new_selected)})
-  
+
   tsData <- shiny::reactive({
     shiny::req(input$tsPark, input$tsGroup, input$tsValues, input$tsCycles)
     shiny::req(base::nzchar(input$tsPark))
@@ -3387,7 +3452,7 @@ NPSBASIC, NPSIMAGERY, NPSLIGHT, NPSSLATE))
       yr_start <- DATACYCLES$YearStart[DATACYCLES$Cycle == cyc]
       yr_end <- DATACYCLES$YearEnd[DATACYCLES$Cycle == cyc]
       yrs <- yr_start:yr_end
-      
+
       df <- base::tryCatch(
         base::suppressWarnings({
           if (input$tsPark == "All") {
@@ -3458,7 +3523,7 @@ NPSBASIC, NPSIMAGERY, NPSLIGHT, NPSSLATE))
     
     results
   }) %>% shiny::bindCache(input$tsPark, input$tsGroup, input$tsValues, input$tsCycles[1], input$tsCycles[2])
-  
+    
   # filtered plot df
   tsDf <- shiny::reactive({
     shiny::req(input$tsGroup, input$tsValues)
@@ -3540,28 +3605,28 @@ NPSBASIC, NPSIMAGERY, NPSLIGHT, NPSSLATE))
     
     df <- df %>% dplyr::arrange(Cycle)
     df})
-  
+
   # plot
   output$tsPlot <- plotly::renderPlotly({
     shiny::validate(shiny::need(
-      !base::is.null(input$tsPark) && base::nzchar(input$tsPark),
-      "There is no data for this combination of choices. Please select a park, species, or plant type."))
+        !base::is.null(input$tsPark) && base::nzchar(input$tsPark),
+        "There is no data for this combination of choices. Please select a park, species, or plant type."))
     shiny::validate(shiny::need(
       !(base::identical(input$tsSpeciesType, "Pick") &&
           (base::is.null(input$tsSpecies) || base::length(input$tsSpecies) == 0)),
       "There is no data for this combination of choices. Please select a park, species, or plant type."))
     shiny::req(tsDf())
-    
+
     df <- tsDf()
     font_s <- base::ifelse(base::is.null(input$tsFontSize), 12,  input$tsFontSize)
     lw <- base::ifelse(base::is.null(input$tsLineThickness), 1.5, input$tsLineThickness)
     ribbon_op <- base::ifelse(base::is.null(input$tsRibbonOpacity), 0.2, input$tsRibbonOpacity)
-    
+
     species_list <- base::unique(df$Species)
     cycle_labels <- df %>%
       dplyr::distinct(Cycle, CycleLabel) %>%
       dplyr::arrange(Cycle)
-    
+
     # color palette
     n_sp  <- base::length(species_list)
     pal <- base::switch(
@@ -3571,11 +3636,11 @@ NPSBASIC, NPSIMAGERY, NPSLIGHT, NPSSLATE))
       dark2 = RColorBrewer::brewer.pal(base::max(3, base::min(n_sp, 8)), "Dark2"),
       paired = RColorBrewer::brewer.pal(base::max(3, base::min(n_sp, 12)), "Paired"),
       RColorBrewer::brewer.pal(base::max(3, base::min(n_sp, 8)), "Set2"))
-    
+
     pal_hex <- base::sapply(pal, toHex)
-    
+
     p <- plotly::plot_ly()
-    
+
     # assign colors to species
     for (i in base::seq_along(species_list)) {
       sp  <- species_list[[i]]
@@ -3586,9 +3651,9 @@ NPSBASIC, NPSIMAGERY, NPSLIGHT, NPSSLATE))
                                      base::is.na(Upper.95) |
                                      Lower.95 == Upper.95 |
                                      (Lower.95 == Mean & Upper.95 == Mean)),
-                      
-                      Lower_95_disp = dplyr::if_else(ci_valid, Lower.95, NA_real_),
-                      Upper_95_disp = dplyr::if_else(ci_valid, Upper.95, NA_real_))
+          
+          Lower_95_disp = dplyr::if_else(ci_valid, Lower.95, NA_real_),
+          Upper_95_disp = dplyr::if_else(ci_valid, Upper.95, NA_real_))
       d <- d %>%
         dplyr::mutate(
           hover_txt = base::sprintf("<b>%s</b><br>(%s)<br>Mean: %.2f<br>Lower 95%%: %s<br>Upper 95%%: %s", Species, LabelOpp, Mean,
@@ -3600,7 +3665,7 @@ NPSBASIC, NPSIMAGERY, NPSLIGHT, NPSSLATE))
       # CI ribbons
       rgb_vals <- grDevices::col2rgb(col)
       ribbon_col <- base::sprintf("rgba(%d,%d,%d,%.2f)", rgb_vals[1], rgb_vals[2], rgb_vals[3], ribbon_op)
-      
+
       # add confidence intervals if requested
       if (base::isTRUE(input$tsShowCI)) {
         
@@ -3632,7 +3697,7 @@ NPSBASIC, NPSIMAGERY, NPSLIGHT, NPSSLATE))
           hoverinfo = "skip",
           name = base::paste0(sp, "_lower"),
           legendgroup = sp)}
-      
+
       # mean
       p <- plotly::add_trace(p,
                              data = d,
@@ -3647,7 +3712,7 @@ NPSBASIC, NPSIMAGERY, NPSLIGHT, NPSSLATE))
                              legendgroup = sp,
                              hovertext = ~hover_txt,
                              hoverinfo = "text")}
-    
+
     # title
     park_label <- if (input$tsPark == "All") "All Parks" else NPSForVeg::getNames(VEGDATA[[input$tsPark]], "long")
     group_label <- base::switch(input$tsGroup,
@@ -3664,8 +3729,12 @@ NPSBASIC, NPSIMAGERY, NPSLIGHT, NPSSLATE))
                               size = base::switch(input$tsGroup, trees =, saplings = "Basal Area",herbs = "Percent Cover", cwd = "Volume"),
                               presab = "Proportion of Plots Occupied")
     ts_title <- base::paste0(park_label, ": ", group_label, " ", val_label, " by Cycle")
-    ts_title_wrapped <- base::gsub("\n", "<br>", stringr::str_wrap(ts_title, width = base::ifelse(font_s >= 20, 70, 80)))
-    
+    ts_container_w <- if (!base::is.null(input$tsPlotContainer_width)) input$tsPlotContainer_width else input$screenW
+    ts_hide_legend <- !base::is.null(input$screenW) && input$screenW < 1386
+    plotCfg <- buildPlotlyTitleLegend(ts_title, font_s, ts_container_w,
+                                      if (ts_hide_legend) base::character(0) else species_list,
+                                      smooth_breakpoint = TRUE)
+
     #### dummy trace to show legend when there is only one trace (one species selected or all species) --- warning will show Ignoring 1 observations - nothing from data is actually dropped
     p <- plotly::add_trace(
       p,
@@ -3677,7 +3746,7 @@ NPSBASIC, NPSIMAGERY, NPSLIGHT, NPSSLATE))
       showlegend = TRUE,
       hoverinfo = "skip",
       marker = base::list(opacity = 0))
-    
+
     p <- plotly::layout(p,
                         xaxis = base::list(
                           title = base::list(text = "Monitoring Cycle", font = base::list(size = font_s)),
@@ -3693,27 +3762,26 @@ NPSBASIC, NPSIMAGERY, NPSLIGHT, NPSSLATE))
                           title = base::list(text = tsYlabel(), font = base::list(size = font_s)),
                           tickfont = base::list(size = font_s),
                           rangemode = "tozero"),
-                        title = base::list(
-                          text = ts_title_wrapped,
-                          font = base::list(size = font_s + 10),
-                          y = 0.99,
-                          yanchor = "top",
-                          xref = "paper",
-                          x = 0.5,
-                          xanchor = "center",
-                          pad = base::list(t = 20)),
-                        legend = base::list(
-                          font = base::list(size = font_s + 3),
-                          orientation = "h",
-                          x = 0.5, xanchor = "center",
-                          y = 0.98, yanchor = "bottom",
-                          showlegend = TRUE),
+                        title = plotCfg$title,
+                        showlegend = !ts_hide_legend,
+                        legend = plotCfg$legend,
                         hovermode = "closest",
-                        margin = base::list(t = 50 + font_s * 3, l = 80, r = 40),
+                        margin = plotCfg$margin,
+                        height = plotCfg$height,
                         font = base::list(size = font_s),
                         autosize  = TRUE)
     p})
   
+  output$TSLimitWarning <- shiny::renderUI({
+    shiny::req(
+      !base::is.null(input$tsPark) && base::nzchar(input$tsPark),
+      !(base::identical(input$tsSpeciesType, "Pick") &&
+          (base::is.null(input$tsSpecies) || base::length(input$tsSpecies) == 0)))
+    sw <- input$screenW
+    if (base::is.null(sw) || sw >= 1386) base::return(NULL)
+    htmltools::tags$div(style = "font-size: 12px; color: #888; font-style: italic; margin-top: 6px; text-align: center;",
+                        "* Note: The legend is hidden on smaller screens. Click on points for species details, or see the summary report or data table for the full list.")})
+
   # table title
   tsTitleText <- shiny::reactive({
     shiny::req(input$tsPark, input$tsGroup, input$tsValues, input$tsCycles)
@@ -3744,9 +3812,9 @@ NPSBASIC, NPSIMAGERY, NPSLIGHT, NPSSLATE))
     unit_suffix <- base::paste0(" (", tsYlabel(), ")")
     
     base::paste0(park_label, ": ", group_label, " ", val_label, " by Cycle ", period, unit_suffix)})
-  
+
   output$tsTableTitle <- shiny::renderText({ tsTitleText() })
-  
+
   # table
   tempTsTable <- shiny::reactive({
     shiny::req(tsDf())
@@ -3798,7 +3866,7 @@ NPSBASIC, NPSIMAGERY, NPSLIGHT, NPSSLATE))
         dplyr::ungroup()}
     
     df})
-  
+
   output$tsTable <- DT::renderDataTable({
     
     if (base::identical(input$tsSpeciesType, "Pick") && (base::is.null(input$tsSpecies) || base::length(input$tsSpecies) == 0)) {base::return(NULL)}
@@ -3807,7 +3875,7 @@ NPSBASIC, NPSIMAGERY, NPSLIGHT, NPSSLATE))
       tempTsTable(),
       rownames = FALSE,
       options = base::list(dom = "t", pageLength = -1, ordering = FALSE, columnDefs = base::list(list(className = "dt-left", targets = "_all"))))})
-  
+
   # table download
   output$tsTableDownload <- shiny::downloadHandler(
     filename = function() {base::paste0(base::gsub("[^A-Za-z0-9_\\-]+", "_", tsTitleText()), ".csv")},
@@ -3815,15 +3883,15 @@ NPSBASIC, NPSIMAGERY, NPSLIGHT, NPSSLATE))
       df <- tempTsTable()
       shiny::req(!base::is.null(df), base::nrow(df) > 0)
       utils::write.csv(df, file, row.names = FALSE)})
-  
+
   # missing data warning
   tsMissingWarningDismissed <- shiny::reactiveVal(FALSE)
-  
+
   shiny::observeEvent(base::list(input$tsPark, input$tsGroup, input$tsCycles, input$tsValues),
-                      { tsMissingWarningDismissed(FALSE) })
-  
+    { tsMissingWarningDismissed(FALSE) })
+
   shiny::observeEvent(input$dismiss_ts_warning, { tsMissingWarningDismissed(TRUE) })
-  
+
   tsMissingWarningData <- shiny::reactive({
     shiny::req(tsData())
     raw <- tsData()
@@ -3838,7 +3906,7 @@ NPSBASIC, NPSIMAGERY, NPSLIGHT, NPSSLATE))
     
     if (base::nrow(dropped) == 0) base::return(NULL)
     dropped$CycleLabel})
-  
+
   tsMissingWarningMsg <- shiny::reactive({
     missing <- tsMissingWarningData()
     if (base::is.null(missing)) base::return(NULL)
@@ -3882,13 +3950,13 @@ NPSBASIC, NPSIMAGERY, NPSLIGHT, NPSSLATE))
   tsSinglePlotWarningDismissed <- shiny::reactiveVal(FALSE)
   shiny::observeEvent(
     base::list(input$tsPark,
-               input$tsGroup,
-               input$tsCycles,
-               input$tsValues),
+         input$tsGroup,
+         input$tsCycles,
+         input$tsValues),
     {tsSinglePlotWarningDismissed(FALSE)})
   
-  # summary report
-  tsReportText <- shiny::reactive({
+   # summary report
+   tsReportText <- shiny::reactive({
     shiny::req(input$tsPark, input$tsGroup, input$tsValues, input$tsCycles)
     shiny::req(base::nzchar(input$tsPark))
     df <- base::tryCatch(tsDf(), error = function(e) NULL)
@@ -3928,19 +3996,19 @@ NPSBASIC, NPSIMAGERY, NPSLIGHT, NPSSLATE))
     
     bullet_tags <- if (!base::identical(input$tsSpeciesType, "All") && n_sp > 0) {
       base::lapply(species_list, function(sp) {sp_df <- df_valid %>% dplyr::filter(Species == sp) %>% dplyr::arrange(Cycle)
-      if (base::nrow(sp_df) == 0) {base::return(htmltools::tags$li(htmltools::tags$strong(sp), " \u2014 no observations recorded."))}
-      overall_mean <- base::round(base::mean(sp_df$Mean, na.rm = TRUE), 2)
-      opp <- if (!base::is.null(sp_df$LabelOpp) && !base::is.na(sp_df$LabelOpp[1]) && base::nzchar(sp_df$LabelOpp[1])) {base::paste0(" (", sp_df$LabelOpp[1], ")")
-      } else { "" }
-      trend_str <- if (base::nrow(sp_df) >= 2) {first_mean <- sp_df$Mean[1]; last_mean <- sp_df$Mean[base::nrow(sp_df)]
-      percent_change <- base::round(((last_mean - first_mean) / base::max(first_mean, 0.0001)) * 100, 1)
-      direction <- if (last_mean > first_mean) "increased" else if (last_mean < first_mean) "decreased" else "remained stable"
-      base::sprintf("%s by %.1f%% from %s to %s",
-                    direction, base::abs(percent_change),
-                    base::as.character(sp_df$CycleLabel[1]),
-                    base::as.character(sp_df$CycleLabel[base::nrow(sp_df)]))
-      } else { "only one cycle" }
-      htmltools::tags$li(htmltools::tags$strong(sp), opp, base::sprintf(" \u2014 Overall mean: %.2f %s | Trend: %s.", overall_mean, val_label, trend_str))})
+        if (base::nrow(sp_df) == 0) {base::return(htmltools::tags$li(htmltools::tags$strong(sp), " \u2014 no observations recorded."))}
+        overall_mean <- base::round(base::mean(sp_df$Mean, na.rm = TRUE), 2)
+        opp <- if (!base::is.null(sp_df$LabelOpp) && !base::is.na(sp_df$LabelOpp[1]) && base::nzchar(sp_df$LabelOpp[1])) {base::paste0(" (", sp_df$LabelOpp[1], ")")
+        } else { "" }
+        trend_str <- if (base::nrow(sp_df) >= 2) {first_mean <- sp_df$Mean[1]; last_mean <- sp_df$Mean[base::nrow(sp_df)]
+        percent_change <- base::round(((last_mean - first_mean) / base::max(first_mean, 0.0001)) * 100, 1)
+        direction <- if (last_mean > first_mean) "increased" else if (last_mean < first_mean) "decreased" else "remained stable"
+        base::sprintf("%s by %.1f%% from %s to %s",
+                      direction, base::abs(percent_change),
+                      base::as.character(sp_df$CycleLabel[1]),
+                      base::as.character(sp_df$CycleLabel[base::nrow(sp_df)]))
+        } else { "only one cycle" }
+        htmltools::tags$li(htmltools::tags$strong(sp), opp, base::sprintf(" \u2014 Overall mean: %.2f %s | Trend: %s.", overall_mean, val_label, trend_str))})
     } else {
       sp_df <- df_valid %>% dplyr::arrange(Cycle)
       overall_mean <- base::round(base::mean(sp_df$Mean, na.rm = TRUE), 2)
@@ -3959,11 +4027,11 @@ NPSBASIC, NPSIMAGERY, NPSLIGHT, NPSSLATE))
     } else {base::sprintf("Showing %d species of %s across %d monitoring %s (%s) at %s.", n_sp, group_label, n_cycles, cycle_word, period, park_label)}
     
     htmltools::tagList(htmltools::tags$p(htmltools::tags$span(style = "font-size: 30px; font-weight: bold;", "Summary Report:")),
-                       htmltools::tags$p(style = "font-size: 15px;",
-                                         htmltools::tags$strong(style = "font-size: 20px;", park_label), " \u2014 ", base::trimws(intro)),
-                       htmltools::tags$ul(style = "font-size: 15px; margin: 6px 0 6px 16px; padding: 0;", bullet_tags),
-                       htmltools::tags$p(style = "font-size: 15px;",
-                                         htmltools::tags$em("Overall means averaged across all cycles shown; trend compares first to last displayed cycle.")))})
+      htmltools::tags$p(style = "font-size: 15px;",
+        htmltools::tags$strong(style = "font-size: 20px;", park_label), " \u2014 ", base::trimws(intro)),
+      htmltools::tags$ul(style = "font-size: 15px; margin: 6px 0 6px 16px; padding: 0;", bullet_tags),
+      htmltools::tags$p(style = "font-size: 15px;",
+        htmltools::tags$em("Overall means averaged across all cycles shown; trend compares first to last displayed cycle.")))})
   
   output$tsReport <- shiny::renderUI({
     txt <- base::tryCatch(tsReportText(), error = function(e) NULL)
@@ -4038,24 +4106,19 @@ NPSBASIC, NPSIMAGERY, NPSLIGHT, NPSSLATE))
     if (base::is.null(msg)) base::return(NULL)
     
     htmltools::tags$div(style = "padding: 10px 14px; margin-bottom: 10px; border: 1px solid #f5c2c7; background-color: #f8d7da; color: #842029; border-radius: 6px; position: relative;",
-                        msg,
-                        htmltools::tags$button("\u00d7", style = "position: absolute; right: 10px; top: 5px; border: none; background: none; font-size: 18px; cursor: pointer;",
-                                               onclick = "Shiny.setInputValue('dismiss_ts_singleplot_warning', Math.random())"))})
-  
-  output$tsSinglePlotWarningTable <- shiny::renderUI({
+      msg,
+      htmltools::tags$button("\u00d7", style = "position: absolute; right: 10px; top: 5px; border: none; background: none; font-size: 18px; cursor: pointer;",
+                             onclick = "Shiny.setInputValue('dismiss_ts_singleplot_warning', Math.random())"))})
+ 
+   output$tsSinglePlotWarningTable <- shiny::renderUI({
     if (tsSinglePlotWarningDismissed()) base::return(NULL)
     msg <- tsSinglePlotWarningMsg()
     if (base::is.null(msg)) base::return(NULL)
     
     htmltools::tags$div(style = "padding: 10px 14px; margin-bottom: 10px; border: 1px solid #f5c2c7; background-color: #f8d7da; color: #842029; border-radius: 6px; position: relative;",
-                        msg,
-                        htmltools::tags$button("\u00d7", style = "position: absolute; right: 10px; top: 5px; border: none; background: none; font-size: 18px; cursor: pointer;",
-                                               onclick = "Shiny.setInputValue('dismiss_ts_singleplot_warning', Math.random())"))})
-  
-  # display options
-  shiny::observe({
-    shinyjs::onclick(id = "tsGraphButton", expr = shinyjs::toggle(id = "TSOptionsPanel"))
-    shinyjs::onclick(id = "CloseTSDisplayOptions", expr = shinyjs::toggle(id = "TSOptionsPanel"))})
+      msg,
+      htmltools::tags$button("\u00d7", style = "position: absolute; right: 10px; top: 5px; border: none; background: none; font-size: 18px; cursor: pointer;",
+                             onclick = "Shiny.setInputValue('dismiss_ts_singleplot_warning', Math.random())"))})
   
   
   
@@ -4082,13 +4145,7 @@ NPSBASIC, NPSIMAGERY, NPSLIGHT, NPSSLATE))
   
   
   #### IV Plots ####
-  
-  #### toggles ####
-  shiny::observe({
-    shinyjs::onclick(id="IVGraphButton", expr=shinyjs::toggle(id="IVOptionsPanel"))
-    shinyjs::onclick(id="CloseIVDisplayOptions", expr= shinyjs::toggle(id="IVOptionsPanel"))
-  })
-  
+
   #### Park Control for IVPlot ####
   output$IVParkControl <- shiny::renderUI({
     shiny::selectizeInput(inputId = "IVPark", choices = PARKLIST, label = "Park:",
@@ -4131,14 +4188,14 @@ NPSBASIC, NPSIMAGERY, NPSLIGHT, NPSSLATE))
     base::switch(input$IVSpeciesType,
                  Common = {max_sp <- IVSpeciesCount()
                  htmltools::tags$div(title = "Select the maximum number of species to plot",
-                                     shiny::sliderInput("IVTop", "Maximum number of species to plot (in order of IV):",
-                                                        min = 1, max = base::max(1, max_sp, na.rm = TRUE), value = base::min(5, max_sp), step = 1, ticks = FALSE))},
+                                              shiny::sliderInput("IVTop", "Maximum number of species to plot (in order of IV):",
+                                                                 min = 1, max = base::max(1, max_sp, na.rm = TRUE), value = base::min(5, max_sp), step = 1, ticks = FALSE))},
                  Pick = if (base::is.null(input$IVPark) || base::nchar(input$IVPark) == 0) {base::return()
                  } else {htmltools::tags$div(title = "Click here to pick the species you want to graph",
-                                             shiny::selectizeInput(inputId = "IVSpecies", label = "Select one or more species",
-                                                                   choices = IVSpecList(), multiple = TRUE, selected = input$IVSpecies,
-                                                                   options = base::list(placeholder='Select a species to display',
-                                                                                        plugins = base::list("remove_button"))))},
+                                       shiny::selectizeInput(inputId = "IVSpecies", label = "Select one or more species",
+                                                             choices = IVSpecList(), multiple = TRUE, selected = input$IVSpecies,
+                                                             options = base::list(placeholder='Select a species to display',
+                                                                                  plugins = base::list("remove_button"))))},
                  All = NULL)})
   
   shiny::observeEvent(input$IVCommon, {
@@ -4181,14 +4238,14 @@ NPSBASIC, NPSIMAGERY, NPSLIGHT, NPSSLATE))
     
     shiny::validate(
       shiny::need(!base::is.null(raw_latin) &&base::nrow(raw_latin) > 0,
-                  base::paste0("No ",
-                               switch(input$IVGroup,
-                                      trees = "tree",
-                                      saplings = "sapling",
-                                      seedlings = "tree seedling",
-                                      shseedlings = "shrub seedling",
-                                      input$IVGroup),
-                               " observations were recorded at ", NPSForVeg::getNames(VEGDATA[[input$IVPark]], "long"), " during ",min(IVYears()), "-", max(IVYears()), ".")))
+        base::paste0("No ",
+          switch(input$IVGroup,
+                 trees = "tree",
+                 saplings = "sapling",
+                 seedlings = "tree seedling",
+                 shseedlings = "shrub seedling",
+                 input$IVGroup),
+          " observations were recorded at ", NPSForVeg::getNames(VEGDATA[[input$IVPark]], "long"), " during ",min(IVYears()), "-", max(IVYears()), ".")))
     
     raw <- NPSForVeg::IV(
       object = VEGDATA[[input$IVPark]],
@@ -4222,7 +4279,7 @@ NPSBASIC, NPSIMAGERY, NPSLIGHT, NPSSLATE))
       base::is.na(raw$LabelOpp) | !base::nzchar(raw$LabelOpp),
       fmt_common(raw$Species),
       raw$LabelOpp)
-    
+
     raw})
   
   ### IV checkbox ###
@@ -4294,8 +4351,8 @@ NPSBASIC, NPSIMAGERY, NPSLIGHT, NPSSLATE))
         text = if (iv_text_on()) {~base::sprintf("Species: %s<br>Total IV: %.2f", LabelOpp, Total)} else {NULL},
         hovertext = ~base::sprintf("Species: %s<br>Total IV: %.2f", LabelOpp, Total),
         hoverinfo = if (iv_text_on()) {"none"} else {"text"},
-        hoverlabel = base::list(
-          bgcolor = IVBaseColor(),
+          hoverlabel = base::list(
+            bgcolor = IVBaseColor(),
           bordercolor = "white",
           font = base::list(size = 14, color = contrastColor(IVBaseColor()))))
     } else {
@@ -4309,7 +4366,7 @@ NPSBASIC, NPSIMAGERY, NPSLIGHT, NPSSLATE))
           hovertext = ~base::sprintf("Species: %s<br>Density: %.2f", LabelOpp, Density),
           hoverinfo = "text",
           hoverlabel = base::list(bgcolor = IVDensityColor(), bordercolor = "white",
-                                  font = base::list(size = 14, color = contrastColor(IVDensityColor())))) %>%
+          font = base::list(size = 14, color = contrastColor(IVDensityColor())))) %>%
         plotly::add_trace(
           data = IVdf, x = ~Size, y = ~Species,
           name = "Size", type = "bar", orientation = "h",
@@ -4319,7 +4376,7 @@ NPSBASIC, NPSIMAGERY, NPSLIGHT, NPSSLATE))
           hovertext = ~base::sprintf("Species: %s<br>Size: %.2f", LabelOpp, Size),
           hoverinfo = "text",
           hoverlabel = base::list(bgcolor = IVSizeColor(), bordercolor = "white",
-                                  font = base::list(size = 14, color = contrastColor(IVSizeColor())))) %>%
+          font = base::list(size = 14, color = contrastColor(IVSizeColor())))) %>%
         plotly::add_trace(
           data = IVdf, x = ~Distribution, y = ~Species,
           name = "Distribution", type = "bar", orientation = "h",
@@ -4332,22 +4389,15 @@ NPSBASIC, NPSIMAGERY, NPSLIGHT, NPSSLATE))
                                   font = base::list(size = 14, color = contrastColor(IVDistributionColor()))))}
     
     IVFontSize <- if (!base::is.null(input$IVFontSize)) input$IVFontSize else 12
+    iv_container_w <- if (!base::is.null(input$ivPlotContainer_width)) input$ivPlotContainer_width else input$screenW
+    iv_legend_labels <- if (input$IVPart) base::c("Density", "Size", "Distribution") else base::c("Total IV")
+    plotCfg <- buildPlotlyTitleLegend(IVTitle(), IVFontSize, iv_container_w, iv_legend_labels)
     
     p <- p %>% plotly::layout(
       barmode = "stack",
       showlegend = TRUE,
-      legend = base::list(
-        traceorder  = "reversed",
-        font = base::list(size = IVFontSize + 3),
-        orientation = "h",
-        x = 0.5, xanchor = "center",
-        y = 1,   yanchor = "bottom"),
-      title = base::list(
-        text = IVTitle(),
-        font = base::list(size = IVFontSize + 10),
-        y = .99,
-        yanchor = "top",
-        pad = base::list(t = 20)),
+      legend = plotCfg$legend,
+      title = plotCfg$title,
       xaxis = base::list(
         title = "",
         tickvals = base::c(0, base::max(IVdf$Total)),
@@ -4360,7 +4410,8 @@ NPSBASIC, NPSIMAGERY, NPSLIGHT, NPSSLATE))
         ticklabelposition = "outside",
         categoryorder = "array",
         categoryarray = IVdf$Species),
-      margin = base::list(t = 50 + IVFontSize * 3, l = 140, r = 40),
+      margin = plotCfg$margin,
+      height = plotCfg$height,
       font = base::list(size = IVFontSize),
       autosize = TRUE)
     p})
@@ -4398,7 +4449,7 @@ NPSBASIC, NPSIMAGERY, NPSLIGHT, NPSSLATE))
     top_sentence <- if (n_sp > 1) {
       base::sprintf("%s had the highest importance value (%.2f) and %s had the lowest (%.2f) among the species shown.", base::as.character(df$Species[1]), base::round(df$Total[1], 2),
                     base::as.character(df$Species[n_sp]), base::round(df$Total[n_sp], 2))
-    } else { NULL }
+      } else { NULL }
     
     bullet_tags <- base::lapply(base::seq_len(n_sp), function(i) {
       sp <- base::as.character(df$Species[i])
@@ -4497,43 +4548,26 @@ NPSBASIC, NPSIMAGERY, NPSLIGHT, NPSSLATE))
   #)
   
   
-  #  IVTableArgs<-shiny::reactive({
-  #    base::list(
-  #      object=IVPlotArgs()$object,
-  #      group=IVPlotArgs()$IVargs$group, 
-  #      years=IVPlotArgs()$IVargs$years, 
-  #      common=IVPlotArgs()$IVargs$common
-  #    )
-  #})
-  
-  # warning for plotly display
-  
-  ivSpeciesLimitWarning <- shiny::reactive({shiny::req(input$IVTop)
-    
-    if (input$IVTop >= 35) {
-      "Note: The plot cannot display more than 34 species names at a time. All species are represented on the figure, but not all species names are shown in the plot below. 
-      To view all the species names and data, open the summary report or select the data table tab."
-    } else {NULL}})
-  
-  ivLimitWarningDismissed <- shiny::reactiveVal(FALSE)
-  shiny::observeEvent(base::list(input$IVTop, input$IVPark, input$IVGroup, input$IVCycles), {ivLimitWarningDismissed(FALSE)})
-  shiny::observeEvent(input$dismiss_iv_limit_warning, {ivLimitWarningDismissed(TRUE)})
-  
-  output$IVGraphMessage <- shiny::renderUI({
-    if (base::identical(input$IVSpeciesType, "Pick") &&
-        (base::is.null(input$IVSpecies) || base::length(input$IVSpecies) == 0)) {
-      shiny::helpText("Please select one or more species.")
-    } else { NULL }
-  })
+#  IVTableArgs<-shiny::reactive({
+#    base::list(
+#      object=IVPlotArgs()$object,
+#      group=IVPlotArgs()$IVargs$group, 
+#      years=IVPlotArgs()$IVargs$years, 
+#      common=IVPlotArgs()$IVargs$common
+#    )
+#})
+ 
+  # footnote
   
   output$IVLimitWarning <- shiny::renderUI({
-    if (ivLimitWarningDismissed()) base::return(NULL)
-    msg <- ivSpeciesLimitWarning()
-    if (base::is.null(msg)) base::return(NULL)
-    
-    htmltools::tags$div(style = "padding: 10px 14px; margin-bottom: 10px; border: 1px solid #ffe69c; background-color: #fff3cd; color: #664d03; border-radius: 6px; position: relative;", msg,
-                        htmltools::tags$button("\u00d7", style = "position: absolute; right: 10px; top: 5px; border: none; background: none; font-size: 18px; cursor: pointer;", onclick = "Shiny.setInputValue('dismiss_iv_limit_warning', Math.random())"))})
-  
+    shiny::req(
+      !base::is.null(input$IVPark) && base::nzchar(input$IVPark),
+      !(base::identical(input$IVSpeciesType, "Pick") &&
+          (base::is.null(input$IVSpecies) || base::length(input$IVSpecies) == 0)))
+    htmltools::tags$div(
+      style = "font-size: 12px; color: #888; font-style: italic; margin-top: 6px; text-align: center;",
+      "* Note: Not all species names may be shown on the plot above. See the summary report or data table for the full list.")})
+                    
   #### IV Table ####
   #### title ####
   
@@ -4591,21 +4625,21 @@ NPSBASIC, NPSIMAGERY, NPSLIGHT, NPSSLATE))
     if (!input$IVPart) {df <- df %>% dplyr::select(Species, Total)
     } else {df <- df %>% dplyr::select(Species, Density, Size, Distribution, Total)}
     df})
-  
-  
+
+
   output$IVData <- DT::renderDataTable({
     shiny::req(!(input$IVSpeciesType == "Pick" && (base::is.null(input$IVSpecies) || base::length(input$IVSpecies) == 0)))
     
     DT::datatable(tempIVTable(), options = base::list(dom = "t", pageLength = -1, ordering = FALSE, 
                                                       columnDefs = base::list(base::list(className = 'dt-left', targets = "_all")))) %>%
       DT::formatRound(columns = base::intersect(base::c("Density", "Size", "Distribution", "Total"), base::names(tempIVTable())), digits = 2)})
-  
-  
+
+
   
   #### IV Table download ####
   output$IVTableDownload <- shiny::downloadHandler(
-    filename = function() {base::paste0(base::gsub("[^A-Za-z0-9_\\-]+", "_", tempIVTableTitle()), ".csv")},
-    content = function(file) {df <- tempIVTable()
+  filename = function() {base::paste0(base::gsub("[^A-Za-z0-9_\\-]+", "_", tempIVTableTitle()), ".csv")},
+  content = function(file) {df <- tempIVTable()
     shiny::req(!base::is.null(df), base::nrow(df) > 0)
     utils::write.csv(df, file, row.names = FALSE)})
   
@@ -4658,7 +4692,7 @@ NPSBASIC, NPSIMAGERY, NPSLIGHT, NPSSLATE))
   
   CommonList <- shiny::reactive({
     fmt_common(NPSForVeg::getPlantNames(object = VEGDATA[[input$SpListPark]],
-                                        names = LatinList(), out.style = "common", in.style = "Latin"))})  
+                                          names = LatinList(), out.style = "common", in.style = "Latin"))})  
   
   MonitoringList <- shiny::reactive({
     tibble::tibble(
@@ -4670,12 +4704,12 @@ NPSBASIC, NPSIMAGERY, NPSLIGHT, NPSSLATE))
   ###Make URL for and get data from NPSpecies
   NPSpeciesURL<-shiny::reactive({base::paste0("https://irmaservices.nps.gov/v3/rest/npspecies/checklist/",input$SpListPark,"/Vascular%20Plant?format=Json")})
   
-  #  NPSpeciesList<-shiny::reactive({
-  #    jsonlite::fromJSON(NPSpeciesURL()) %>% 
-  #      dplyr::select(CommonNames,ScientificName,Occurrence) %>% 
-  #      dplyr::arrange(CommonNames) %>% 
-  #      dplyr::rename("Latin Name"=ScientificName, "Common Name"=CommonNames)
-  #  })  
+#  NPSpeciesList<-shiny::reactive({
+#    jsonlite::fromJSON(NPSpeciesURL()) %>% 
+#      dplyr::select(CommonNames,ScientificName,Occurrence) %>% 
+#      dplyr::arrange(CommonNames) %>% 
+#      dplyr::rename("Latin Name"=ScientificName, "Common Name"=CommonNames)
+#  })  
   
   ### bugfix ##############################################
   NPSpeciesList <- shiny::reactive({
@@ -4724,31 +4758,31 @@ NPSBASIC, NPSIMAGERY, NPSLIGHT, NPSSLATE))
     if (input$SpListType != "NPSpecies") {base::return(NULL)}
     
     link_info <- switch(input$SpListPark, 
-                        "ANTI" = base::list(url = "https://irma.nps.gov/NPSpecies/Search/SpeciesList/ANTI",
-                                            label = "View full Antietam species list"),
-                        "CATO" = base::list(url = "https://irma.nps.gov/NPSpecies/Search/SpeciesList/CATO",
-                                            label = "View full Catoctin species list"),
-                        "CHOH" = base::list(url = "https://irma.nps.gov/NPSpecies/Search/SpeciesList/CHOH",
-                                            label = "View full C&O Canal species list"),
-                        "GWMP" = base::list(url = "https://irma.nps.gov/NPSpecies/Search/SpeciesList/GWMP",
-                                            label = "View full GW Parkway species list"),
-                        "HAFE" = base::list(url = "https://irma.nps.gov/NPSpecies/Search/SpeciesList/HAFE",
-                                            label = "View full Harpers Ferry species list"),
-                        "MANA" = base::list(url = "https://irma.nps.gov/NPSpecies/Search/SpeciesList/MANA",
-                                            label = "View full Manassas species list"),
-                        "MONO" = base::list(url = "https://irma.nps.gov/NPSpecies/Search/SpeciesList/MONO",
-                                            label = "View full Monocacy species list"),
-                        "NACE" = base::list(url = "https://irma.nps.gov/NPSpecies/Search/SpeciesList/NACE",
-                                            label = "View full National Capital Parks – East species list"),
-                        "PRWI" = base::list(url = "https://irma.nps.gov/NPSpecies/Search/SpeciesList/PRWI",
-                                            label = "View full Prince William species list"),
-                        "ROCR" = base::list(url = "https://irma.nps.gov/NPSpecies/Search/SpeciesList/ROCR",
-                                            label = "View full Rock Creek species list"),
-                        "WOTR" = base::list(url = "https://irma.nps.gov/NPSpecies/Search/SpeciesList/WOTR",
-                                            label = "View full Wolf Trap species list"),
-                        
-                        base::list(url = base::paste0("https://irma.nps.gov/NPSpecies/Search/SpeciesList/",
-                                                      input$SpListPark), label = "View full NPSpecies list"))
+      "ANTI" = base::list(url = "https://irma.nps.gov/NPSpecies/Search/SpeciesList/ANTI",
+        label = "View full Antietam species list"),
+      "CATO" = base::list(url = "https://irma.nps.gov/NPSpecies/Search/SpeciesList/CATO",
+        label = "View full Catoctin species list"),
+      "CHOH" = base::list(url = "https://irma.nps.gov/NPSpecies/Search/SpeciesList/CHOH",
+        label = "View full C&O Canal species list"),
+      "GWMP" = base::list(url = "https://irma.nps.gov/NPSpecies/Search/SpeciesList/GWMP",
+        label = "View full GW Parkway species list"),
+      "HAFE" = base::list(url = "https://irma.nps.gov/NPSpecies/Search/SpeciesList/HAFE",
+        label = "View full Harpers Ferry species list"),
+      "MANA" = base::list(url = "https://irma.nps.gov/NPSpecies/Search/SpeciesList/MANA",
+        label = "View full Manassas species list"),
+      "MONO" = base::list(url = "https://irma.nps.gov/NPSpecies/Search/SpeciesList/MONO",
+        label = "View full Monocacy species list"),
+      "NACE" = base::list(url = "https://irma.nps.gov/NPSpecies/Search/SpeciesList/NACE",
+        label = "View full National Capital Parks – East species list"),
+      "PRWI" = base::list(url = "https://irma.nps.gov/NPSpecies/Search/SpeciesList/PRWI",
+        label = "View full Prince William species list"),
+      "ROCR" = base::list(url = "https://irma.nps.gov/NPSpecies/Search/SpeciesList/ROCR",
+        label = "View full Rock Creek species list"),
+      "WOTR" = base::list(url = "https://irma.nps.gov/NPSpecies/Search/SpeciesList/WOTR",
+        label = "View full Wolf Trap species list"),
+      
+      base::list(url = base::paste0("https://irma.nps.gov/NPSpecies/Search/SpeciesList/",
+          input$SpListPark), label = "View full NPSpecies list"))
     
     shiny::tags$a(href = link_info$url, target = "_blank", link_info$label)})
   
@@ -4761,6 +4795,6 @@ NPSBASIC, NPSIMAGERY, NPSLIGHT, NPSSLATE))
       df <- SpeciesTableData()
       shiny::req(base::is.data.frame(df), base::nrow(df) > 0)
       utils::write.csv(df, file, row.names = FALSE)})
-  
+
   
 })# end of shiny::shinyServer() function

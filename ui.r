@@ -1,4 +1,3 @@
-
 library(shiny)
 library(NPSForVeg)
 library(leaflet)
@@ -168,10 +167,23 @@ shiny::navbarPage(
         position: absolute;
         right: 1rem !important;
         transform: translateY(-50%);}
-      .selectize-dropdown {z-index: 9000 !important;}
+      .selectize-dropdown {z-index: 10800 !important;}
+      .selectize-dropdown-content {
+        max-height: 45vh;
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;}
  
  
   /* shared features across tabs */
+    /* display options popup (dens, ts, iv) */
+    
+      #densOptionsBox, #tsOptionsBox, #ivOptionsBox {width: min(92vw, 900px) !important;}
+      #densOptionsBox .shiny-flow-layout, #tsOptionsBox .shiny-flow-layout, #ivOptionsBox .shiny-flow-layout {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+        align-items: flex-start;}
+      
     /* info icon/popup (map, dens, ts, iv, sp list) */
     
       .info-icon-btn {
@@ -279,6 +291,7 @@ shiny::navbarPage(
         box-sizing: border-box;
         transition: none;
         padding-left: 10px !important;}
+      .collapsible-main-panel.main-full-width {width: calc(100% - 24px) !important;}
         
     /* summary report (dens, ts, iv) */
     
@@ -304,7 +317,17 @@ shiny::navbarPage(
       #mapSlideWrap .panel.panel-default,
       #spSlideWrap .panel.panel-default {
         border-color: #7c8f4f !important;}
- 
+    
+    /* sidebar picklist across app */
+    
+      #mapFiltersSidebar .selectize-dropdown,
+      #densSlideWrap .selectize-dropdown,
+      #tsSlideWrap .selectize-dropdown,
+      #ivSlideWrap .selectize-dropdown,
+      #spSlideWrap .selectize-dropdown {
+        position: static !important;
+        width: 100% !important;
+        margin-top: 4px;}
  
   /* map */
     /* layout */
@@ -348,13 +371,17 @@ shiny::navbarPage(
         transition: left 0.3s ease;
         display: flex;
         flex-direction: column;
+        overflow: hidden; 
         will-change: left;
         backface-visibility: hidden;}
       .map-sidebar.active { left: 0; }
       .map-sidebar-scroll {
         overflow-y: auto;
+        min-height: 0;
         padding: 16px;
         flex: 1;}
+        .map-sidebar .selectize-dropdown,
+        body > .selectize-dropdown.map-sidebar-dropdown {z-index: 10700 !important;}
       .map-sidebar-close {
         position: absolute;
         top: 8px; right: 12px;
@@ -525,78 +552,7 @@ shiny::navbarPage(
         white-space: nowrap;}
  
   /* reactive to screen sizes */
-  
-      @media (max-width: 630px) {
-        #GraphOptionsPanel {
-          top: 85px;
-          right: 3px;
-          width: 375px !important;
-          height: 350px !important}
-        #GraphOptionsPanel .panel-body {height: 225px !important; overflow-y: auto;}
- 
-        #IVOptionsPanel{
-          top: 85px;
-          right: 15px;
-          width: 240px !important;
-          height: 575px !important}
-        #IVOptionsPanel .panel-body {height: 450px !important; overflow-y: auto;}}
- 
-      @media (min-width: 631px) and (max-width: 767px) {
-        #GraphOptionsPanel {
-          top: 85px;
-          right: 30px;
-          width: 375px !important;
-          height: 350px !important}
-        #GraphOptionsPanel .panel-body {height: 225px !important; overflow-y: auto;}
-        #IVOptionsPanel{
-          top: 85px;
-          right: 30px;
-          width: 500px !important;
-          height: 450px !important}
-        #IVOptionsPanel .panel-body {height: 325px !important; overflow-y: auto;}}
- 
-      @media (min-width: 768px) and (max-width: 1000px) {
-        #GraphOptionsPanel {
-          top: 150px;
-          left: 27vw;
-          width: 375px !important;
-          height: 350px !important}
-        #GraphOptionsPanel .panel-body {height: 225px !important; overflow-y: auto;}
-        #IVOptionsPanel{
-          top: 150px;
-          left: 27vw;
-          width: 550px !important;
-          height: 450px !important}
-        #IVOptionsPanel .panel-body {height: 325px !important; overflow-y: auto;}}
- 
-      @media (min-width: 1001px) and (max-width: 1597px) {
-        #GraphOptionsPanel {
-          top: 150px;
-          left: 26.25vw;
-          width: 375px !important;
-          height: 350px !important}
-        #GraphOptionsPanel .panel-body {height: 227px !important; overflow-y: auto;}
-        #IVOptionsPanel{
-          top: 140px;
-          left: 26.25vw;
-          width: 725px !important;
-          height: 345px !important}
-        #IVOptionsPanel .panel-body {height: 223px !important; overflow-y: none;}}
- 
-      @media (min-width: 1598px) {
-        #GraphOptionsPanel {
-          top: 150px;
-          left: 25.75vw;
-          width: 375px !important;
-          height: 350px !important}
-        #GraphOptionsPanel .panel-body {height: 225px !important; overflow-y: auto;}
-        #IVOptionsPanel{
-          top: 140px;
-          left: 25.75vw;
-          width: 725px !important;
-          height: 345px !important}
-        #IVOptionsPanel .panel-body {height: 223px !important; overflow-y: none;}}
- 
+   
       @media (max-width: 1024px) {
         .sidebar-col-outer {
           width: 100% !important;
@@ -649,89 +605,93 @@ shiny::navbarPage(
                        
 htmltools::tags$script(htmltools::HTML("
 $(document).on('click', '.navbar-collapse.in a:not(.dropdown-toggle)', function () {
-$(this).closest('.navbar-collapse').collapse('hide');
+  $(this).closest('.navbar-collapse').collapse('hide');
 });
- 
+
 $(document).on('click', '.navbar-collapse .dropdown-menu a', function () {
-$(this).closest('.navbar-collapse').collapse('hide');
+  $(this).closest('.navbar-collapse').collapse('hide');
 });
-    
+
 $(function(){
-$('.navbar-nav li.dropdown').each(function(){
-var $a = $(this).find('> a.dropdown-toggle');
-var $t = $a.find('[title]');
-var title = $t.attr('title');
-if (title) {
-$(this).attr('title', title); 
-$t.attr('title','');}});
+  $('.navbar-nav li.dropdown').each(function(){
+    var $a = $(this).find('> a.dropdown-toggle');
+    var $t = $a.find('[title]');
+    var title = $t.attr('title');
+    if (title) {
+      $(this).attr('title', title);
+      $t.attr('title','');
+    }
+  });
 });
-    
+
 $(document).on('show.bs.collapse', function(e) {
-if ($(e.target).hasClass('navbar-collapse')) {
-$('#navbar-overlay').fadeIn(200);}
+  if ($(e.target).hasClass('navbar-collapse')) {
+    $('#navbar-overlay').fadeIn(200);
+  }
 });
- 
+
 $(document).on('hide.bs.collapse', function(e) {
-if ($(e.target).hasClass('navbar-collapse')) {
-$('#navbar-overlay').fadeOut(200);}
+  if ($(e.target).hasClass('navbar-collapse')) {
+    $('#navbar-overlay').fadeOut(200);
+  }
 });
- 
+
 $(document).on('click', '#navbar-overlay', function() {
-$('.navbar-collapse.in').collapse('hide');
-$(this).fadeOut(200);
+  $('.navbar-collapse.in').collapse('hide');
+  $(this).fadeOut(200);
 });
- 
-(function () {function getSelectize(el) { return el && el.selectize ? el.selectize : null; }
- 
-$(document).on('shiny:bound', function (ev) {
-var $el = $(ev.target);
-if (!$el.is('select') || !$el.hasClass('selectized')) return;
-var sel = getSelectize($el[0]);
-if (!sel) return;
-sel.settings.openOnFocus = false;
-var $control = $el.next('.selectize-control').find('.selectize-input');
- 
-//close menu upon selecting toggle
-$control.on('pointerdown.selectizeToggle', function (e) {
-if ($(e.target).is('input, textarea')) return;
-e.preventDefault();
-e.stopImmediatePropagation();
-if (sel.isOpen) {sel.close(); sel.blur();} 
-else {sel.open();sel.focus();}
-});
- 
-//close menu upon item selection
-sel.on('item_select', function () { sel.close(); sel.blur(); });
-sel.on('dropdown_close', function () { sel.blur(); });
-    
-sel.on('dropdown_open', function() {
-$el.closest('.sidebar-col-outer').css('overflow', 'visible');
-$el.closest('.sidebar-slide-wrap').css('overflow', 'visible');
-$el.closest('.well').css('overflow', 'visible');
-$el.closest('.map-sidebar-scroll').css('overflow', 'visible');
-});
- 
-sel.on('dropdown_close', function() {
-$el.closest('.sidebar-col-outer').css('overflow', '');
-$el.closest('.sidebar-slide-wrap').css('overflow', '');
-$el.closest('.well').css('overflow', '');
-$el.closest('.map-sidebar-scroll').css('overflow', '');});
- 
-//close menu when clicking anywhere outside menu 
-$(document).on('pointerdown.selectizeOutside', function (e) {
-var $t = $(e.target);
-if ($t.closest('.selectize-control').length) return;
-$('.selectized').each(function () {
-var sel = getSelectize(this);
-if (sel && sel.isOpen) sel.close();});});
-});
+
+(function () {
+  function getSelectize(el) { return el && el.selectize ? el.selectize : null; }
+
+  $(document).on('shiny:bound', function (ev) {
+    var $el = $(ev.target);
+    if (!$el.is('select') || !$el.hasClass('selectized')) return;
+    var sel = getSelectize($el[0]);
+    if (!sel) return;
+    sel.settings.openOnFocus = false;
+    var $control = $el.next('.selectize-control').find('.selectize-input');
+
+    $control.on('pointerdown.selectizeToggle', function (e) {
+      if ($(e.target).is('input, textarea')) return;
+      e.preventDefault();
+      e.stopImmediatePropagation();
+      if (sel.isOpen) { sel.close(); sel.blur(); }
+      else { sel.open(); sel.focus(); }
+    });
+
+    sel.on('item_select', function () { sel.close(); sel.blur(); });
+    sel.on('dropdown_close', function () { sel.blur(); });
+
+    sel.on('dropdown_open', function() {
+      $el.closest('.sidebar-col-outer').css('overflow', 'visible');
+      $el.closest('.sidebar-slide-wrap').css('overflow', 'visible');
+      $el.closest('.well').css('overflow', 'visible');
+    });
+
+    sel.on('dropdown_close', function() {
+      $el.closest('.sidebar-col-outer').css('overflow', '');
+      $el.closest('.sidebar-slide-wrap').css('overflow', '');
+      $el.closest('.well').css('overflow', '');
+    });
+  });
+
+  $(document).on('pointerdown.selectizeOutside', function (e) {
+    var $t = $(e.target);
+    if ($t.closest('.selectize-control').length) return;
+    if ($t.closest('.selectize-dropdown').length) return;
+    $('.selectized').each(function () {
+      var sel = getSelectize(this);
+      if (sel && sel.isOpen) sel.close();
+    });
+  });
 })();
-    
+
 $(document).on('click', '.report-header', function() {
-var $body = $(this).next('.report-body');
-var $caret = $(this).find('.report-caret');
-$body.toggleClass('open');
-$caret.toggleClass('open');
+  var $body = $(this).next('.report-body');
+  var $caret = $(this).find('.report-caret');
+  $body.toggleClass('open');
+  $caret.toggleClass('open');
 });
     
   ")),
@@ -812,7 +772,7 @@ $(document).on('shown.bs.tab', 'a[data-toggle=\"tab\"]', function() {
 ")),
                        
 htmltools::tags$script(htmltools::HTML("
-$(document).on('click', '.info-icon-btn', function() {
+$(document).on('click', '.info-icon-btn, .options-toggle-btn', function() {
   var targetId = $(this).data('target');
   $('#' + targetId + 'Overlay').addClass('active');
   $('#' + targetId + 'Box').addClass('active');
@@ -852,9 +812,39 @@ $(document).on('click', '.map-sidebar', function(e) { e.stopPropagation(); });
 ")),
                        
 htmltools::tags$script(htmltools::HTML("
-function reportW() { Shiny.setInputValue('screenW', window.innerWidth, {priority: 'event'}); }
+function reportW() { Shiny.setInputValue('screenW', document.documentElement.clientWidth, {priority: 'event'}); }
 $(document).on('shiny:connected', reportW);
 $(window).on('resize', function() { clearTimeout(window._wT); window._wT = setTimeout(reportW, 200); });
+")),
+
+htmltools::tags$script(htmltools::HTML("
+Shiny.addCustomMessageHandler('toggleSliderDisable', function(msg) {
+  msg.ids.forEach(function(id) {
+    var $el = $('#' + id);
+    var inst = $el.data('ionRangeSlider');
+    if (inst) {
+      inst.update({ disable: msg.disable });
+    }
+  });
+});
+")),
+
+htmltools::tags$script(htmltools::HTML("
+function trackContainerWidth(id) {
+  var el = document.getElementById(id);
+  if (!el || !window.ResizeObserver) return;
+  var ro = new ResizeObserver(function(entries) {
+    for (var entry of entries) {
+      Shiny.setInputValue(id + '_width', Math.round(entry.contentRect.width), {priority: 'event'});
+    }
+  });
+  ro.observe(el);
+}
+$(document).on('shiny:connected', function() {
+  trackContainerWidth('densPlotContainer');
+  trackContainerWidth('tsPlotContainer');
+  trackContainerWidth('ivPlotContainer');
+});
 ")),
                        
 htmltools::includeHTML("www/google-analytics.html")
@@ -884,26 +874,25 @@ shiny::tabPanel(htmltools::tags$div(title="Map the data", "Map"), value = "Map",
                                      htmltools::tags$div(title="Toggle between common and scientific names", shiny::checkboxInput(inputId="mapCommon", label="Display common names?", value=TRUE )),
                                      htmltools::tags$div(title="Select live or dead", shiny::selectizeInput(inputId="TreeStatus", label="Alive or dead",
                                                                                                             choices=base::c("Alive"='alive',"Dead" = 'snag',"All"='all'), selected = NULL,
-                                                                                                            options = base::list(placeholder = "Select a tree status", onInitialize = base::I('function() { this.setValue(""); }')))),
+                                                                                                            options = base::list(placeholder = "Select a tree status",
+                                                                                                                                 onInitialize = base::I('function() { this.setValue(""); }')))),
                                      htmltools::tags$div(title="Select the type of data to map",shiny::uiOutput("PlantValueControl"))))),
                   
-                  # about map
-                  htmltools::tags$div(id = "mapInfoOverlay", class = "info-popup-overlay"),
-                  htmltools::tags$div(id = "mapInfoBox", class = "info-popup-box",
-                                      htmltools::tags$button(class = "info-popup-close", "\u00d7"),
-                                      htmltools::includeHTML("www/AboutMap.html")),
+              
                   
-                  # map and
+                  # map
+                  #### The Map, full width/height ####
                   htmltools::div(leaflet::leafletOutput("VegMap", height="100%"), style="position:absolute; top:0; left:0; right:0; bottom:0;"),
-                  htmltools::tags$div(
-                    style = "position: absolute; top: 0; left: 0; right: 0; bottom: 0; display: flex; align-items: center; justify-content: center; pointer-events: none; z-index: 9989;",
-                    shiny::uiOutput("incompleteInputWarning")),
-                  htmltools::tags$div(
-                    style = "position: absolute; top: 0; left: 0; right: 0; bottom: 0; display: flex; align-items: flex-end; justify-content: center; padding-bottom: clamp(20px, 4vh, 40px);
-                    padding-left: clamp(100px, 20vw, 360px); padding-right: clamp(90px, 15vw, 150px); box-sizing: border-box; pointer-events: none; z-index: 9989;",
-                    htmltools::tags$div(style = "pointer-events: auto; max-width: min(600px, 100%);", shiny::uiOutput("customMapNotification"))))
-),  # end of map page
-
+                  htmltools::tags$div(style = "position: absolute; top: 0; left: 0; right: 0; bottom: 0; display: flex; align-items: center; justify-content: center;pointer-events: none; z-index: 9989;",
+                    shiny::uiOutput("incompleteInputWarning"),
+                    htmltools::tags$div(style = "position: absolute; top: 0; left: 0; right: 0; bottom: 0; display: flex; align-items: flex-end; justify-content: center; padding-bottom: clamp(20px, 4vh, 40px);
+                                                padding-left: clamp(100px, 20vw, 360px); padding-right: clamp(90px, 15vw, 150px); box-sizing: border-box; pointer-events: none; z-index: 9989;",
+                                        htmltools::tags$div(style = "pointer-events: auto; max-width: min(600px, 100%);", shiny::uiOutput("customMapNotification"))))),
+                htmltools::tags$div(id = "mapInfoOverlay", class = "info-popup-overlay"),
+                htmltools::tags$div(id = "mapInfoBox", class = "info-popup-box",
+                                    htmltools::tags$button(class = "info-popup-close", "\u00d7"),
+                                    htmltools::includeHTML("www/AboutMap.html"))
+),  ## end of map page
 
 ######################################## Graphs Panel ##########################################################
 
@@ -937,7 +926,7 @@ shiny::tabPanel(
           shiny::conditionalPanel(
             condition = "input.densPanel=='Graph'",
             shiny::hr(),
-            shiny::actionButton(inputId = "densGraphButton", label = "Display Options", class = "btn btn-primary btn-block action-button")),
+            shiny::actionButton(inputId = "densGraphButton", label = "Display Options", class = "btn btn-primary btn-block action-button options-toggle-btn", `data-target` = "densOptions")),
           shiny::conditionalPanel(
             condition = "input.densPanel=='Table'",
             shiny::hr(),
@@ -984,7 +973,6 @@ shiny::tabPanel(
             shiny::uiOutput("densReportGraph"),
             shiny::uiOutput("densMissingWarningGraph"),
             shiny::uiOutput("densOnePlotWarningGraph"),
-            shiny::uiOutput("DensLimitWarning"),
             shiny::conditionalPanel(
               condition = "input.densPark == null || input.densPark == '' || (input.densSpeciesType == 'Pick' && (input.densSpecies == null || input.densSpecies.length == 0))",
               htmltools::tags$div(
@@ -993,29 +981,19 @@ shiny::tabPanel(
                 shiny::uiOutput("densGraphImage"))),
             shiny::conditionalPanel(
               condition = "!(input.densPark == null || input.densPark == '' || (input.densSpeciesType == 'Pick' && (input.densSpecies == null || input.densSpecies.length == 0)))",
-              plotly::plotlyOutput(outputId = "DensPlotly", height = "600"))),
-          shiny::fixedPanel(
-            class = "panel panel-primary controls",
-            draggable = TRUE,
-            cursor = "auto",
-            id = "GraphOptionsPanel",
-            style = "padding: 0px; display: none; z-index: 1995;",
-            title = "Display Options",
-            htmltools::div(class = "panel-heading", shiny::h4("Display Options")),
-            htmltools::div(
-              class = "panel-body",
-              shiny::flowLayout(
-                cellArgs = base::list(style = "width: 160px"),
-                shiny::selectizeInput("densBaseColor", "Base Data Color:", choices = COLORNAMES, selected = "blue", width = 150),
-                shiny::selectizeInput("densCompareColor", "Comparison Data Color:", choices = COLORNAMES, selected = "red", width = 150)),
-              shiny::br(),
-              shiny::flowLayout(
-                cellArgs = base::list(style = "width: 160px"),
-                shiny::sliderInput("densErrorThickness", "Error Bar Thickness", min = 0.5, max = 5, value = 1.5, step = 0.5, width = 150),
-                shiny::sliderInput("densFontSize", "Change Font Size", min = 12, max = 24, value = 12, step = 2, width = 150))),
-            htmltools::div(
-              class = "panel-footer",
-              shiny::actionButton(inputId = "CloseDisplayOptions", class = "btn btn-primary", label = "Close")))),
+              plotly::plotlyOutput(outputId = "DensPlotly", height = "auto")),
+            shiny::uiOutput("DensLimitWarning")),
+          htmltools::tags$div(id = "densOptionsOverlay", class = "info-popup-overlay"),
+          htmltools::tags$div(id = "densOptionsBox", class = "info-popup-box",
+                              htmltools::tags$button(class = "info-popup-close", "\u00d7"),
+                              shiny::h4("Display Options"),
+                              shiny::flowLayout(
+                                cellArgs = base::list(style = "width: 160px"),
+                                shiny::selectizeInput("densBaseColor", "Base Data Color:", choices = COLORNAMES, selected = "blue", width = 150),
+                                shiny::selectizeInput("densCompareColor", "Comparison Data Color:", choices = COLORNAMES, selected = "red", width = 150),
+                                shiny::sliderInput("densErrorThickness", "Error Bar Thickness", min = 0.5, max = 5, value = 1.5, step = 0.5, width = 150),
+                                shiny::sliderInput("densFontSize", "Change Font Size", min = 6, max = 18, value = 12, step = 2, width = 150),
+                                shiny::uiOutput("densFontSizeNotice")))),
         shiny::tabPanel(
           htmltools::tags$div(title = "See all data in a table", "Data table"),
           value = "Table",
@@ -1062,7 +1040,7 @@ shiny::tabPanel(
                          htmltools::tags$div(title="Select the measurement to display on the y-axis", shiny::uiOutput(outputId="tsValControl")),
                          shiny::uiOutput(outputId="tsSpeciesControl"),
                          htmltools::tags$div(title = "Select the range of monitoring cycles to display", shiny::uiOutput(outputId = "tsCycleControl")),
-                         shiny::conditionalPanel(condition="input.tsPanel=='Graph'", shiny::hr(), shiny::actionButton(inputId="tsGraphButton", label="Display Options", class="btn btn-primary btn-block action-button")),
+                         shiny::conditionalPanel(condition="input.tsPanel=='Graph'", shiny::hr(), shiny::actionButton(inputId="tsGraphButton", label="Display Options", class="btn btn-primary btn-block action-button options-toggle-btn", `data-target` = "tsOptions")),
                          shiny::conditionalPanel(condition="input.tsPanel=='Table'", shiny::hr(),
                                                  shiny::radioButtons(inputId = "tsTableOrder", label = "Order table by:", 
                                                                      choices = base::c("Species" = "species", "Cycle" = "cycle"),
@@ -1099,26 +1077,25 @@ shiny::tabPanel(
                                                                              shiny::uiOutput("tsGraphImage"))),
                                                                          shiny::conditionalPanel(
                                                                            condition = "!(input.tsPark == null || input.tsPark == '' || (input.tsSpeciesType == 'Pick' && (input.tsSpecies == null || input.tsSpecies.length == 0)))",
-                                                                           plotly::plotlyOutput(outputId="tsPlot", height="600px"))),
-                                                     
+                                                                           plotly::plotlyOutput(outputId="tsPlot", height="auto")),
+                                                                         shiny::uiOutput("TSLimitWarning")),
+
                                                      # floating display options panel
-                                                     shiny::fixedPanel(class="panel panel-primary controls", draggable=TRUE,
-                                                                       cursor="auto", id="TSOptionsPanel", style="padding: 0px; display: none; z-index: 1995;",
-                                                                       title="Display Options",
-                                                                       htmltools::div(class="panel-heading", shiny::h4("Display Options")),
-                                                                       htmltools::div(class="panel-body", shiny::flowLayout(cellArgs=base::list(style="width: 160px"),
-                                                                                                                            shiny::sliderInput("tsLineThickness", "Line Thickness", min=0.5, max=5, value=1.5, step=0.5, width=150),
-                                                                                                                            shiny::sliderInput("tsFontSize", "Font Size", min=12, max=24, value=12, step=2, width=150)),
-                                                                                      shiny::br(),
-                                                                                      shiny::flowLayout(cellArgs=base::list(style="width: 160px"),
-                                                                                                        shiny::sliderInput("tsRibbonOpacity", "CI Ribbon Opacity", min=0.1, max=0.5, value=0.2, step=0.05, width=150),
-                                                                                                        shiny::selectizeInput("tsColorPalette", "Color Palette:",
-                                                                                                                              choices=base::c("Bright" = "set1",
-                                                                                                                                              "Pastel" = "set2",
-                                                                                                                                              "Dark" = "dark2",
-                                                                                                                                              "Paired" = "paired"),
-                                                                                                                              selected = "set1", width=150))),
-                                                                       htmltools::div(class="panel-footer", shiny::actionButton(inputId="CloseTSDisplayOptions", class="btn btn-primary", label="Close")))
+                                                     htmltools::tags$div(id = "tsOptionsOverlay", class = "info-popup-overlay"),
+                                                     htmltools::tags$div(id = "tsOptionsBox", class = "info-popup-box",
+                                                                         htmltools::tags$button(class = "info-popup-close", "\u00d7"),
+                                                                         shiny::h4("Display Options"),
+                                                                         shiny::flowLayout(cellArgs=base::list(style="width: 160px"),
+                                                                                           shiny::sliderInput("tsLineThickness", "Line Thickness", min=0.5, max=5, value=1.5, step=0.5, width=150),
+                                                                                           shiny::sliderInput("tsFontSize", "Font Size", min=6, max=18, value=12, step=2, width=150),
+                                                                                           shiny::uiOutput("tsFontSizeNotice"),
+                                                                                           shiny::sliderInput("tsRibbonOpacity", "CI Ribbon Opacity", min=0.1, max=0.5, value=0.2, step=0.05, width=150),
+                                                                                           shiny::selectizeInput("tsColorPalette", "Color Palette:",
+                                                                                                                 choices=base::c("Bright" = "set1",
+                                                                                                                                 "Pastel" = "set2",
+                                                                                                                                 "Dark" = "dark2",
+                                                                                                                                 "Paired" = "paired"),
+                                                                                                                 selected = "set1", width=150)))
                                      ), # close graph tabPanel
                                      
                                      # table tab
@@ -1170,7 +1147,7 @@ shiny::tabPanel(htmltools::tags$div(title="Graph Importance Values", "Forestry I
                                        shiny::conditionalPanel(
                                          condition="input.IVPanel=='Graph'",
                                          shiny::hr(),
-                                         shiny::actionButton(inputId="IVGraphButton", label="Display Options", class="btn btn-primary btn-block action-button")),
+                                         shiny::actionButton(inputId="IVGraphButton", label="Display Options", class="btn btn-primary btn-block action-button options-toggle-btn", `data-target` = "ivOptions")),
                                        shiny::conditionalPanel(
                                          condition="input.IVPanel=='Table'",
                                          shiny::hr(),
@@ -1189,10 +1166,9 @@ shiny::tabPanel(htmltools::tags$div(title="Graph Importance Values", "Forestry I
                                 shiny::tabsetPanel(id="IVPanel",type="pills",
                                                    shiny::tabPanel(value="Graph",
                                                                    htmltools::tags$div(title="Graph the data","Graph"),
-                                                                   htmltools::tags$div(title="Graph of IV", 
+                                                                   htmltools::tags$div(id = "ivPlotContainer", title="Graph of IV",
                                                                                        shiny::br(),
                                                                                        shiny::uiOutput("ivReport"),
-                                                                                       shiny::uiOutput("IVLimitWarning"),
                                                                                        shiny::conditionalPanel(
                                                                                          condition = "input.IVPark == null || input.IVPark == '' || (input.IVSpeciesType == 'Pick' && (input.IVSpecies == null || input.IVSpecies.length == 0))",
                                                                                          htmltools::tags$div(
@@ -1201,27 +1177,26 @@ shiny::tabPanel(htmltools::tags$div(title="Graph Importance Values", "Forestry I
                                                                                            shiny::uiOutput("ivGraphImage"))),
                                                                                        shiny::conditionalPanel(
                                                                                          condition = "!(input.IVPark == null || input.IVPark == '' || (input.IVSpeciesType == 'Pick' && (input.IVSpecies == null || input.IVSpecies.length == 0)))",
-                                                                                         plotly::plotlyOutput("IVPlot",height="600px"))),
+                                                                                         plotly::plotlyOutput("IVPlot",height="auto")),
+                                                                                       shiny::uiOutput("IVLimitWarning")),
                                                                    
-                                                                   shiny::fixedPanel(class="panel panel-primary controls",draggable=TRUE,
-                                                                                     cursor="auto",id="IVOptionsPanel",style="padding: 0px; display: none; z-index: 1995;",title="Display Options",
-                                                                                     htmltools::div(class="panel-heading", shiny::h4("Display Options")),
-                                                                                     htmltools::div(class="panel-body",
-                                                                                                    shiny::flowLayout(
-                                                                                                      shiny::selectizeInput("IVBaseColor","Base Color:",choices=COLORNAMES, selected="green4",width="125px"),
-                                                                                                      shiny::sliderInput("IVFontSize", "Change Font Size", min=12, max=24, value=12, step=2,width="175px")),
-                                                                                                    shiny::h5("Component Colors:"),
-                                                                                                    shiny::flowLayout(
-                                                                                                      shiny::selectizeInput("IVDensityColor","Density Color:",choices=COLORNAMES,
-                                                                                                                            selected = if ("green4" %in% COLORNAMES) "green4" else COLORNAMES[[1]],
-                                                                                                                            width="125px"),
-                                                                                                      shiny::selectizeInput("IVSizeColor","Size Color:",choices=COLORNAMES,
-                                                                                                                            selected = if ("chartreuse" %in% COLORNAMES) "chartreuse" else COLORNAMES[[1]],
-                                                                                                                            width="125px"),
-                                                                                                      shiny::selectizeInput("IVDistributionColor","Distribution Color:",choices=COLORNAMES,
-                                                                                                                            selected = if ("yellow" %in% COLORNAMES) "yellow" else COLORNAMES[[1]],
-                                                                                                                            width="125px"))),
-                                                                                     htmltools::div(class="panel-footer", shiny::actionButton(inputId="CloseIVDisplayOptions",class="btn btn-primary",label="Close")))),
+                                                                   htmltools::tags$div(id = "ivOptionsOverlay", class = "info-popup-overlay"),
+                                                                   htmltools::tags$div(id = "ivOptionsBox", class = "info-popup-box",
+                                                                                       htmltools::tags$button(class = "info-popup-close", "\u00d7"),
+                                                                                       shiny::h4("Display Options"),
+                                                                                       shiny::flowLayout(
+                                                                                         shiny::selectizeInput("IVBaseColor","Base Color:",choices=COLORNAMES, selected="green4",width="125px"),
+                                                                                         shiny::sliderInput("IVFontSize", "Change Font Size", min=6, max=18, value=12, step=2,width="175px"),
+                                                                                         shiny::uiOutput("IVFontSizeNotice"),
+                                                                                         shiny::selectizeInput("IVDensityColor","Density Color:",choices=COLORNAMES,
+                                                                                                               selected = if ("green4" %in% COLORNAMES) "green4" else COLORNAMES[[1]],
+                                                                                                               width="125px"),
+                                                                                         shiny::selectizeInput("IVSizeColor","Size Color:",choices=COLORNAMES,
+                                                                                                               selected = if ("chartreuse" %in% COLORNAMES) "chartreuse" else COLORNAMES[[1]],
+                                                                                                               width="125px"),
+                                                                                         shiny::selectizeInput("IVDistributionColor","Distribution Color:",choices=COLORNAMES,
+                                                                                                               selected = if ("yellow" %in% COLORNAMES) "yellow" else COLORNAMES[[1]],
+                                                                                                               width="125px")))),
                                                    shiny::tabPanel(htmltools::tags$div(title="See all data in a table","Data table"),
                                                                    value="Table",
                                                                    htmltools::tags$div(style = "padding: 5px", 
