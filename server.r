@@ -630,6 +630,15 @@ var div = L.DomUtil.create('div', 'leaflet-bar plotsize-picker');  div.innerHTML
   $(div).on('mouseleave', function() {
     $(div).removeClass('plotsize-expanded');
   });
+  $(div).find('.gmaps-toggle').on('click', function(e) {
+    e.stopPropagation();
+    $(div).find('.gmaps-strip').toggleClass('open');
+  });
+  $(document).on('click', function(e) {
+    if (!$(e.target).closest(div).length) {
+      $(div).find('.gmaps-strip').removeClass('open');
+    }
+  });
   $(div).find('.plotsize-slider').on('input change', function() {
     Shiny.setInputValue('PlotSize', parseInt($(this).val(), 10), {priority: 'event'});
   });
@@ -638,9 +647,6 @@ var div = L.DomUtil.create('div', 'leaflet-bar plotsize-picker');  div.innerHTML
 plotSizeControl.addTo(map);
 
 L.control.zoom({position: 'bottomright'}).addTo(map);
-
-
-
 
         // Base tile layers managed directly in JS — guarantees only one is
         // ever visible and that the bottom picker's toggling always works,
@@ -733,7 +739,15 @@ $(div).on('mouseenter', function() {
   $(div).on('mouseleave', function() {
     $(div).find('.gmaps-strip').removeClass('open');
   });
-
+$(div).find('.plotsize-toggle').on('click', function(e) {
+    e.stopPropagation();
+    $(div).toggleClass('plotsize-expanded');
+  });
+  $(document).on('click', function(e) {
+    if (!$(e.target).closest(div).length) {
+      $(div).removeClass('plotsize-expanded');
+    }
+  });
 $(div).find('.gmaps-swatch').on('click', function() {
     var layerName = $(this).data('layer');
     var allBaseLayers = ['Map', 'Imagery', 'Light', 'Slate'];
@@ -748,6 +762,9 @@ $(div).find('.gmaps-swatch').on('click', function() {
 
     $(div).find('.gmaps-swatch').removeClass('active');
     $(this).addClass('active');
+    
+    var toggleIconUrl = (layerName === 'Imagery' || layerName === 'Slate') ? previewUrls.Map : previewUrls.Imagery;
+    $(div).find('.gmaps-toggle').css('background-image', 'url(' + toggleIconUrl + ')');
   });
 
   return div;
@@ -1596,6 +1613,13 @@ shiny::observeEvent(input$MapPark, {
     if (!base::isTRUE(input$MainNavBar == "Map")) {
       customNotificationMsg(NULL)}})
   
+  # clear the blue notification whenever the center warning is shown
+  shiny::observe({
+    if (!showAllPlots() && showWarningOverlay()) {
+      customNotificationMsg(NULL)
+    }
+  })
+    
   output$incompleteInputWarning <- shiny::renderUI({
     if (showAllPlots()) base::return(NULL)
     if (!showWarningOverlay()) base::return(NULL)
@@ -1900,6 +1924,20 @@ shiny::observeEvent(input$MapPark, {
                                               common=input$densCommon,area= if (input$densvalues == "presab") "plot" else "ha")))
   })
   
+  #### disable compare color picker when no comparison is selected ####
+  shiny::observe({shinyjs::toggleState(id = "densCompareColor", condition = !base::identical(input$CompareType, "None"))})
+  
+  #### compare color disabled message ####
+  compareColorDisabledMsg <- shiny::reactive({
+    if (base::identical(input$CompareType, "None")) {
+      htmltools::tags$div(style = "font-size: 11px; color: #888; font-style: italic; margin-top: 2px; width: 150px; text-align: center;",
+                          "Comparison color is available when a comparison is selected.")
+    } else { NULL }})
+  
+  output$densCompareColorNotice <- shiny::renderUI({ compareColorDisabledMsg() })
+  
+  shiny::outputOptions(output, "densCompareColorNotice", suspendWhenHidden = FALSE)
+  
   #### Y axis labels for density plot ####
   densYlabel<-shiny::reactive({
     base::switch(input$densvalues,
@@ -2178,8 +2216,8 @@ shiny::observeEvent(input$MapPark, {
           !base::isTRUE(input$densCommon) ~ dplyr::coalesce(Common, Latin)))}
     
     df <- df %>%
-      dplyr::mutate(.tie = base::seq_along(Species)) %>%   # keeps stable order
-      dplyr::arrange(dplyr::desc(Mean), .tie) %>%          # FIX: deterministic ties
+      dplyr::mutate(.tie = base::seq_along(Species)) %>%
+      dplyr::arrange(dplyr::desc(Mean), .tie) %>%
       dplyr::mutate(Species = base::factor(Species, levels = Species)) %>%
       dplyr::select(-.tie)
   })
@@ -2523,7 +2561,7 @@ shiny::observeEvent(input$MapPark, {
                                                                shrubs = "shrub", shseedlings = "shrub seedling", input$densGroup)
                                           cmp_stage <- base::switch(input$CompareGroup, trees = "trees", saplings = "saplings", seedlings = "tree seedlings", 
                                                               shrubs = "shrubs", shseedlings = "shrub seedlings", input$CompareGroup)
-                                          base::paste0("Warning: ", n, " ", base_group, " species ", verb, "not present as ", cmp_stage, " in ", info$base_name, " (shown as 0 on the figure).")},
+                                          base::paste0("Warning: ", n, " ", base_group, " species ", verb, " not present as ", cmp_stage, " in ", info$base_name, " (shown as 0 on the figure).")},
                         Time = {base_cycle <- DATACYCLES$Name[DATACYCLES$Cycle == input$densCycles]
                                 base_years <- base::paste0(DATACYCLES$YearStart[DATACYCLES$Cycle == input$densCycles], "-", DATACYCLES$YearEnd[DATACYCLES$Cycle == input$densCycles])
                                 cmp_cycle <- DATACYCLES$Name[DATACYCLES$Cycle == input$compCycles]
@@ -2957,6 +2995,12 @@ shiny::observeEvent(input$MapPark, {
       !base::is.null(input$densPark) && base::nzchar(input$densPark),
       !(base::identical(input$densSpeciesType, "Pick") &&
           (base::is.null(input$densSpecies) || base::length(input$densSpecies) == 0)))
+    df <- base::tryCatch(densDf(), error = function(e) NULL)
+    shiny::req(!base::is.null(df), base::nrow(df) > 0)
+    if (!base::identical(input$CompareType, "None")) {
+      df_cmp <- base::tryCatch(compareDf(), error = function(e) NULL)
+      shiny::req(!base::is.null(df_cmp), base::nrow(df_cmp) > 0)
+    }
     htmltools::tags$div(
       style = "font-size: 12px; color: #888; font-style: italic; margin-top: 6px; text-align: center;",
       "* Note: Not all species names may be shown on the plot above. See the summary report or data table for the full list.")})
@@ -3281,37 +3325,7 @@ shiny::observeEvent(input$MapPark, {
                             placeholder = 'Select a park',
                             onInitialize = base::I('function() { this.setValue(""); }')))})
   
-  ts_all_parks <- function(VEGDATA, group, years, values) {
-    per_park <- base::lapply(base::names(VEGDATA), function(pk) {
-      base::tryCatch(
-        suppressWarnings(
-          NPSForVeg::dens(
-            object = VEGDATA[[pk]],
-            group = group,
-            years = years,
-            values = values,
-            common = FALSE,
-            area = if (values == "presab") "plot" else "ha",
-            Total = FALSE)),
-        error = function(e) NULL)})
-    
-    base::names(per_park) <- base::names(VEGDATA)
-    per_park <- base::Filter(base::Negate(base::is.null), per_park)
-    if (!base::length(per_park)) base::return(NULL)
-    
-    n_plots <- base::sapply(base::names(VEGDATA), function(pk) {
-      base::tryCatch(base::nrow(NPSForVeg::getPlots(VEGDATA[[pk]], type = "all")), error = function(e) 0L)})
-    
-    combined <- dplyr::bind_rows(
-      base::mapply(function(df, pk) { df$.park <- pk; df }, per_park, base::names(per_park), SIMPLIFY = FALSE))
-    
-    combined$.n_plots <- n_plots[combined$.park]
-    combined$.n_plots[base::is.na(combined$.n_plots) | combined$.n_plots == 0] <- 1L
-    
-    combined %>%
-      dplyr::group_by(Latin_Name) %>%
-      dplyr::summarise(Mean = stats::weighted.mean(Mean, .n_plots, na.rm = TRUE), Lower.95 = stats::weighted.mean(Lower.95, .n_plots, na.rm = TRUE),
-                       Upper.95 = stats::weighted.mean(Upper.95, .n_plots, na.rm = TRUE), .groups  = "drop")}
+  ts_all_parks <- function(VEGDATA, group, years, values) {dens_all_parks(VEGDATA = VEGDATA, group = group, years = years, values = values, common = FALSE)}
   
   # cycle control
   output$tsCycleControl <- shiny::renderUI({
@@ -3462,6 +3476,7 @@ shiny::observeEvent(input$MapPark, {
               years = yrs,
               values = input$tsValues)
           } else {
+            base::set.seed(42)
             NPSForVeg::dens(
               object = VEGDATA[[input$tsPark]],
               group = input$tsGroup,
@@ -3780,7 +3795,7 @@ shiny::observeEvent(input$MapPark, {
     sw <- input$screenW
     if (base::is.null(sw) || sw >= 1386) base::return(NULL)
     htmltools::tags$div(style = "font-size: 12px; color: #888; font-style: italic; margin-top: 6px; text-align: center;",
-                        "* Note: The legend is hidden on smaller screens. Click on points for species details, or see the summary report or data table for the full list.")})
+                        "* Note: The legend is hidden on smaller screens. To view specific details, click or hover on a point. To view the full list, open the summary report or data table.")})
 
   # table title
   tsTitleText <- shiny::reactive({
@@ -3986,13 +4001,19 @@ shiny::observeEvent(input$MapPark, {
     n_cycles <- base::length(cycles_use)
     cycle_word <- if (n_cycles == 1) "cycle" else "cycles"
     
-    species_list <- base::unique(stats::na.omit(df$Species))
-    species_list <- species_list[species_list != "All species"]
-    if (base::identical(input$tsSpeciesType, "All")) species_list <- "all species combined"
-    n_sp <- base::length(species_list)
-    
     # per-species summary across cycles
     df_valid <- df %>% dplyr::filter(!base::is.na(Mean), !base::is.na(Species))
+    
+    species_order <- df_valid %>%
+      dplyr::filter(Species != "All species") %>%
+      dplyr::group_by(Species) %>%
+      dplyr::summarise(OverallMean = base::mean(Mean, na.rm = TRUE), .groups = "drop") %>%
+      dplyr::arrange(dplyr::desc(OverallMean)) %>%
+      dplyr::pull(Species)
+    
+    species_list <- base::as.character(species_order)
+    if (base::identical(input$tsSpeciesType, "All")) species_list <- "all species combined"
+    n_sp <- base::length(species_list)
     
     bullet_tags <- if (!base::identical(input$tsSpeciesType, "All") && n_sp > 0) {
       base::lapply(species_list, function(sp) {sp_df <- df_valid %>% dplyr::filter(Species == sp) %>% dplyr::arrange(Cycle)
@@ -4218,7 +4239,7 @@ shiny::observeEvent(input$MapPark, {
   
   IVTitle <- shiny::reactive({
     base::paste0(
-      NPSForVeg::getNames(VEGDATA[[input$IVPark]], "long"), ": \n",
+      NPSForVeg::getNames(VEGDATA[[input$IVPark]], "long"), ": ",
       IVTitleGroup(), " Importance Values ",
       base::min(IVYears()), "-", base::max(IVYears()))})
   
@@ -4306,6 +4327,24 @@ shiny::observeEvent(input$MapPark, {
   IVDensityColor <- shiny::reactive(toHex(pickColor(input$IVDensityColor, "green4")))
   IVSizeColor <- shiny::reactive(toHex(pickColor(input$IVSizeColor, "chartreuse")))
   IVDistributionColor <- shiny::reactive(toHex(pickColor(input$IVDistributionColor, "yellow")))
+  
+  #### disable component color pickers when components arent shown ####
+  shiny::observe({
+    show_components <- base::isTRUE(input$IVPart)
+    shinyjs::toggleState(id = "IVDensityColor", condition = show_components)
+    shinyjs::toggleState(id = "IVSizeColor", condition = show_components)
+    shinyjs::toggleState(id = "IVDistributionColor", condition = show_components)})
+  
+  #### component color disabled notice ####
+  ivComponentColorDisabledMsg <- shiny::reactive({
+    if (!base::isTRUE(input$IVPart)) {
+      htmltools::tags$div(
+        style = "font-size: 11px; color: #888; font-style: italic; margin-top: 2px; max-width: 320px; text-align: center;",
+        "Component colors are available when \"Display components of the importance value?\" is checked.")
+    } else { NULL }})
+  
+  output$IVComponentColorNotice <- shiny::renderUI({ ivComponentColorDisabledMsg() })
+  shiny::outputOptions(output, "IVComponentColorNotice", suspendWhenHidden = FALSE)
   
   #### IV Plot ####
   tempIVPlot <- shiny::reactive({
@@ -4558,12 +4597,13 @@ shiny::observeEvent(input$MapPark, {
 #})
  
   # footnote
-  
   output$IVLimitWarning <- shiny::renderUI({
     shiny::req(
       !base::is.null(input$IVPark) && base::nzchar(input$IVPark),
       !(base::identical(input$IVSpeciesType, "Pick") &&
           (base::is.null(input$IVSpecies) || base::length(input$IVSpecies) == 0)))
+    df <- base::tryCatch(IVData(), error = function(e) NULL)
+    shiny::req(!base::is.null(df), base::nrow(df) > 0)
     htmltools::tags$div(
       style = "font-size: 12px; color: #888; font-style: italic; margin-top: 6px; text-align: center;",
       "* Note: Not all species names may be shown on the plot above. See the summary report or data table for the full list.")})

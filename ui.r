@@ -26,6 +26,7 @@ shiny::navbarPage(
       .action-button {white-space: normal !important; word-wrap: break-word !important;}
  
       body {padding-top: 80px;}
+      html, body {overflow-x: hidden; max-width: 100%;}
  
       .navbar {
         position: fixed !important;
@@ -173,8 +174,8 @@ shiny::navbarPage(
         overflow-y: auto;
         -webkit-overflow-scrolling: touch;}
  
- 
-  /* shared features across tabs */
+/* shared features across tabs */
+
     /* display options popup (dens, ts, iv) */
     
       #densOptionsBox, #tsOptionsBox, #ivOptionsBox {width: min(92vw, 900px) !important;}
@@ -182,7 +183,22 @@ shiny::navbarPage(
         display: flex;
         flex-wrap: wrap;
         justify-content: center;
-        align-items: flex-start;}
+        align-items: flex-start;
+        width: 100%;}
+      #densOptionsBox .shiny-flow-layout > *,
+      #tsOptionsBox .shiny-flow-layout > * {
+        padding-right: 0 !important;
+        padding-bottom: 0 !important;
+        display: flex !important;
+        justify-content: center !important;}
+      .info-popup-box .selectize-dropdown {
+        position: static !important;
+        width: 100% !important;
+        margin-top: 4px;}
+      .info-popup-box:has(.selectize-control.dropdown-active) {
+        max-height: min(95vh, calc(100vh - 40px)) !important;
+        overflow-y: auto !important;
+        transition: max-height 0.2s ease;}
       
     /* info icon/popup (map, dens, ts, iv, sp list) */
     
@@ -261,8 +277,12 @@ shiny::navbarPage(
         position: relative;
         width: 100%;
         opacity: 1;
-        transition: margin-left 0.5s ease;}
-      .sidebar-slide-wrap.collapsed {margin-left: -2000px;}
+        max-height: 2000px;
+        overflow: hidden;
+        transition: margin-left 0.5s ease, max-height 0.5s ease;}
+      .sidebar-slide-wrap.collapsed {
+        margin-left: -2000px;
+        max-height: 0;}
       .sidebar-slide-wrap.opening {opacity: 0;}
       .sidebar-toggle-tab {
         position: absolute;
@@ -652,24 +672,38 @@ $(document).on('click', '#navbar-overlay', function() {
     sel.settings.openOnFocus = false;
     var $control = $el.next('.selectize-control').find('.selectize-input');
 
-    $control.on('pointerdown.selectizeToggle', function (e) {
-      if ($(e.target).is('input, textarea')) return;
-      e.preventDefault();
-      e.stopImmediatePropagation();
-      if (sel.isOpen) { sel.close(); sel.blur(); }
-      else { sel.open(); sel.focus(); }
-    });
+    $control.on('touchstart.selectizeToggle', function (e) {
+  e.preventDefault();
+});
 
-    sel.on('item_select', function () { sel.close(); sel.blur(); });
-    sel.on('dropdown_close', function () { sel.blur(); });
+$control.on('pointerdown.selectizeToggle', function (e) {
+  if ($(e.target).is('input, textarea')) return;
+  e.preventDefault();
+  e.stopImmediatePropagation();
+  if (sel.isOpen) { sel.close(); sel.blur(); }
+  else { sel.open(); sel.focus(); }
+});
 
-    sel.on('dropdown_open', function() {
+$control.on('click.selectizeToggle', function (e) {
+  e.preventDefault();
+  e.stopPropagation();
+});
+
+$control.on('mousedown.selectizeToggle touchend.selectizeToggle', function (e) {
+  e.stopPropagation();
+});
+
+sel.on('item_select', function () { sel.close(); sel.blur(); });
+sel.on('dropdown_close', function () {sel.blur();
+});
+    sel.on('dropdown_open', function() { console.log('dropdown_open');
       $el.closest('.sidebar-col-outer').css('overflow', 'visible');
       $el.closest('.sidebar-slide-wrap').css('overflow', 'visible');
       $el.closest('.well').css('overflow', 'visible');
     });
 
     sel.on('dropdown_close', function() {
+      window.lastSelectizeCloseTime = Date.now();
       $el.closest('.sidebar-col-outer').css('overflow', '');
       $el.closest('.sidebar-slide-wrap').css('overflow', '');
       $el.closest('.well').css('overflow', '');
@@ -693,29 +727,74 @@ $(document).on('click', '.report-header', function() {
   $body.toggleClass('open');
   $caret.toggleClass('open');
 });
-    
-  ")),
+")),
+
+htmltools::tags$script(htmltools::HTML("
+$(document).on('click', '.info-icon-btn, .options-toggle-btn', function() {
+  var targetId = $(this).data('target');
+  $('#' + targetId + 'Overlay').addClass('active');
+  $('#' + targetId + 'Box').addClass('active');
+});
+
+$(document).on('click', '.info-popup-close, .info-popup-overlay', function(e) {
+  // ignore this click if a selectize dropdown is still open, OR if one
+  // just closed within the last 300ms — covers touch devices where
+  // selectize's own outside-tap handling can resolve before this handler
+  // runs, so a live DOM check alone isn't reliable.
+  if ($('.info-popup-box .selectize-control.dropdown-active').length > 0) return;
+  if (Date.now() - (window.lastSelectizeCloseTime || 0) < 300) return;
+  $('.info-popup-overlay').removeClass('active');
+  $('.info-popup-box').removeClass('active');
+});
+
+$(document).on('click', '.info-popup-box', function(e) {
+  e.stopPropagation();
+});
+")),
+
                        
 htmltools::tags$script(htmltools::HTML("
+function lockToggleTabPosition($sidebarOuter, $toggleTab) {
+  if ($toggleTab.data('lockedTop') === undefined) {
+    var outerH = $sidebarOuter.outerHeight();
+    var tabH = $toggleTab.outerHeight();
+    if (!outerH || !tabH) return;
+    var top = (outerH - tabH) / 2;
+    $toggleTab.data('lockedTop', top);
+  }
+  $toggleTab.css({ top: $toggleTab.data('lockedTop') + 'px', transform: 'none' });
+}
+
+$(document).on('shiny:connected', function() {
+  ['dens', 'ts', 'iv', 'sp'].forEach(function(panelId) {
+    var sidebarOuterId = (panelId === 'sp') ? 'SpeciesControls' : (panelId + 'Sidebar');
+    var $sidebarOuter = $('#' + sidebarOuterId);
+    var $toggleTab = $('#toggle_' + panelId);
+    if ($sidebarOuter.length && $toggleTab.length) {
+      lockToggleTabPosition($sidebarOuter, $toggleTab);
+    }
+  });
+});
+
 ['dens', 'ts', 'iv', 'sp'].forEach(function(panelId) {
   $(document).on('click', '#toggle_' + panelId, function() {
     var sidebarOuterId = (panelId === 'sp') ? 'SpeciesControls' : (panelId + 'Sidebar');
     var wrapId = (panelId === 'sp') ? 'spSlideWrap' : (panelId + 'SlideWrap');
- 
+
     var $sidebarOuter = $('#' + sidebarOuterId);
     var $wrap = $('#' + wrapId);
     var $main = $('#' + panelId + 'Main');
     var $toggleTab = $('#toggle_' + panelId);
     var $chevron = $toggleTab.find('span');
     var isMobile = $(window).width() <= 1024;
- 
+
     if ($wrap.hasClass('collapsed')) {
       $wrap.removeClass('collapsed');
       $sidebarOuter.removeClass('collapsed');
       if (!isMobile) $main.removeClass('main-full-width');
       $chevron.text('\u00ab');
       $toggleTab.attr('title', 'Close data control panel');
-if (!isMobile) {
+      if (!isMobile) {
         setTimeout(function() {
           $wrap.removeClass('opening');
           $sidebarOuter.find('input.js-range-slider').each(function() {
@@ -723,26 +802,21 @@ if (!isMobile) {
             if (inst) inst.update();
           });
         }, 120);
-        setTimeout(function() { $sidebarOuter.css('height', ''); }, 350);
-      } else {
-        $sidebarOuter.css('height', '');
       }
     } else {
-  if (!isMobile) {
-    var lockedHeight = $sidebarOuter.outerHeight();
-    $sidebarOuter.css('height', lockedHeight + 'px');
-  }
-  $wrap.addClass('collapsed');
-  $chevron.text('\u00bb');
-  $toggleTab.attr('title', 'Open data control panel');
-  if (!isMobile) {
-    $sidebarOuter.addClass('collapsed');
-    setTimeout(function() { $main.addClass('main-full-width'); }, 500);
-  } else {
-    setTimeout(function() { $sidebarOuter.addClass('collapsed'); }, 500);
-  }
-}
- 
+      $wrap.addClass('collapsed');
+      $chevron.text('\u00bb');
+      $toggleTab.attr('title', 'Open data control panel');
+      if (!isMobile) {
+        $sidebarOuter.addClass('collapsed');
+        setTimeout(function() { $main.addClass('main-full-width'); }, 500);
+      } else {
+        setTimeout(function() { $sidebarOuter.addClass('collapsed'); }, 500);
+      }
+    }
+
+    if (!isMobile) lockToggleTabPosition($sidebarOuter, $toggleTab);
+
     setTimeout(function() {
       $('.plotly').each(function() {
         if (typeof Plotly !== 'undefined') Plotly.Plots.resize(this);
@@ -756,7 +830,7 @@ if (!isMobile) {
     }, 320);
   });
 });
- 
+
 $(document).on('shown.bs.tab', 'a[data-toggle=\"tab\"]', function() {
   var $parentUl = $(this).closest('ul');
   if ($parentUl.hasClass('navbar-nav')) {
@@ -766,28 +840,10 @@ $(document).on('shown.bs.tab', 'a[data-toggle=\"tab\"]', function() {
     if (!isMobile) $('.main-full-width').removeClass('main-full-width');
     $('.sidebar-toggle-tab span').text('\u00ab');
     $('.sidebar-toggle-tab').attr('title', 'Close data control panel');
-    setTimeout(function() { $('.sidebar-col-outer').css('height', ''); }, 320);
   }
 });
 ")),
-                       
-htmltools::tags$script(htmltools::HTML("
-$(document).on('click', '.info-icon-btn, .options-toggle-btn', function() {
-  var targetId = $(this).data('target');
-  $('#' + targetId + 'Overlay').addClass('active');
-  $('#' + targetId + 'Box').addClass('active');
-});
- 
-$(document).on('click', '.info-popup-close, .info-popup-overlay', function() {
-  $('.info-popup-overlay').removeClass('active');
-  $('.info-popup-box').removeClass('active');
-});
- 
-$(document).on('click', '.info-popup-box', function(e) {
-  e.stopPropagation();
-});
-")),
-                       
+
 htmltools::tags$script(htmltools::HTML("
 $(document).ready(function() {
   $('body').append('<div id=\"navbar-overlay\" style=\"display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.35); z-index:1998;\"></div>');
@@ -990,10 +1046,13 @@ shiny::tabPanel(
                               shiny::flowLayout(
                                 cellArgs = base::list(style = "width: 160px"),
                                 shiny::selectizeInput("densBaseColor", "Base Data Color:", choices = COLORNAMES, selected = "blue", width = 150),
-                                shiny::selectizeInput("densCompareColor", "Comparison Data Color:", choices = COLORNAMES, selected = "red", width = 150),
+                                shiny::tags$div(
+                                  shiny::selectizeInput("densCompareColor", "Comparison Data Color:", choices = COLORNAMES, selected = "red", width = 150),
+                                  shiny::uiOutput("densCompareColorNotice")),
                                 shiny::sliderInput("densErrorThickness", "Error Bar Thickness", min = 0.5, max = 5, value = 1.5, step = 0.5, width = 150),
-                                shiny::sliderInput("densFontSize", "Change Font Size", min = 6, max = 18, value = 12, step = 2, width = 150),
-                                shiny::uiOutput("densFontSizeNotice")))),
+                                shiny::tags$div(
+                                  shiny::sliderInput("densFontSize", "Change Font Size", min = 6, max = 18, value = 12, step = 2, width = 150),
+                                  shiny::uiOutput("densFontSizeNotice"))))),
         shiny::tabPanel(
           htmltools::tags$div(title = "See all data in a table", "Data table"),
           value = "Table",
@@ -1087,8 +1146,9 @@ shiny::tabPanel(
                                                                          shiny::h4("Display Options"),
                                                                          shiny::flowLayout(cellArgs=base::list(style="width: 160px"),
                                                                                            shiny::sliderInput("tsLineThickness", "Line Thickness", min=0.5, max=5, value=1.5, step=0.5, width=150),
-                                                                                           shiny::sliderInput("tsFontSize", "Font Size", min=6, max=18, value=12, step=2, width=150),
-                                                                                           shiny::uiOutput("tsFontSizeNotice"),
+                                                                                           shiny::tags$div(
+                                                                                             shiny::sliderInput("tsFontSize", "Font Size", min=6, max=18, value=12, step=2, width=150),
+                                                                                             shiny::uiOutput("tsFontSizeNotice")),
                                                                                            shiny::sliderInput("tsRibbonOpacity", "CI Ribbon Opacity", min=0.1, max=0.5, value=0.2, step=0.05, width=150),
                                                                                            shiny::selectizeInput("tsColorPalette", "Color Palette:",
                                                                                                                  choices=base::c("Bright" = "set1",
@@ -1184,19 +1244,35 @@ shiny::tabPanel(htmltools::tags$div(title="Graph Importance Values", "Forestry I
                                                                    htmltools::tags$div(id = "ivOptionsBox", class = "info-popup-box",
                                                                                        htmltools::tags$button(class = "info-popup-close", "\u00d7"),
                                                                                        shiny::h4("Display Options"),
-                                                                                       shiny::flowLayout(
-                                                                                         shiny::selectizeInput("IVBaseColor","Base Color:",choices=COLORNAMES, selected="green4",width="125px"),
-                                                                                         shiny::sliderInput("IVFontSize", "Change Font Size", min=6, max=18, value=12, step=2,width="175px"),
-                                                                                         shiny::uiOutput("IVFontSizeNotice"),
-                                                                                         shiny::selectizeInput("IVDensityColor","Density Color:",choices=COLORNAMES,
-                                                                                                               selected = if ("green4" %in% COLORNAMES) "green4" else COLORNAMES[[1]],
-                                                                                                               width="125px"),
-                                                                                         shiny::selectizeInput("IVSizeColor","Size Color:",choices=COLORNAMES,
-                                                                                                               selected = if ("chartreuse" %in% COLORNAMES) "chartreuse" else COLORNAMES[[1]],
-                                                                                                               width="125px"),
-                                                                                         shiny::selectizeInput("IVDistributionColor","Distribution Color:",choices=COLORNAMES,
-                                                                                                               selected = if ("yellow" %in% COLORNAMES) "yellow" else COLORNAMES[[1]],
-                                                                                                               width="125px")))),
+                                                                                       shiny::tags$div(
+                                                                                         style = "display: flex; flex-direction: column; align-items: center; gap: 16px;",
+                                                                                         
+                                                                                         # row 1: base color + font size
+                                                                                         shiny::tags$div(
+                                                                                           style = "display: flex; flex-wrap: wrap; gap: 15px; justify-content: center;",
+                                                                                           shiny::tags$div(
+                                                                                             shiny::selectizeInput("IVBaseColor","Base Color:",choices=COLORNAMES, selected="green4",width="125px")),
+                                                                                           shiny::tags$div(
+                                                                                             shiny::sliderInput("IVFontSize", "Change Font Size", min=6, max=18, value=12, step=2,width="175px"),
+                                                                                             shiny::uiOutput("IVFontSizeNotice"))),
+                                                                                         
+                                                                                         # row 2: component colors + shared notice
+                                                                                         shiny::tags$div(
+                                                                                           style = "display: flex; flex-direction: column; align-items: center; gap: 6px;",
+                                                                                           shiny::tags$div(
+                                                                                             style = "display: flex; flex-wrap: wrap; gap: 15px; justify-content: center;",
+                                                                                             shiny::selectizeInput("IVDensityColor","Density Color:",choices=COLORNAMES,
+                                                                                                                   selected = if ("green4" %in% COLORNAMES) "green4" else COLORNAMES[[1]],
+                                                                                                                   width="125px"),
+                                                                                             shiny::selectizeInput("IVSizeColor","Size Color:",choices=COLORNAMES,
+                                                                                                                   selected = if ("chartreuse" %in% COLORNAMES) "chartreuse" else COLORNAMES[[1]],
+                                                                                                                   width="125px"),
+                                                                                             shiny::selectizeInput("IVDistributionColor","Distribution Color:",choices=COLORNAMES,
+                                                                                                                   selected = if ("yellow" %in% COLORNAMES) "yellow" else COLORNAMES[[1]],
+                                                                                                                   width="125px")),
+                                                                                           shiny::tags$div(
+                                                                                             style = "text-align: center;",
+                                                                                             shiny::uiOutput("IVComponentColorNotice")))))),
                                                    shiny::tabPanel(htmltools::tags$div(title="See all data in a table","Data table"),
                                                                    value="Table",
                                                                    htmltools::tags$div(style = "padding: 5px", 
