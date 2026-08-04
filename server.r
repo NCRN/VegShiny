@@ -334,6 +334,43 @@ shiny::shinyServer(function(input,output,session){
     }
   })
   
+  # Plot years sampled
+  PlotYearRanges <- shiny::reactive({
+    events <- NPSForVeg::getEvents(object = VEGDATA, plot.type = "all")
+    events %>%
+      dplyr::group_by(Plot_Name) %>%
+      dplyr::summarise(
+        FirstYear = base::min(Event_Year, na.rm = TRUE),
+        LastYear = base::max(Event_Year, na.rm = TRUE),
+        .groups = "drop")
+  })
+  
+  # Plot is retired if its last sampled year predates the most recent cycle
+  latestCycleStart <- base::max(DATACYCLES$YearStart)
+  
+  retiredPlotNote <- function(plot_name) {
+    yr <- PlotYearRanges() %>% dplyr::filter(Plot_Name == plot_name)
+    if (base::nrow(yr) == 0) base::return("")
+    
+    cycle_starts <- base::sort(base::unique(DATACYCLES$YearStart))
+    
+    retirement_threshold <- if (base::length(cycle_starts) >= 2) {
+      cycle_starts[base::length(cycle_starts) - 1]
+    } else {cycle_starts[base::length(cycle_starts)]}
+    
+    if (yr$LastYear[1] >= retirement_threshold) base::return("")
+    
+    last_cycle_row <- DATACYCLES %>%
+      dplyr::filter(YearStart <= yr$LastYear[1], YearEnd >= yr$LastYear[1])
+    cycle_num <- if (base::nrow(last_cycle_row) > 0) last_cycle_row$Cycle[1] else NA
+    
+    base::as.character(htmltools::tags$h6(
+      style = "color:#b45309; font-style: italic;",
+      if (!base::is.na(cycle_num)) {
+        base::sprintf("This plot is not actively monitored. Last monitored in %d, Cycle %s.", yr$LastYear[1], cycle_num)
+      } else {base::sprintf("This plot is not actively monitored. Last monitored in %d.", yr$LastYear[1])}))
+  }
+  
   ### if plant type doesnt exist reset placeholder
   shiny::observe({
     shiny::req(input$MapGroup, input$MapCycles, !showAllPlots())
@@ -556,21 +593,40 @@ shiny::shinyServer(function(input,output,session){
       ))
     }
     
-    base::return(P %>% dplyr::left_join(spec_data %>% dplyr::select(Plot_Name, Values = Total), by = "Plot_Name") %>%
-                   dplyr::filter(!base::is.na(Values) & Values > 0))
-  }) %>% shiny::bindCache(input$MapGroup, input$MapValues, input$MapCycles,
-                          input$MapSpecies, input$MapPark, input$TreeStatus) ###########################################################################
+    result <- P %>% dplyr::left_join(spec_data %>% dplyr::select(Plot_Name, Values = Total), by = "Plot_Name")
+    
+    if (base::isTRUE(input$FilterZeroPlots)) {
+      result <- result %>% dplyr::filter(!base::is.na(Values) & Values > 0)
+    } else {
+      result <- result %>% dplyr::mutate(Values = dplyr::if_else(base::is.na(Values), 0, Values))
+    }
+    
+    base::return(result)
+  }) %>% shiny::bindCache(input$MapGroup, input$MapValues, input$MapCycles, input$MapSpecies, input$MapPark, input$TreeStatus, input$FilterZeroPlots) 
+  ###########################################################################
   
   
   # Map Colors
   CircleColors<-shiny::reactive({
     shiny::req(MapMetaData()$Cuts)
     shiny::req(!base::is.null(MapData()) && base::nrow(MapData()) > 0)
-    leaflet::colorBin(palette=base::c("cyan","magenta4","orangered3"),domain=MapData()$Values, bins=base::c(MapMetaData()$Cuts+.001)) # colors for circles
-  })  
+    
+    pos_vals <- MapData()$Values[!base::is.na(MapData()$Values) & MapData()$Values > 0]
+    pal <- if (base::length(pos_vals) > 0) {
+      leaflet::colorBin(palette=base::c("cyan","magenta4","orangered3"),
+                        domain=pos_vals, bins=base::c(MapMetaData()$Cuts+.001))
+    } else { function(x) base::rep(ZEROCOLOR, base::length(x)) }
+    
+    function(x) {
+      cols <- base::rep(ZEROCOLOR, base::length(x))
+      pos_idx <- !base::is.na(x) & x > 0
+      if (base::any(pos_idx)) cols[pos_idx] <- pal(x[pos_idx])
+      cols
+    }
+  }) 
   
   POLYCOLORS<-grDevices::colorRamp(base::c("aquamarine4","green","yellow","goldenrod4")) #colors for polygons
-  
+  ZEROCOLOR <- "#6b6b6b"  # 0/no observation
   
   #### Render Map  ####
   
@@ -649,6 +705,24 @@ var div = L.DomUtil.create('div', 'leaflet-bar plotsize-picker');  div.innerHTML
   return div;
 };
 plotSizeControl.addTo(map);
+
+var zeroToggleControl = L.control({position: 'bottomright'});
+zeroToggleControl.onAdd = function(map) {
+  var div = L.DomUtil.create('div', 'leaflet-bar map-round-icon-btn zero-toggle-btn');
+  div.title = 'Hide plots with no observations';
+  L.DomEvent.disableClickPropagation(div);
+
+  Shiny.setInputValue('FilterZeroPlots', false, {priority: 'event'});
+
+  $(div).on('click', function() {
+    var nowFiltering = !$(div).hasClass('zero-toggle-active');
+    $(div).toggleClass('zero-toggle-active');
+    div.title = nowFiltering ? 'Show plots with no observations' : 'Hide plots with no observations';
+    Shiny.setInputValue('FilterZeroPlots', nowFiltering, {priority: 'event'});
+  });
+  return div;
+};
+zeroToggleControl.addTo(map);
 
 L.control.zoom({position: 'bottomright'}).addTo(map);
 
@@ -888,6 +962,10 @@ baseLayerControl.addTo(map);
       
       # Use same number of colors as visible labels
       all_colors <- BLUEOR(base::length(labels))
+      
+      if (!base::isTRUE(input$FilterZeroPlots)) {
+        labels <- base::c("0", labels)
+        all_colors <- base::c(ZEROCOLOR, all_colors)}
       
       leaflet::leafletProxy("VegMap") %>%
         leaflet::removeControl(layerId = "CircleLegend") %>%
@@ -1337,6 +1415,7 @@ shiny::observeEvent(input$MapPark, {
           layerId = "MouseOverPopup",
           popup   = base::paste0(
             shiny::h5(NPSForVeg::getNames(VEGDATA[[selectedPlot$Unit_Code]], "long")),
+            retiredPlotNote(selectedPlot$Plot_Name),
             shiny::h6("Monitoring Plot: ", selectedPlot$Plot_Name),
             htmltools::tags$h6("Use filters to see data for this plot")
           )
@@ -1357,6 +1436,7 @@ shiny::observeEvent(input$MapPark, {
                        layerId = "MouseOverPopup",
                        popup   = base::paste0(
                          shiny::h5(NPSForVeg::getNames(VEGDATA[[selectedPlot$Unit_Code]], "long")),
+                         retiredPlotNote(selectedPlot$Plot_Name),
                          shiny::h6("Monitoring Plot:", selectedPlot$Plot_Name),
                          shiny::h6("Year Monitored:", selectedPlot$Year),
                          shiny::h6(
@@ -1394,6 +1474,7 @@ shiny::observeEvent(input$MapPark, {
           layerId = "CircleClickPopup",
           popup   = base::paste0(
             shiny::h5(NPSForVeg::getNames(VEGDATA[[selectedPlot$Unit_Code]], "long")),
+            retiredPlotNote(selectedPlot$Plot_Name),
             shiny::h6("Monitoring Plot: ", selectedPlot$Plot_Name),
             htmltools::tags$h6("Use the filters to see species data for this plot")
           )
@@ -1430,6 +1511,7 @@ shiny::observeEvent(input$MapPark, {
       base::names(tempData) <- fmt_common(base::names(tempData))
       content <- base::paste0(
         shiny::h5(NPSForVeg::getNames(VEGDATA[[selectedPlot$Unit_Code]], "long")),
+        retiredPlotNote(selectedPlot$Plot_Name),
         shiny::h6("Monitoring Plot:", selectedPlot$Plot_Name),
         shiny::h6("Year Monitored:", selectedPlot$Year),
         shiny::h6("Species: ", MapMetaData()$Title),
@@ -1463,166 +1545,168 @@ shiny::observeEvent(input$MapPark, {
 
   
   #Build warning labels
-  disableWarnings <- shiny::reactive({
-    species <- input$MapSpecies
-    park <- input$MapPark
-    base::isTRUE(species == "All") && base::isTRUE(park %in% base::c("", "All"))})
+  ########## filter warning messages no longer in use with 0  plots toggle ##########
   
-  plotCounts <- shiny::reactive({
-    all_plots <- base::lapply(base::names(VEGDATA), function(park) {
-      base::tryCatch(
-        NPSForVeg::getPlots(VEGDATA[[park]], output = "dataframe", type = "all") %>%
-          dplyr::select(Plot_Name, Unit_Code, Latitude, Longitude), error = function(e) NULL)})
-    
-    all_plots <- dplyr::bind_rows(all_plots[!base::sapply(all_plots, base::is.null)]) %>%
-      dplyr::distinct(Plot_Name, .keep_all = TRUE)
-    
-    total <- base::nrow(all_plots)
-    filtered <- base::length(base::unique(MapData()$Plot_Name))
-    
-    base::list(total = total, filtered = filtered, removed = total - filtered)
-  })
+  # disableWarnings <- shiny::reactive({
+  #   species <- input$MapSpecies
+  #   park <- input$MapPark
+  #   base::isTRUE(species == "All") && base::isTRUE(park %in% base::c("", "All"))})
+  
+  # plotCounts <- shiny::reactive({
+  #   all_plots <- base::lapply(base::names(VEGDATA), function(park) {
+  #     base::tryCatch(
+  #       NPSForVeg::getPlots(VEGDATA[[park]], output = "dataframe", type = "all") %>%
+  #         dplyr::select(Plot_Name, Unit_Code, Latitude, Longitude), error = function(e) NULL)})
+  #   
+  #   all_plots <- dplyr::bind_rows(all_plots[!base::sapply(all_plots, base::is.null)]) %>%
+  #     dplyr::distinct(Plot_Name, .keep_all = TRUE)
+  #   
+  #   total <- base::nrow(all_plots)
+  #   filtered <- base::length(base::unique(MapData()$Plot_Name))
+  #   
+  #   base::list(total = total, filtered = filtered, removed = total - filtered)
+  # })
   
   # helpers
-  clearWarnings <- function() {
-    customNotificationMsg(NULL)}
-  
-  last_park <- shiny::reactiveVal(NULL)
-  last_species <- shiny::reactiveVal(NULL)
-  last_cycle <- shiny::reactiveVal(NULL)
-  lastValidGroup <- shiny::reactiveVal("")
+  # clearWarnings <- function() {
+  #   customNotificationMsg(NULL)}
+  # 
+  # last_park <- shiny::reactiveVal(NULL)
+  # last_species <- shiny::reactiveVal(NULL)
+  # last_cycle <- shiny::reactiveVal(NULL)
+    lastValidGroup <- shiny::reactiveVal("")
   
   # park warning: when plotCounts() or MapPark changes
-  shiny::observe({
-    if (base::isTRUE(disableWarnings()) || showAllPlots()) {
-      clearWarnings()
-      last_park(NULL)
-      last_species(NULL)
-      base::return()}
-    
-    # park warning only relevant when viewing all species
-    if (!base::isTRUE(input$MapSpecies == "All")) {
-      shiny::removeNotification(id = "park_warning")
-      last_park(NULL)
-      base::return()}
-    
-    shiny::req(MapYears(), input$MapPark, input$MapPark != "")
-    shiny::req(plotCounts())
-    
-    pc <- plotCounts()
-    
-    group_label <- dplyr::case_when(
-      input$MapGroup == "trees" ~ "tree",
-      input$MapGroup == "shrubs" ~ "shrub",
-      input$MapGroup == "saplings" ~ "sapling",
-      input$MapGroup == "seedlings" ~ "seedling",
-      input$MapGroup == "shseedlings" ~ "shrub seedling",
-      input$MapGroup == "vines" ~ "vine",
-      input$MapGroup == "herbs" ~ "understory plant",
-      TRUE ~ input$MapGroup)
-    
-    msg <- base::paste0("Warning: ", pc$removed, " of 430 plots have been removed from the map. ",
-                        "Map shows plots in the selected park sampled during the selected cycle with at least one recorded ",
-                        group_label, " observation.")
-    
-    if (!base::identical(last_park(), msg)) {
-      last_park(msg)
-      customNotificationMsg(msg)}})
+  # shiny::observe({
+  #   if (base::isTRUE(disableWarnings()) || showAllPlots()) {
+  #     clearWarnings()
+  #     last_park(NULL)
+  #     last_species(NULL)
+  #     base::return()}
+  #   
+  #   # park warning only relevant when viewing all species
+  #   if (!base::isTRUE(input$MapSpecies == "All")) {
+  #     shiny::removeNotification(id = "park_warning")
+  #     last_park(NULL)
+  #     base::return()}
+  #   
+  #   shiny::req(MapYears(), input$MapPark, input$MapPark != "")
+  #   shiny::req(plotCounts())
+  #   
+  #   pc <- plotCounts()
+  #   
+  #   group_label <- dplyr::case_when(
+  #     input$MapGroup == "trees" ~ "tree",
+  #     input$MapGroup == "shrubs" ~ "shrub",
+  #     input$MapGroup == "saplings" ~ "sapling",
+  #     input$MapGroup == "seedlings" ~ "seedling",
+  #     input$MapGroup == "shseedlings" ~ "shrub seedling",
+  #     input$MapGroup == "vines" ~ "vine",
+  #     input$MapGroup == "herbs" ~ "understory plant",
+  #     TRUE ~ input$MapGroup)
+  #   
+  #   msg <- base::paste0("Warning: ", pc$removed, " of 430 plots have been removed from the map. ",
+  #                       "Map shows plots in the selected park sampled during the selected cycle with at least one recorded ",
+  #                       group_label, " observation.")
+  #   
+  #   if (!base::identical(last_park(), msg)) {
+  #     last_park(msg)
+  #     customNotificationMsg(msg)}})
   
   # species warning: when MapSpecies or plotCounts() changes
-  shiny::observe({
-    if (base::isTRUE(disableWarnings()) || showAllPlots()) {
-      clearWarnings()
-      last_park(NULL)
-      last_species(NULL)
-      base::return()}
-    
-    if (base::isTRUE(input$MapSpecies == "All") || base::isTRUE(input$MapSpecies == "")) {
-      shiny::removeNotification(id = "species_warning")
-      last_species(NULL)
-      base::return()}
-    
-    shiny::req(input$MapSpecies, input$MapSpecies != "", input$MapSpecies != "All")
-    shiny::req(MapData(), MapYears())
-    
-    pc <- plotCounts()
-    spec_list <- MapSpecList()
-    
-    species_name <- if (input$MapSpecies %in% spec_list) {
-      base::names(spec_list)[spec_list == input$MapSpecies]
-    } else {input$MapSpecies}
-    
-    filtered_n <- pc$filtered
-    removed_n  <- pc$removed
-    filtered_plot_word <- if (filtered_n == 1) "plot" else "plots"
-    removed_plot_word  <- if (removed_n == 1) "plot" else "plots"
-    removed_verb <- if (removed_n == 1) "was" else "were"
-    location_word <- if (removed_n == 1) "this plot" else "these plots"
-    status_label <- dplyr::case_when(input$TreeStatus == "all"  ~ "", input$TreeStatus == "snag" ~ "dead", TRUE ~ input$TreeStatus)
-
-    msg <- base::paste0("Warning: ", species_name, " was observed at ", filtered_n, " ", filtered_plot_word,
-                        " under the current filters. ", removed_n, " of 430 plots ", removed_verb, 
-                        " removed because NCRN has no recorded ", status_label, " ", species_name, " observations for ", 
-                        input$MapGroup, " during the selected cycle at ", location_word, ".")
-    
-    
-    if (!base::identical(last_species(), msg)) {
-      last_species(msg)
-      customNotificationMsg(msg)}})
+  # shiny::observe({
+  #   if (base::isTRUE(disableWarnings()) || showAllPlots()) {
+  #     clearWarnings()
+  #     last_park(NULL)
+  #     last_species(NULL)
+  #     base::return()}
+  #   
+  #   if (base::isTRUE(input$MapSpecies == "All") || base::isTRUE(input$MapSpecies == "")) {
+  #     shiny::removeNotification(id = "species_warning")
+  #     last_species(NULL)
+  #     base::return()}
+  #   
+  #   shiny::req(input$MapSpecies, input$MapSpecies != "", input$MapSpecies != "All")
+  #   shiny::req(MapData(), MapYears())
+  #   
+  #   pc <- plotCounts()
+  #   spec_list <- MapSpecList()
+  #   
+  #   species_name <- if (input$MapSpecies %in% spec_list) {
+  #     base::names(spec_list)[spec_list == input$MapSpecies]
+  #   } else {input$MapSpecies}
+  #   
+  #   filtered_n <- pc$filtered
+  #   removed_n  <- pc$removed
+  #   filtered_plot_word <- if (filtered_n == 1) "plot" else "plots"
+  #   removed_plot_word  <- if (removed_n == 1) "plot" else "plots"
+  #   removed_verb <- if (removed_n == 1) "was" else "were"
+  #   location_word <- if (removed_n == 1) "this plot" else "these plots"
+  #   status_label <- dplyr::case_when(input$TreeStatus == "all"  ~ "", input$TreeStatus == "snag" ~ "dead", TRUE ~ input$TreeStatus)
+  # 
+  #   msg <- base::paste0("Warning: ", species_name, " was observed at ", filtered_n, " ", filtered_plot_word,
+  #                       " under the current filters. ", removed_n, " of 430 plots ", removed_verb, 
+  #                       " removed because NCRN has no recorded ", status_label, " ", species_name, " observations for ", 
+  #                       input$MapGroup, " during the selected cycle at ", location_word, ".")
+  #   
+  #   
+  #   if (!base::identical(last_species(), msg)) {
+  #     last_species(msg)
+  #     customNotificationMsg(msg)}})
   
   # cycle warning: only when all parks and all species selected
-  shiny::observe({
-    shiny::req(input$MapCycles, input$MapSpecies, input$MapPark)
-    
-    if (!base::isTRUE(disableWarnings()) || showAllPlots()) {
-      shiny::removeNotification(id = "cycle_warning")
-      last_cycle(NULL)
-      base::return()}
-    
-    pc <- plotCounts()
-    
-    group_label <- dplyr::case_when(
-      input$MapGroup == "trees" ~ "tree",
-      input$MapGroup == "shrubs" ~ "shrub",
-      input$MapGroup == "saplings" ~ "sapling",
-      input$MapGroup == "seedlings" ~ "seedling",
-      input$MapGroup == "shseedlings" ~ "shrub seedling",
-      input$MapGroup == "vines" ~ "vine",
-      input$MapGroup == "herbs" ~ "understory plant",
-      TRUE ~ input$MapGroup)
-    
-    status_label <- dplyr::case_when(input$TreeStatus == "all" ~ "", input$TreeStatus == "alive" ~ "living", 
-                                     input$TreeStatus == "snag"  ~ "dead", TRUE ~ input$TreeStatus)
-    
-    # no warning if nothing removed
-    if (pc$removed <= 0) {
-      shiny::removeNotification(id = "cycle_warning")
-      last_cycle(NULL)
-      base::return()}
-    
-    msg <- base::paste0("Warning: ", pc$removed, " of 430 plots have been removed from the map. ",
-                        "Plots are only shown if they were sampled during the selected cycle and have at least one recorded ",
-                        status_label, " ", group_label, " observation under the current filters.")
-    
-    if (!base::identical(last_cycle(), msg)) {
-      last_cycle(msg)
-      customNotificationMsg(msg)}})
+  # shiny::observe({
+  #   shiny::req(input$MapCycles, input$MapSpecies, input$MapPark)
+  #   
+  #   if (!base::isTRUE(disableWarnings()) || showAllPlots()) {
+  #     shiny::removeNotification(id = "cycle_warning")
+  #     last_cycle(NULL)
+  #     base::return()}
+  #   
+  #   pc <- plotCounts()
+  #   
+  #   group_label <- dplyr::case_when(
+  #     input$MapGroup == "trees" ~ "tree",
+  #     input$MapGroup == "shrubs" ~ "shrub",
+  #     input$MapGroup == "saplings" ~ "sapling",
+  #     input$MapGroup == "seedlings" ~ "seedling",
+  #     input$MapGroup == "shseedlings" ~ "shrub seedling",
+  #     input$MapGroup == "vines" ~ "vine",
+  #     input$MapGroup == "herbs" ~ "understory plant",
+  #     TRUE ~ input$MapGroup)
+  #   
+  #   status_label <- dplyr::case_when(input$TreeStatus == "all" ~ "", input$TreeStatus == "alive" ~ "living", 
+  #                                    input$TreeStatus == "snag"  ~ "dead", TRUE ~ input$TreeStatus)
+  #   
+  #   # no warning if nothing removed
+  #   if (pc$removed <= 0) {
+  #     shiny::removeNotification(id = "cycle_warning")
+  #     last_cycle(NULL)
+  #     base::return()}
+  #   
+  #   msg <- base::paste0("Warning: ", pc$removed, " of 430 plots have been removed from the map. ",
+  #                       "Plots are only shown if they were sampled during the selected cycle and have at least one recorded ",
+  #                       status_label, " ", group_label, " observation under the current filters.")
+  #   
+  #   if (!base::identical(last_cycle(), msg)) {
+  #     last_cycle(msg)
+  #     customNotificationMsg(msg)}})
   
   shiny::observe({
     if (!base::is.null(input$MapGroup) && input$MapGroup != "") {
       lastValidGroup(input$MapGroup)}})
   
   # clear all popups when navigating away from map page
-  shiny::observeEvent(input$MainNavBar, {
-    if (!base::isTRUE(input$MainNavBar == "Map")) {
-      customNotificationMsg(NULL)}})
+  # shiny::observeEvent(input$MainNavBar, {
+  #   if (!base::isTRUE(input$MainNavBar == "Map")) {
+  #     customNotificationMsg(NULL)}})
   
   # clear the blue notification whenever the center warning is shown
-  shiny::observe({
-    if (!showAllPlots() && showWarningOverlay()) {
-      customNotificationMsg(NULL)
-    }
-  })
+  # shiny::observe({
+  #   if (!showAllPlots() && showWarningOverlay()) {
+  #     customNotificationMsg(NULL)
+  #   }
+  # })
     
   output$incompleteInputWarning <- shiny::renderUI({
     if (showAllPlots()) base::return(NULL)
@@ -1681,34 +1765,34 @@ shiny::observeEvent(input$MapPark, {
   })
   
   #### map notification/warning formatting ####
-  customNotificationMsg <- shiny::reactiveVal(NULL)
-  
-  output$customMapNotification <- shiny::renderUI({
-    msg <- customNotificationMsg()
-    shiny::req(msg)
-    htmltools::tags$div(
-      id = "customMapNotificationBox",
-      style = "background-color: #d9edf7;
-             color: #31708f;
-             padding: 10px 26px 10px 12px;
-             border-radius: 4px;
-             font-size: 12px;
-             font-weight: normal;
-             text-align: left;
-             line-height: 1.4;
-             box-shadow: 0 1px 6px rgba(0,0,0,0.2);
-             border: 1px solid #bce8f1;
-             position: relative;",
-      htmltools::tags$span(
-        style = "position:absolute; top:7px; right:9px; cursor:pointer; font-size:13px; color:#31708f; opacity:0.7;",
-        onclick = "Shiny.setInputValue('dismiss_custom_notification', Math.random())",
-        "\u00d7"),
-      msg)
-  })
-  
-  shiny::observeEvent(input$dismiss_custom_notification, {
-    customNotificationMsg(NULL)
-  })
+  # customNotificationMsg <- shiny::reactiveVal(NULL)
+  # 
+  # output$customMapNotification <- shiny::renderUI({
+  #   msg <- customNotificationMsg()
+  #   shiny::req(msg)
+  #   htmltools::tags$div(
+  #     id = "customMapNotificationBox",
+  #     style = "background-color: #d9edf7;
+  #            color: #31708f;
+  #            padding: 10px 26px 10px 12px;
+  #            border-radius: 4px;
+  #            font-size: 12px;
+  #            font-weight: normal;
+  #            text-align: left;
+  #            line-height: 1.4;
+  #            box-shadow: 0 1px 6px rgba(0,0,0,0.2);
+  #            border: 1px solid #bce8f1;
+  #            position: relative;",
+  #     htmltools::tags$span(
+  #       style = "position:absolute; top:7px; right:9px; cursor:pointer; font-size:13px; color:#31708f; opacity:0.7;",
+  #       onclick = "Shiny.setInputValue('dismiss_custom_notification', Math.random())",
+  #       "\u00d7"),
+  #     msg)
+  # })
+  # 
+  # shiny::observeEvent(input$dismiss_custom_notification, {
+  #   customNotificationMsg(NULL)
+  # })
   
   #### Force map control outputs to render even while the panel is hidden ####
   shiny::outputOptions(output, "mapModeIndicator", suspendWhenHidden = FALSE)

@@ -586,7 +586,17 @@ shiny::navbarPage(
         font-weight: bold;
         color: #777;
         white-space: nowrap;}
- 
+    
+    /* no observations toggle */
+    .zero-toggle-btn {
+      margin-top: 8px;
+      background-image: url('data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 24 24%27 fill=%27none%27 stroke=%27%23555%27 stroke-width=%272%27 stroke-linecap=%27round%27 stroke-linejoin=%27round%27%3E%3Cpath d=%27M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z%27%3E%3C/path%3E%3Ccircle cx=%2712%27 cy=%2712%27 r=%273%27%3E%3C/circle%3E%3C/svg%3E');
+      background-repeat: no-repeat;
+      background-position: center;
+      background-size: 18px 18px;}
+    .zero-toggle-btn.zero-toggle-active {
+      background-image: url('data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 24 24%27 fill=%27none%27 stroke=%27%23c0392b%27 stroke-width=%272%27 stroke-linecap=%27round%27 stroke-linejoin=%27round%27%3E%3Cpath d=%27M17.94 17.94A10.94 10.94 0 0 1 12 19c-7 0-11-7-11-7a18.5 18.5 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 7 11 7a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24%27%3E%3C/path%3E%3Cline x1=%271%27 y1=%271%27 x2=%2723%27 y2=%2723%27%3E%3C/line%3E%3C/svg%3E');}
+      
   /* reactive to screen sizes */
    
       @media (max-width: 1024px) {
@@ -969,7 +979,9 @@ shiny::tabPanel(htmltools::tags$div(title="Map the data", "Map"), value = "Map",
                     shiny::uiOutput("incompleteInputWarning"),
                     htmltools::tags$div(style = "position: absolute; top: 0; left: 0; right: 0; bottom: 0; display: flex; align-items: flex-end; justify-content: center; padding-bottom: clamp(20px, 4vh, 40px);
                                                 padding-left: clamp(100px, 20vw, 360px); padding-right: clamp(90px, 15vw, 150px); box-sizing: border-box; pointer-events: none; z-index: 9989;",
-                                        htmltools::tags$div(style = "pointer-events: auto; max-width: min(600px, 100%);", shiny::uiOutput("customMapNotification"))))),
+                                        htmltools::tags$div(style = "pointer-events: auto; max-width: min(600px, 100%);", 
+                                                            # shiny::uiOutput("customMapNotification")
+                                                            )))),
                 htmltools::tags$div(id = "mapInfoOverlay", class = "info-popup-overlay"),
                 htmltools::tags$div(id = "mapInfoBox", class = "info-popup-box",
                                     htmltools::tags$button(class = "info-popup-close", "\u00d7"),
