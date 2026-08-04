@@ -25,21 +25,30 @@ VEGDATA<-base::switch(NETWORK,
                       NETN=importNETN("./Data/NETN"),
                       SHEN=base::list(importSHEN("./Data/SHEN")))
 
+# map park names to 4 letter codes
 base::names(VEGDATA)<-NPSForVeg::getNames(VEGDATA, name.class="code")
 PARKLIST<-NPSForVeg::getNames(VEGDATA,name.class="code")
 base::names(PARKLIST)<-NPSForVeg::getNames(VEGDATA)
 
+# bound parks for zoom
 PARKBOUNDS<-utils::read.csv("boundboxes.csv", as.is=TRUE)
 
+# year range into cycles
 DATACYCLES<-NPSForVeg::getCycles(VEGDATA[[1]])
 
+# map plant group names to "readable" labels
 DENSLABELDATA<-base::data.frame(Name=base::c("trees","saplings","seedlings","shrubs","shseedlings","herbs","vines"), Label=base::c("Trees","Saplings","Tree Seedlings", "Shrubs","Shrub Seedlings","Understory Plants","Vines in Trees"), stringsAsFactors=FALSE)
 
+# read in photos
+PLACEHOLDER_PHOTOS <- base::list.files(path = "www/photos/", pattern = "\\.(jpg|jpeg)$", ignore.case = TRUE)
+
+# capitalize first letter in common name, lowercase everything else
 fmt_common <- function(x) {base::ifelse(base::is.na(x) | !base::nzchar(base::trimws(x)), x,
                                         base::paste0(base::toupper(base::substr(base::trimws(x), 1, 1)),
                                                      base::tolower(base::substr(base::trimws(x), 2, 
                                                                                 base::nchar(base::trimws(x))))))}
 
+# build plotly legend and wrap and scale by screen width
 buildPlotlyTitleLegend <- function(title_text, font_size, screen_width, legend_labels = base::character(0), plot_height = 600, smooth_breakpoint = FALSE) {
   sw <- if (!base::is.null(screen_width)) screen_width else 1200
   is_sm <- sw < 768
@@ -120,13 +129,12 @@ buildPlotlyTitleLegend <- function(title_text, font_size, screen_width, legend_l
     legend_labels = wrapped_legend,
     height = total_height)}
 
-PLACEHOLDER_PHOTOS <- base::list.files(path = "www/photos/", pattern = "\\.(jpg|jpeg)$", ignore.case = TRUE)
-
+# assign random photo with caption to unloaded screens in app
 randomPlaceholderImg <- function() {
   if (base::length(PLACEHOLDER_PHOTOS) == 0) base::return(NULL)
   file <- base::sample(PLACEHOLDER_PHOTOS, 1)
   
-  # Parse "ANTI-0025_20140708_060h.JPG"
+  # parse "ANTI-0025_20140708_060h.JPG"
   parts <- base::strsplit(file, "_", fixed = TRUE)[[1]]
   caption <- base::tryCatch({
     park_plot <- base::strsplit(parts[1], "-", fixed = TRUE)[[1]]
@@ -135,8 +143,8 @@ randomPlaceholderImg <- function() {
     park_name <- if (park_code %in% base::names(VEGDATA)) {
       NPSForVeg::getNames(VEGDATA[[park_code]], "long")
     } else { park_code }
-    raw_date  <- parts[2]
-    date_str  <- if (base::nchar(raw_date) == 6) {base::format(base::as.Date(base::paste0(raw_date, "01"), "%Y%m%d"), "%B, %Y")
+    raw_date <- parts[2]
+    date_str <- if (base::nchar(raw_date) == 6) {base::format(base::as.Date(base::paste0(raw_date, "01"), "%Y%m%d"), "%B, %Y")
     } else {base::format(base::as.Date(raw_date, "%Y%m%d"), "%B %d, %Y")}
     base::paste0(park_name, ", Plot #", plot_num, " - ", date_str)}, error = function(e) NULL)
   
@@ -155,7 +163,7 @@ randomPlaceholderImg <- function() {
 
 shiny::shinyServer(function(input,output,session){
   
-  #### Shared: blank-input placeholder images (Density/Time Series/IV/Species Lists) ####
+  # shared: blank-input placeholder images (dens/ts/iv/splists)
   output$densGraphImage <- shiny::renderUI({input$densPark; input$densSpeciesType; input$densSpecies 
     randomPlaceholderImg()})
   
@@ -178,7 +186,7 @@ shiny::shinyServer(function(input,output,session){
   output$spTableImage <- shiny::renderUI({input$SpListPark; input$SpListType
     randomPlaceholderImg()})
   
-  #### disable font size sliders on narrow screens ####
+  # disable font size sliders on narrow screens
   shiny::observe({
     sw <- input$screenW
     small_screen <- !base::is.null(sw) && sw < 1386
@@ -192,7 +200,7 @@ shiny::shinyServer(function(input,output,session){
       ids = base::c("densFontSize", "tsFontSize", "IVFontSize"),
       disable = small_screen))})
   
-  #### font size disabled notice ####
+  # font size disabled notice
   fontSizeDisabledMsg <- shiny::reactive({
     sw <- input$screenW
     small_screen <- !base::is.null(sw) && sw < 1386
@@ -204,8 +212,8 @@ shiny::shinyServer(function(input,output,session){
   })
   
   output$densFontSizeNotice <- shiny::renderUI({ fontSizeDisabledMsg() })
-  output$tsFontSizeNotice   <- shiny::renderUI({ fontSizeDisabledMsg() })
-  output$IVFontSizeNotice   <- shiny::renderUI({ fontSizeDisabledMsg() })
+  output$tsFontSizeNotice <- shiny::renderUI({ fontSizeDisabledMsg() })
+  output$IVFontSizeNotice <- shiny::renderUI({ fontSizeDisabledMsg() })
   
   shiny::outputOptions(output, "densFontSizeNotice", suspendWhenHidden = FALSE)
   shiny::outputOptions(output, "tsFontSizeNotice", suspendWhenHidden = FALSE)
@@ -233,7 +241,7 @@ shiny::shinyServer(function(input,output,session){
                           options = base::list(placeholder = "Select a park",
                                                onInitialize = base::I('function() { this.setValue(""); }')))})
   
-  # Data control
+  # assign data value per group
   ValuesUse<-shiny::reactive({
     base::switch(input$MapGroup,
                  trees=,saplings=base::c(Abundance="count", "Basal Area"="size"),
@@ -241,6 +249,7 @@ shiny::shinyServer(function(input,output,session){
                  cwd=base::c("Volume"="size"),
                  herbs=base::c("Percent Cover"="size"))})
   
+  # check if value is still valid when group changes
   shiny::observe({shiny::req(ValuesUse())
     current <- input$MapValues
     choices <- unname(ValuesUse())
@@ -257,6 +266,7 @@ shiny::shinyServer(function(input,output,session){
   
   #### Calculations ####
   # Load Layers
+  
   # withProgress(message="Loading...Please Wait", value=1,{
   #   Ecoregion<-rgdal::readOGR(dsn="./Maps/Ecoregion.geojson")#,"OGRGeoJSON")
   #   Forested<-rgdal::readOGR(dsn="./Maps/Forests.geojson")#,"OGRGeoJSON")
@@ -268,8 +278,6 @@ shiny::shinyServer(function(input,output,session){
     Soil<-sf::st_read(dsn="./Maps/Soils.geojson", quiet = TRUE)
   })
   
-  #Map Cycles
-  
   # Cycles control
   output$MapCycleControl<-shiny::renderUI({
     shiny::req(DATACYCLES)
@@ -277,17 +285,16 @@ shiny::shinyServer(function(input,output,session){
                           choices=base::rev(stats::setNames(base::as.character(DATACYCLES$Cycle), base::paste0(DATACYCLES$Name,":", DATACYCLES$YearStart,"-",DATACYCLES$YearEnd))),
                           selected = NULL, options = base::list(placeholder = "Select a cycle",
                                                                 onInitialize = base::I('function() { this.setValue(""); }')))})
-  
+  # cycle ID to years
   MapYears <- shiny::reactive({shiny::req(input$MapCycles)
     year_start <- DATACYCLES %>% dplyr::filter(Cycle == input$MapCycles) %>% dplyr::pull(YearStart)
     year_end <- DATACYCLES %>% dplyr::filter(Cycle == input$MapCycles) %>% dplyr::pull(YearEnd)
     
-    available_years <- base::sort(base::unique(
-      NPSForVeg::getEvents(object = VEGDATA, plot.type = "all")$Event_Year))
+    available_years <- base::sort(base::unique(NPSForVeg::getEvents(object = VEGDATA, plot.type = "all")$Event_Year))
     
     all_years <- year_start:year_end
     all_years[all_years %in% available_years]
-  }) %>% shiny::bindCache(input$MapCycles)  # cache: same cycle = same years
+  }) %>% shiny::bindCache(input$MapCycles) 
   
   # Map MetaData
   MapMetaData<-shiny::reactive({
@@ -295,7 +302,7 @@ shiny::shinyServer(function(input,output,session){
     MAPLEGEND[[input$MapValues]][[input$MapGroup]] 
   })
   
-  ### show all unique plots setting
+  # show all unique plots setting
   AllPlotLocations <- shiny::reactive({
     all_plots <- base::lapply(base::names(VEGDATA), function(park) {
       base::tryCatch(
@@ -317,11 +324,11 @@ shiny::shinyServer(function(input,output,session){
   
   showWarningOverlay <- shiny::reactive({
     groupNoData() || {
-      missing_group   <- base::is.null(input$MapGroup)   || input$MapGroup == ""
+      missing_group <- base::is.null(input$MapGroup) || input$MapGroup == ""
       missing_species <- base::is.null(input$MapSpecies) || input$MapSpecies == ""
-      missing_values  <- base::is.null(input$MapValues)  || input$MapValues == ""
-      missing_cycle   <- base::is.null(input$MapCycles)  || input$MapCycles == ""
-      missing_status  <- base::isTRUE(input$MapGroup == "trees") &&
+      missing_values <- base::is.null(input$MapValues) || input$MapValues == ""
+      missing_cycle <- base::is.null(input$MapCycles) || input$MapCycles == ""
+      missing_status <- base::isTRUE(input$MapGroup == "trees") &&
         (base::is.null(input$TreeStatus) || input$TreeStatus == "")
       base::any(missing_group, missing_species, missing_values, missing_cycle, missing_status)
     }
@@ -399,6 +406,7 @@ shiny::shinyServer(function(input,output,session){
         showAllPlots(FALSE)}},
     ignoreInit = TRUE)
   
+  # refelcts showallplots()
   output$mapModeIndicator <- shiny::renderUI({
     if (showAllPlots()) {
       htmltools::tags$div(
@@ -630,10 +638,6 @@ var div = L.DomUtil.create('div', 'leaflet-bar plotsize-picker');  div.innerHTML
   $(div).on('mouseleave', function() {
     $(div).removeClass('plotsize-expanded');
   });
-  $(div).find('.gmaps-toggle').on('click', function(e) {
-    e.stopPropagation();
-    $(div).find('.gmaps-strip').toggleClass('open');
-  });
   $(document).on('click', function(e) {
     if (!$(e.target).closest(div).length) {
       $(div).find('.gmaps-strip').removeClass('open');
@@ -683,20 +687,20 @@ var previewUrls = {
   Slate: buildPreviewUrl('%s')
 };
 
-        Shiny.setInputValue('MapLayer', 'None', {priority: 'event'});
+Shiny.setInputValue('MapLayer', 'None', {priority: 'event'});
       
 var filtersControl = L.control({position: 'topleft'}); filtersControl.onAdd = function(map) {
-        var div = L.DomUtil.create('div', 'leaflet-bar map-controls-leaflet-control');
-        div.innerHTML = '<a href=\"#\" title=\"Map controls\" class=\"map-round-icon-btn\">\u2699</a>';
-        L.DomEvent.disableClickPropagation(div);
-        L.DomEvent.on(div, 'click', function(e) {
-  L.DomEvent.preventDefault(e);
-  $('#mapFiltersOverlay').addClass('active');
-  $('#mapFiltersSidebar').addClass('active');
-});
-        return div;
-      };
-      filtersControl.addTo(map);
+  var div = L.DomUtil.create('div', 'leaflet-bar map-controls-leaflet-control');
+  div.innerHTML = '<a href=\"#\" title=\"Map controls\" class=\"map-round-icon-btn\">\u2630</a>';
+  L.DomEvent.disableClickPropagation(div);
+  L.DomEvent.on(div, 'click', function(e) {
+    L.DomEvent.preventDefault(e);
+    $('#mapFiltersOverlay').addClass('active');
+    $('#mapFiltersSidebar').addClass('active');
+  });
+  return div;
+};
+filtersControl.addTo(map);
       
 // Top-right: native Leaflet layers control (same icon/position as original),
 // repurposed to control Ecoregion / Forested Area / Soil via dummy trigger layers
@@ -3653,9 +3657,21 @@ shiny::observeEvent(input$MapPark, {
       RColorBrewer::brewer.pal(base::max(3, base::min(n_sp, 8)), "Set2"))
 
     pal_hex <- base::sapply(pal, toHex)
-
+    
+    # on small screens, show top 5 species by overall mean
+    ts_small_screen <- !base::is.null(input$screenW) && input$screenW < 1386
+    top5_species <- df %>%
+      dplyr::filter(!base::is.na(Mean), !base::is.na(Species), Species != "All species") %>%
+      dplyr::group_by(Species) %>%
+      dplyr::summarise(OverallMean = base::mean(Mean, na.rm = TRUE), .groups = "drop") %>%
+      dplyr::arrange(dplyr::desc(OverallMean)) %>%
+      dplyr::slice_head(n = 5) %>%
+      dplyr::pull(Species) %>%
+      base::as.character()
+    legend_species <- if (ts_small_screen) top5_species else species_list
+    
     p <- plotly::plot_ly()
-
+    
     # assign colors to species
     for (i in base::seq_along(species_list)) {
       sp  <- species_list[[i]]
@@ -3721,7 +3737,7 @@ shiny::observeEvent(input$MapPark, {
                              type = "scatter",
                              mode = "lines+markers",
                              line = base::list(color = col, width = lw),
-                             showlegend = TRUE,
+                             showlegend = sp %in% legend_species,
                              marker = base::list(color = col, size = 6),
                              name = sp,
                              legendgroup = sp,
@@ -3745,11 +3761,8 @@ shiny::observeEvent(input$MapPark, {
                               presab = "Proportion of Plots Occupied")
     ts_title <- base::paste0(park_label, ": ", group_label, " ", val_label, " by Cycle")
     ts_container_w <- if (!base::is.null(input$tsPlotContainer_width)) input$tsPlotContainer_width else input$screenW
-    ts_hide_legend <- !base::is.null(input$screenW) && input$screenW < 1386
-    plotCfg <- buildPlotlyTitleLegend(ts_title, font_s, ts_container_w,
-                                      if (ts_hide_legend) base::character(0) else species_list,
-                                      smooth_breakpoint = TRUE)
-
+    plotCfg <- buildPlotlyTitleLegend(ts_title, font_s, ts_container_w, legend_species, smooth_breakpoint = TRUE)
+    
     #### dummy trace to show legend when there is only one trace (one species selected or all species) --- warning will show Ignoring 1 observations - nothing from data is actually dropped
     p <- plotly::add_trace(
       p,
@@ -3778,7 +3791,7 @@ shiny::observeEvent(input$MapPark, {
                           tickfont = base::list(size = font_s),
                           rangemode = "tozero"),
                         title = plotCfg$title,
-                        showlegend = !ts_hide_legend,
+                        showlegend = TRUE,
                         legend = plotCfg$legend,
                         hovermode = "closest",
                         margin = plotCfg$margin,
@@ -3795,7 +3808,7 @@ shiny::observeEvent(input$MapPark, {
     sw <- input$screenW
     if (base::is.null(sw) || sw >= 1386) base::return(NULL)
     htmltools::tags$div(style = "font-size: 12px; color: #888; font-style: italic; margin-top: 6px; text-align: center;",
-                        "* Note: The legend is hidden on smaller screens. To view specific details, click or hover on a point. To view the full list, open the summary report or data table.")})
+                        "* Note: On smaller screens, the legend shows only the top 5 species by overall mean. To view all species details, click or hover on a point. To view the full list, open the summary report or data table.")})
 
   # table title
   tsTitleText <- shiny::reactive({

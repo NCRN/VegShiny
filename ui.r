@@ -5,13 +5,6 @@ library(shinyjs)
 library(DT)
 library(bslib)
 library(htmltools)
-library(shiny)
-library(NPSForVeg)
-library(leaflet)
-library(shinyjs)
-library(DT)
-library(bslib)
-library(htmltools)
 
 shiny::navbarPage(
   title=htmltools::HTML("National&nbsp;Capital&nbsp;Region&nbsp;Network<wbr> Forest&nbsp;Vegetation"),
@@ -414,7 +407,7 @@ shiny::navbarPage(
       .map-sidebar-close:hover { color: #333; }
  
     /* round icon buttons */
-    
+
       .map-round-icon-btn {
         width: 34px; height: 34px;
         background-color: #ffffff;
@@ -429,7 +422,7 @@ shiny::navbarPage(
       .map-round-icon-btn:hover { background-color: #f4f4f4; color: #222; }
       .map-round-icon-btn:focus,
       .map-round-icon-btn:active { outline: none; box-shadow: 0 1px 5px rgba(0,0,0,0.4); }
- 
+
       .map-info-leaflet-control,
       .map-controls-leaflet-control {
         width: 34px;
@@ -437,12 +430,35 @@ shiny::navbarPage(
         border-radius: 50% !important;
         overflow: hidden;
         box-shadow: none !important;}
+
       .map-info-leaflet-control a,
       .map-controls-leaflet-control a,
       .plotsize-picker a {
         border-bottom: none !important;
         border: none !important;}
       .map-info-leaflet-control a {font-style: italic;}
+
+    /* hamburger control override — bigger, square, centered, clean single border */
+      .map-controls-leaflet-control {
+        width: 42px !important;
+        height: 42px !important;
+        border-radius: 4px !important;
+        overflow: visible;
+        border: none !important;
+        box-shadow: none !important;
+        background: transparent !important;
+        margin-top: 13px !important;}
+
+      .map-controls-leaflet-control .map-round-icon-btn {
+        width: 42px !important;
+        height: 42px !important;
+        font-size: 24px !important;
+        border-radius: 4px !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        line-height: 1 !important;
+        box-shadow: 0 0 0 2px rgba(0,0,0,0.2) !important;}
  
     /* bottom left tile layers selection */
     
@@ -865,6 +881,16 @@ $(document).on('click', '.map-sidebar-close, .map-sidebar-overlay', function() {
 });
 $(document).on('click', '.map-sidebar', function(e) { e.stopPropagation(); });
  
+")),
+
+htmltools::tags$script(htmltools::HTML("
+$(document).on('shiny:connected', function() {
+  var isMobile = $(window).width() <= 1024;
+  if (!isMobile) {
+    $('#mapFiltersSidebar').addClass('active');
+    $('#mapFiltersOverlay').addClass('active');
+  }
+});
 ")),
                        
 htmltools::tags$script(htmltools::HTML("
