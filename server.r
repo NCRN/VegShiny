@@ -504,19 +504,18 @@ shiny::shinyServer(function(input,output,session){
       NPSForVeg::getEvents(object=VEGDATA, years=MapYears(), plot.type="all")
     } else {NPSForVeg::getEvents(object=VEGDATA[[park_sel]], years=MapYears(), plot.type="all")}
     
-    # one row per plot: take the most recent year to avoid duplicate lat/lon rows
     events_deduped <- events %>%
       dplyr::select(Plot_Name, Year=Event_Year) %>%
       dplyr::group_by(Plot_Name) %>%
       dplyr::slice_max(Year, n=1, with_ties=FALSE) %>%
       dplyr::ungroup()
     
-    dplyr::left_join(
+    dplyr::inner_join(
       plots %>% dplyr::select(Plot_Name, Unit_Code, Latitude, Longitude),
       events_deduped,
       by="Plot_Name"
     ) %>%
-      dplyr::filter(!base::is.na(Latitude) & !base::is.na(Longitude)) %>%  # drop bad coords upfront
+      dplyr::filter(!base::is.na(Latitude) & !base::is.na(Longitude)) %>%
       dplyr::rowwise() %>%
       dplyr::mutate(Size = if (Unit_Code %in% base::names(VEGDATA)) {
         NPSForVeg::getArea(VEGDATA[[Unit_Code]], group=input$MapGroup)
@@ -524,7 +523,7 @@ shiny::shinyServer(function(input,output,session){
         NA_real_
       }) %>%
       dplyr::ungroup()
-  }) %>% shiny::bindCache(MapYears(), input$MapGroup, input$MapPark)  # add MapPark to cache key
+  }) %>% shiny::bindCache(MapYears(), input$MapGroup, input$MapPark)
   
   MapData<-shiny::reactive({
     shiny::req(input$MapGroup, input$MapValues, input$MapCycles, input$MapSpecies)
@@ -1492,7 +1491,8 @@ shiny::observeEvent(input$MapPark, {
       years   = selectedPlot$Year,
       plots   = ShapeClick$id,
       common  = input$mapCommon,
-      status  = if (input$MapGroup == "trees") input$TreeStatus else "alive")
+      status  = if (input$MapGroup == "trees") input$TreeStatus else "alive",
+      plot.type = "all")
     
     if (base::class(base::try(
       base::do.call(NPSForVeg::SiteXSpec, sxs_args_base), silent = TRUE)) == "try-error") {
@@ -1506,7 +1506,7 @@ shiny::observeEvent(input$MapPark, {
         base::do.call(NPSForVeg::SiteXSpec,
                       base::list(object=VEGDATA[[selectedPlot$Unit_Code]], group=input$MapGroup,
                                  years=selectedPlot$Year, plots=ShapeClick$id,
-                                 values=input$MapValues, common=input$mapCommon))[-1]
+                                 values=input$MapValues, common=input$mapCommon, plot.type = "all"))[-1]
       }
       base::names(tempData) <- fmt_common(base::names(tempData))
       content <- base::paste0(
