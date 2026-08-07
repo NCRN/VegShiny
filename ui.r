@@ -500,6 +500,12 @@ shiny::navbarPage(
         text-shadow: 0 1px 3px rgba(0,0,0,0.9);
         padding-bottom: 3px;}
       .gmaps-swatch.active { border-color: #4a90d9; }
+      @media (max-width: 600px) {
+        .gmaps-style-basepicker {
+          flex-direction: column-reverse;
+          align-items: flex-start;}
+        .gmaps-strip {
+          flex-direction: column;}}
  
     /* plot size slider */
     
@@ -586,8 +592,46 @@ shiny::navbarPage(
         font-weight: bold;
         color: #777;
         white-space: nowrap;}
+    @media (max-height: 680px) and (max-width: 600px) {
+      .plotsize-strip {
+        position: relative;
+        overflow: visible;
+        grid-template-columns: 20px 20px;
+        grid-template-rows: auto 150px;
+        grid-template-areas:
+          'label label'
+          'slider caps';
+        gap: 4px;
+        align-items: center;
+        justify-items: center;
+        width: auto;
+        height: auto;
+        padding: 10px 6px;}
+      .plotsize-expanded .plotsize-strip {display: grid;}
+      .plotsize-label {
+        grid-area: label;
+        writing-mode: horizontal-tb;
+        white-space: normal;
+        text-align: center;
+        margin: 0;}
+      .plotsize-slider {
+        position: absolute;
+        top: 65%;
+        left: 20px;
+        width: 150px !important;
+        transform: translate(-50%, -50%) rotate(-90deg);
+        transform-origin: center;
+        margin: 0;}
+      .plotsize-endlabel-row {
+        grid-area: caps;
+        flex-direction: column-reverse;
+        justify-content: space-between;
+        align-items: center;
+        height: 150px;
+        margin-top: 0;}}
     
     /* no observations toggle */
+    
       .zero-toggle-btn {
         margin-top: 8px;
         background-image: url('data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 24 24%27 fill=%27none%27 stroke=%27%23555%27 stroke-width=%272%27 stroke-linecap=%27round%27 stroke-linejoin=%27round%27%3E%3Cpath d=%27M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z%27%3E%3C/path%3E%3Ccircle cx=%2712%27 cy=%2712%27 r=%273%27%3E%3C/circle%3E%3C/svg%3E');
@@ -597,8 +641,46 @@ shiny::navbarPage(
       .zero-toggle-btn.zero-toggle-active {
         background-image: url('data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 24 24%27 fill=%27none%27 stroke=%27%23c0392b%27 stroke-width=%272%27 stroke-linecap=%27round%27 stroke-linejoin=%27round%27%3E%3Cpath d=%27M17.94 17.94A10.94 10.94 0 0 1 12 19c-7 0-11-7-11-7a18.5 18.5 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 7 11 7a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24%27%3E%3C/path%3E%3Cline x1=%271%27 y1=%271%27 x2=%2723%27 y2=%2723%27%3E%3C/line%3E%3C/svg%3E');}
       
-  /* reactive to screen sizes */
+  /* other reactive features to screen sizes */
    
+      @media (max-height: 680px) {
+        .leaflet-bottom.leaflet-right {
+          display: flex;
+          flex-direction: row-reverse;
+          align-items: flex-end;
+          gap: 4px;}
+        .leaflet-bottom.leaflet-right .leaflet-control {
+          margin-bottom: 4px;
+          margin-right: 4px;}}
+        .leaflet-top.leaflet-right {
+          max-height: calc(100vh - 100px);
+          overflow-y: auto;
+          overflow-x: hidden;
+          z-index: 1000;}
+        .leaflet-bottom.leaflet-right {z-index: 1000;}
+        .leaflet-top.leaflet-right.corner-raised,
+        .leaflet-bottom.leaflet-right.corner-raised {z-index: 2000 !important;}
+        .leaflet-top.leaflet-right .info.legend {
+          max-width: 150px;
+          cursor: pointer;
+          position: relative;
+          padding-right: 18px !important;
+          box-sizing: border-box;}
+        .leaflet-top.leaflet-right .info.legend::after {
+          content: '-';
+          position: absolute;
+          top: 6px;
+          right: 6px;
+          font-size: 15px;
+          font-weight: bold;
+          color: #555;
+          line-height: 1;}
+        .leaflet-top.leaflet-right .info.legend.legend-collapsed {
+          max-height: 25px;
+          overflow: hidden;
+          padding-bottom: 5px !important;}
+        .leaflet-top.leaflet-right .info.legend.legend-collapsed::after {
+          content: '+';}}
       @media (max-width: 1024px) {
         .sidebar-col-outer {
           width: 100% !important;
@@ -624,8 +706,7 @@ shiny::navbarPage(
           margin-left: 0 !important;
           max-height: 0 !important;}
         .sidebar-slide-wrap .sidebar-content,
-        .sidebar-slide-wrap.collapsed .sidebar-content {
-          opacity: 1 !important;}
+        .sidebar-slide-wrap.collapsed .sidebar-content {opacity: 1 !important;}
         .sidebar-toggle-tab {
           position: absolute !important;
           top: auto !important;
@@ -645,7 +726,8 @@ shiny::navbarPage(
           transform: rotate(-270deg);}
         .report-body.open {
           max-height: 60vh !important;
-          overflow-y: auto !important;}}
+          overflow-y: auto !important;}
+        .leaflet-tooltip { display: none !important; }}
  
   ")),
                        
@@ -722,7 +804,7 @@ $control.on('mousedown.selectizeToggle touchend.selectizeToggle', function (e) {
 sel.on('item_select', function () { sel.close(); sel.blur(); });
 sel.on('dropdown_close', function () {sel.blur();
 });
-    sel.on('dropdown_open', function() { console.log('dropdown_open');
+    sel.on('dropdown_open', function() {
       $el.closest('.sidebar-col-outer').css('overflow', 'visible');
       $el.closest('.sidebar-slide-wrap').css('overflow', 'visible');
       $el.closest('.well').css('overflow', 'visible');
@@ -778,6 +860,27 @@ $(document).on('click', '.info-popup-box', function(e) {
 });
 ")),
 
+htmltools::tags$script(htmltools::HTML("
+$(document).on('click', '.leaflet-top.leaflet-right .info.legend', function() {
+  var $corner = $(this).closest('.leaflet-top.leaflet-right');
+  if ($corner.data('justRaised')) {
+    $corner.removeData('justRaised');
+    return;
+  }
+  $(this).toggleClass('legend-collapsed');
+});
+")),
+
+htmltools::tags$script(htmltools::HTML("
+$(document).on('mousedown touchstart', '.leaflet-top.leaflet-right, .leaflet-bottom.leaflet-right', function() {
+  var wasRaised = $(this).hasClass('corner-raised');
+  $('.leaflet-top.leaflet-right, .leaflet-bottom.leaflet-right').removeClass('corner-raised');
+  $(this).addClass('corner-raised');
+  if (!wasRaised) {
+    $(this).data('justRaised', true);
+  }
+});
+")),
                        
 htmltools::tags$script(htmltools::HTML("
 function lockToggleTabPosition($sidebarOuter, $toggleTab) {

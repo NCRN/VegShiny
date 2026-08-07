@@ -278,6 +278,9 @@ shiny::shinyServer(function(input,output,session){
     Soil<-sf::st_read(dsn="./Maps/Soils.geojson", quiet = TRUE)
   })
   
+  # establish ecoregion legend/order west to east
+  ECOREGION_ORDER <- base::unique(Ecoregion$MapClass)
+  
   # Cycles control
   output$MapCycleControl<-shiny::renderUI({
     shiny::req(DATACYCLES)
@@ -624,7 +627,10 @@ shiny::shinyServer(function(input,output,session){
     }
   }) 
   
-  POLYCOLORS<-grDevices::colorRamp(base::c("aquamarine4","green","yellow","goldenrod4")) #colors for polygons
+  # new palettes that are colorblind-friendly, distinct on light/dark basemaps
+  ECOREGION_COLORS <- base::c("#0072B2", "#009E73", "#E69F00", "#CC79A7", "#D55E00") 
+  FOREST_COLOR <- "#004488" 
+  SOIL_COLORS <- base::c("#332288", "#88CCEE", "#44AA99", "#117733", "#999933", "#DDCC77", "#CC6677", "#882255")
   ZEROCOLOR <- "#6b6b6b"  # 0/no observation
   
   #### Render Map  ####
@@ -905,6 +911,7 @@ baseLayerControl.addTo(map);
     if (showAllPlots()) {
       all_df <- AllPlotLocations()
       shiny::req(!base::is.null(all_df) && base::nrow(all_df) > 0)
+      input$MapLayer
       
       leaflet::leafletProxy("VegMap") %>%
         leaflet::clearGroup("Circles") %>%
@@ -917,7 +924,7 @@ baseLayerControl.addTo(map);
           layerId = all_df$Plot_Name,
           fillColor = "green",
           color = "green",
-          fillOpacity = 0.7
+          fillOpacity = 1
         )
       
     } else {
@@ -1348,15 +1355,21 @@ baseLayerControl.addTo(map);
                    EcoReg=leaflet::clearGroup(.,group=base::c("Forested","Soil") )%>% 
                      leaflet::addPolygons(., data=Ecoregion, group="Ecoregion", layerId=Ecoregion$MapClass, 
                                           stroke=FALSE, 
-                                          fillOpacity=.65, color=leaflet::colorFactor(palette=POLYCOLORS, levels=Ecoregion$MapClass)(Ecoregion$MapClass)),
+                                          fillOpacity=.4, color=leaflet::colorFactor(palette=ECOREGION_COLORS, levels=ECOREGION_ORDER)(Ecoregion$MapClass),
+                                          label=base::paste0("Ecoregion: ", Ecoregion$MapClass),
+                                          popup=base::paste0("<b>Ecoregion:</b> ", Ecoregion$MapClass)),
                    
                    ForArea=leaflet::clearGroup(.,group=base::c("Ecoregion","Soil")) %>% 
                      leaflet::addPolygons(.,data=Forested, group="Forested", layerId=Forested$MapClass, stroke=FALSE, 
-                                          fillOpacity=.65, color=leaflet::colorFactor("Greens",levels=Forested$MapClass)(Forested$MapClass)),
+                                          fillOpacity=.4, color=FOREST_COLOR,
+                                          label=base::paste0("Forested: ", Forested$MapClass),
+                                          popup=base::paste0("<b>Forested:</b> ", Forested$MapClass)),
                    
                    Soil=leaflet::clearGroup(.,group=base::c("Ecoregion","Forested")) %>% 
                      leaflet::addPolygons(.,data=Soil, group="Soil", layerId=Soil$MapClass, stroke=FALSE, 
-                                          fillOpacity=.65, color=leaflet::colorFactor(POLYCOLORS,levels=Soil$MapClass)(Soil$MapClass)) 
+                                          fillOpacity=.4, color=leaflet::colorFactor(SOIL_COLORS,levels=Soil$MapClass)(Soil$MapClass),
+                                          label=base::paste0("Soil: ", Soil$MapClass),
+                                          popup=base::paste0("<b>Soil:</b> ", Soil$MapClass))
       )}
   })
   
@@ -1387,12 +1400,11 @@ shiny::observeEvent(input$MapPark, {
     leaflet::leafletProxy("VegMap") %>%  leaflet::removeControl(layerId="LayerLegend") %>%
       { base::switch(input$MapLayer,
                      None=NA,
-                     EcoReg= leaflet::addLegend(.,title="Layer Legend",pal=leaflet::colorFactor(POLYCOLORS, levels=Ecoregion$MapClass),
-                                                values=Ecoregion$MapClass, layerId="LayerLegend"),
-                     
-                     ForArea= leaflet::addLegend(.,title="Layer Legend",pal=leaflet::colorFactor("Greens",levels=Forested$MapClass),
-                                                 values=Forested$MapClass,layerId="LayerLegend"),
-                     Soil= leaflet::addLegend(.,title="Layer Legend",pal=leaflet::colorFactor(POLYCOLORS, levels=Soil$MapClass),
+                     EcoReg= leaflet::addLegend(.,title="Layer Legend",pal=leaflet::colorFactor(ECOREGION_COLORS, levels=ECOREGION_ORDER),
+                                                values=base::factor(ECOREGION_ORDER, levels=ECOREGION_ORDER), layerId="LayerLegend"),
+                     ForArea= leaflet::addLegend(.,title="Layer Legend",colors=FOREST_COLOR,
+                                                 labels=base::unique(Forested$MapClass), layerId="LayerLegend"),
+                     Soil= leaflet::addLegend(.,title="Layer Legend",pal=leaflet::colorFactor(SOIL_COLORS, levels=Soil$MapClass),
                                               values=Soil$MapClass, layerId="LayerLegend")
       )}
   })
@@ -1455,8 +1467,6 @@ shiny::observeEvent(input$MapPark, {
   })
   
   # Mouse Click 
-  
-  # REPLACE the entire observeEvent(input$VegMap_shape_click block WITH:
   shiny::observeEvent(input$VegMap_shape_click, {
     ShapeClick <- input$VegMap_shape_click
     
@@ -1533,12 +1543,7 @@ shiny::observeEvent(input$MapPark, {
     leaflet::leafletProxy("VegMap") %>%
       leaflet::clearPopups() %>% {
         base::switch(ShapeClick$group,
-                     Circles   = leaflet::addPopups(map = ., lat = ShapeClick$lat + .001,
-                                                    lng = ShapeClick$lng, layerId = "CircleClickPopup", popup = content),
-                     Ecoregion =,
-                     Forested  =,
-                     Soil      = leaflet::addPopups(map = ., lat = ShapeClick$lat,
-                                                    lng = ShapeClick$lng, popup = ShapeClick$id)
+                     Circles   = leaflet::addPopups(map = ., lat = ShapeClick$lat + .001, lng = ShapeClick$lng, layerId = "CircleClickPopup", popup = content)
         )
       }
   })
