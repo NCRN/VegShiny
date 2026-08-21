@@ -210,7 +210,6 @@ shiny::navbarPage(
         justify-content: center;
         font-size: 16px;
         font-weight: bold;
-        font-style: italic;
         cursor: pointer;
         z-index: 30;
         transition: background-color 0.2s ease, color 0.2s ease;}
@@ -436,9 +435,8 @@ shiny::navbarPage(
       .plotsize-picker a {
         border-bottom: none !important;
         border: none !important;}
-      .map-info-leaflet-control a {font-style: italic;}
 
-    /* hamburger control override — bigger, square, centered, clean single border */
+    /* hamburger control */
       .map-controls-leaflet-control {
         width: 42px !important;
         height: 42px !important;
@@ -592,7 +590,97 @@ shiny::navbarPage(
         font-weight: bold;
         color: #777;
         white-space: nowrap;}
-    @media (max-height: 680px) and (max-width: 600px) {
+      
+    /* layer transparency slider */
+
+      .opacity-picker {
+        display: flex;
+        align-items: center;
+        justify-content: flex-end;
+        width: 34px;
+        height: 34px;
+        border-radius: 50% !important;
+        overflow: hidden;
+        box-shadow: none !important;}
+      .opacity-picker.opacity-expanded {
+        width: auto;
+        height: auto;
+        border-radius: 6px;
+        overflow: visible;}
+      .opacity-toggle {
+        cursor: pointer;
+        outline: none;
+        font-size: 16px;}
+      .opacity-toggle:hover { background-color: #f4f4f4; color: #222; }
+      .opacity-expanded .opacity-toggle { display: none; }
+      .opacity-expanded .opacity-strip { display: flex; }
+      .opacity-strip {
+        display: none;
+        flex-direction: column;
+        justify-content: center;
+        background: #fff;
+        border-radius: 6px;
+        box-shadow: 0 1px 5px rgba(0,0,0,0.4);
+        padding: 4px 10px;
+        width: 220px;
+        height: 52px;
+        box-sizing: border-box;
+        overflow: hidden;}
+      .opacity-label {
+        font-size: 11px;
+        font-weight: bold;
+        color: #555;
+        white-space: nowrap;
+        margin-bottom: 0;}
+            .opacity-slider {
+        width: 100%;
+        cursor: pointer;
+        -webkit-appearance: none;
+        appearance: none;
+        height: 2px;
+        background: #ddd;
+        border-radius: 2px;
+        outline: none;}
+      .opacity-slider::-webkit-slider-thumb {
+        -webkit-appearance: none;
+        appearance: none;
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        background: #4a90d9;
+        cursor: pointer;}
+      .opacity-slider::-moz-range-thumb {
+        width: 10px;
+        height: 10px;
+        border: none;
+        border-radius: 50%;
+        background: #4a90d9;
+        cursor: pointer;}
+      .opacity-slider::-moz-range-track {
+        height: 4px;
+        background: #ddd;
+        border-radius: 2px;}
+      .opacity-endlabel-row {
+        display: flex;
+        justify-content: space-between;
+        margin-top: 2px;}
+      .opacity-endlabel {
+        font-size: 8px;
+        font-weight: bold;
+        color: #777;
+        white-space: nowrap;}
+        
+      .leaflet-top.leaflet-right .info.legend.legend-collapsed::after {content: '+';}
+      .leaflet-top.leaflet-right .info.legend.soil-legend {
+        max-width: 300px !important;
+        white-space: nowrap;}
+      .leaflet-bottom.leaflet-right .leaflet-control {
+        filter: drop-shadow(0 0 2px rgba(255, 255, 255, 1)) 
+        drop-shadow(0 0 2px rgba(255, 255, 255, 1)) 
+        drop-shadow(0 0 6px rgba(255, 255, 255, 1)) 
+        drop-shadow(0 0 12px rgba(255, 255, 255, 1)) 
+        drop-shadow(0 0 24px rgba(255, 255, 255, 1));}
+    @media (max-height: 880px) and (max-width: 600px) {
       .plotsize-strip {
         position: relative;
         overflow: visible;
@@ -628,6 +716,42 @@ shiny::navbarPage(
         justify-content: space-between;
         align-items: center;
         height: 150px;
+        margin-top: 0;}
+      .opacity-strip {
+        position: relative;
+        overflow: visible;
+        grid-template-columns: 20px 20px;
+        grid-template-rows: auto 150px;
+        grid-template-areas:
+          'label label'
+          'slider caps';
+        gap: 4px;
+        align-items: center;
+        justify-items: center;
+        width: auto;
+        height: auto;
+        padding: 10px 6px;}
+      .opacity-expanded .opacity-strip {display: grid;}
+      .opacity-label {
+        grid-area: label;
+        writing-mode: horizontal-tb;
+        white-space: normal;
+        text-align: center;
+        margin: 0;}
+      .opacity-slider {
+        position: absolute;
+        top: 65%;
+        left: 20px;
+        width: 150px !important;
+        transform: translate(-50%, -50%) rotate(-90deg);
+        transform-origin: center;
+        margin: 0;}
+      .opacity-endlabel-row {
+        grid-area: caps;
+        flex-direction: column-reverse;
+        justify-content: space-between;
+        align-items: center;
+        height: 150px;
         margin-top: 0;}}
     
     /* no observations toggle */
@@ -643,7 +767,8 @@ shiny::navbarPage(
       
   /* other reactive features to screen sizes */
    
-      @media (max-height: 680px) {
+      @media (max-height: 880px) {
+        .leaflet-bottom.leaflet-right {z-index: 1000;}
         .leaflet-bottom.leaflet-right {
           display: flex;
           flex-direction: row-reverse;
@@ -657,15 +782,8 @@ shiny::navbarPage(
           overflow-y: auto;
           overflow-x: hidden;
           z-index: 1000;}
-        .leaflet-bottom.leaflet-right {z-index: 1000;}
         .leaflet-top.leaflet-right.corner-raised,
         .leaflet-bottom.leaflet-right.corner-raised {z-index: 2000 !important;}
-        .leaflet-top.leaflet-right .info.legend {
-          max-width: 150px;
-          cursor: pointer;
-          position: relative;
-          padding-right: 18px !important;
-          box-sizing: border-box;}
         .leaflet-top.leaflet-right .info.legend::after {
           content: '-';
           position: absolute;
@@ -680,7 +798,7 @@ shiny::navbarPage(
           overflow: hidden;
           padding-bottom: 5px !important;}
         .leaflet-top.leaflet-right .info.legend.legend-collapsed::after {
-          content: '+';}}
+          content: '+';}
       @media (max-width: 1024px) {
         .sidebar-col-outer {
           width: 100% !important;
@@ -726,9 +844,10 @@ shiny::navbarPage(
           transform: rotate(-270deg);}
         .report-body.open {
           max-height: 60vh !important;
-          overflow-y: auto !important;}
-        .leaflet-tooltip { display: none !important; }}
- 
+          overflow-y: auto !important;}}
+      @media (hover: none) {
+        .leaflet-tooltip {
+          display: none !important;}}
   ")),
                        
 htmltools::tags$script(htmltools::HTML("
@@ -879,6 +998,33 @@ $(document).on('mousedown touchstart', '.leaflet-top.leaflet-right, .leaflet-bot
   if (!wasRaised) {
     $(this).data('justRaised', true);
   }
+});
+")),
+
+htmltools::tags$script(htmltools::HTML("
+Shiny.addCustomMessageHandler('resetMapLayers', function(msg) {
+  var map = window.vegMap;
+  if (!map) return;
+
+  $('.leaflet-control-layers-selector').each(function() {
+    var label = $(this).closest('label').text().trim();
+    if (label === 'None' && !this.checked) {
+      this.click();
+    }
+  });
+
+  var allBaseLayers = ['Map', 'Imagery', 'Light', 'Slate'];
+  allBaseLayers.forEach(function(name) {
+    if (name === 'Map') {
+      if (!map.hasLayer(map.baseTileLayers[name])) map.addLayer(map.baseTileLayers[name]);
+    } else {
+      if (map.hasLayer(map.baseTileLayers[name])) map.removeLayer(map.baseTileLayers[name]);
+    }
+  });
+  $('.gmaps-swatch').removeClass('active');
+  $('.gmaps-swatch[data-layer=\"Map\"]').addClass('active');
+  var toggleIconUrl = $('.gmaps-swatch[data-layer=\"Imagery\"]').css('background-image');
+  $('.gmaps-toggle').css('background-image', toggleIconUrl);
 });
 ")),
                        
@@ -1152,7 +1298,7 @@ shiny::tabPanel(
       id = "densMain",
       class = "collapsible-main-panel",
       style = "position: relative;",
-      htmltools::tags$div(class = "info-icon-btn", `data-target` = "densInfo",   title = "About this figure", "i"),
+      htmltools::tags$div(class = "info-icon-btn", `data-target` = "densInfo",   title = "About this figure", "?"),
       htmltools::tags$div(id = "densInfoOverlay", class = "info-popup-overlay"),
       htmltools::tags$div(id = "densInfoBox", class = "info-popup-box",
                           htmltools::tags$button(class = "info-popup-close", "\u00d7"),
@@ -1233,7 +1379,7 @@ shiny::tabPanel(
                          htmltools::tags$div(title="Select one or more parks to display. At least one park is required.", shiny::uiOutput(outputId="tsParkControl")),
                          htmltools::tags$div(title="Select the type of plant you want to work with", shiny::selectizeInput(inputId="tsGroup", label="Type of plant:", choices=PLANTTYPES)),
                          htmltools::tags$div(title="Toggle between common and scientific names", shiny::checkboxInput(inputId="tsCommon", label="Display common names?", value=TRUE)),
-                         htmltools::tags$div(title="Toggle confidence interval ribbons on or off", shiny::checkboxInput(inputId = "tsShowCI", label = "Show 95% confidence intervals", value = TRUE)),
+                         htmltools::tags$div(title="Toggle confidence interval ribbons on or off", shiny::checkboxInput(inputId = "tsShowCI", label = "Show 95% confidence intervals", value = FALSE)),
                          htmltools::tags$div(title="Graph the most common species, species you select, or all species observed", 
                                              shiny::radioButtons(inputId="tsSpeciesType", label="Which species?", 
                                                                  choices=base::c("Most common species"="Common", "Pick individual species"="Pick", "All species combined"="All"), inline=FALSE)),
@@ -1255,7 +1401,7 @@ shiny::tabPanel(
     
     # main Panel
     shiny::column(9, id = "tsMain", class = "collapsible-main-panel", style = "position: relative;",
-                  htmltools::tags$div(class = "info-icon-btn", `data-target` = "tsInfo", title = "About this figure", "i"),
+                  htmltools::tags$div(class = "info-icon-btn", `data-target` = "tsInfo", title = "About this figure", "?"),
                   htmltools::tags$div(id = "tsInfoOverlay", class = "info-popup-overlay"),
                   htmltools::tags$div(id = "tsInfoBox", class = "info-popup-box",
                                       htmltools::tags$button(class = "info-popup-close", "\u00d7"),
@@ -1359,7 +1505,7 @@ shiny::tabPanel(htmltools::tags$div(title="Graph Importance Values", "Forestry I
                       title = "Close data control panel",
                       htmltools::tags$span("\u00ab"))),
                   shiny::column(9, id = "ivMain", class = "collapsible-main-panel", style = "position: relative;",
-                                htmltools::tags$div(class = "info-icon-btn", `data-target` = "ivInfo", title = "About this figure", "i"),
+                                htmltools::tags$div(class = "info-icon-btn", `data-target` = "ivInfo", title = "About this figure", "?"),
                                 htmltools::tags$div(id = "ivInfoOverlay", class = "info-popup-overlay"),
                                 htmltools::tags$div(id = "ivInfoBox", class = "info-popup-box",
                                                     htmltools::tags$button(class = "info-popup-close", "\u00d7"),
@@ -1468,7 +1614,7 @@ shiny::tabPanel(id="SpeciesPanel",
                       htmltools::tags$span("\u00ab"))),
                   shiny::column(9, id = "spMain", class = "collapsible-main-panel", style = "position: relative;",
                                 shiny::br(), shiny::br(),
-                                htmltools::tags$div(class = "info-icon-btn", `data-target` = "spInfo", title = "About this figure", "i"),
+                                htmltools::tags$div(class = "info-icon-btn", `data-target` = "spInfo", title = "About this figure", "?"),
                                 htmltools::tags$div(id = "spInfoOverlay", class = "info-popup-overlay"),
                                 htmltools::tags$div(id = "spInfoBox", class = "info-popup-box",
                                                     htmltools::tags$button(class = "info-popup-close", "\u00d7"),

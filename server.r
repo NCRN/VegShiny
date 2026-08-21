@@ -477,6 +477,8 @@ shiny::shinyServer(function(input,output,session){
     shiny::updateSelectInput(session, "MapCycles", selected = "")
     showAllPlots(TRUE)
     
+    session$sendCustomMessage("resetMapLayers", list())
+    
     # zoom back out to the full network, since the MapPark-watching
     # observer intentionally skips empty selections (used to prevent an
     # unwanted zoom on initial page load)
@@ -656,14 +658,23 @@ shiny::shinyServer(function(input,output,session){
       ) %>%
       leaflet::setMaxBounds(
         lng1 = bounds$LongW, lng2 = bounds$LongE, lat1 = bounds$LatS, lat2 = bounds$LatN) %>%
-      htmlwidgets::onRender(base::sprintf("
+      leaflet::addMapPane("dataLayerPane", zIndex = 350) %>%
+      htmlwidgets::onRender(base::paste0(
+        base::sprintf("
       function(el, x) {
         var map = this;
+          window.vegMap = map;
         
+      var NPS_TILE_URLS = {map: '%s', imagery: '%s', light: '%s', slate: '%s'};
+      var NPS_PREVIEW_LON = %s, NPS_PREVIEW_LAT = %s;
+        ", NPSBASIC, NPSIMAGERY, NPSLIGHT, NPSSLATE,
+                      base::mean(base::c(bounds$LongW, bounds$LongE)),
+                      base::mean(base::c(bounds$LatS, bounds$LatN))),
+        "
         var infoControl = L.control({position: 'bottomright'});
 infoControl.onAdd = function(map) {
   var div = L.DomUtil.create('div', 'leaflet-bar map-info-leaflet-control');
-  div.innerHTML = '<a href=\"#\" title=\"About the map\" class=\"map-round-icon-btn\" style=\"font-weight:bold;\">i</a>';
+  div.innerHTML = '<a href=\"#\" title=\"About the map\" class=\"map-round-icon-btn\" style=\"font-weight:bold;\">?</a>';
   L.DomEvent.disableClickPropagation(div);
   L.DomEvent.on(div, 'click', function(e) {
     L.DomEvent.preventDefault(e);
@@ -711,6 +722,38 @@ var div = L.DomUtil.create('div', 'leaflet-bar plotsize-picker');  div.innerHTML
 };
 plotSizeControl.addTo(map);
 
+var opacityControl = L.control({position: 'bottomright'});
+opacityControl.onAdd = function(map) {
+  var div = L.DomUtil.create('div', 'leaflet-bar opacity-picker');
+  div.style.display = 'none';
+    div.innerHTML =
+    '<div class=\"opacity-toggle map-round-icon-btn\" title=\"Layer transparency\">' +
+      '<span class=\"opacity-icon\">&#9682;</span>' +
+    '</div>' +
+        '<div class=\"opacity-strip\">' +
+      '<div class=\"opacity-label\">Layer Trans&shy;par&shy;en&shy;cy</div>' +
+      '<input type=\"range\" class=\"opacity-slider\" min=\"0\" max=\"100\" step=\"5\" value=\"50\">' +
+      '<div class=\"opacity-endlabel-row\">' +
+        '<span class=\"opacity-endlabel\">0%</span>' +
+        '<span class=\"opacity-endlabel\">100%</span>' +
+      '</div>' +
+    '</div>';
+  L.DomEvent.disableClickPropagation(div);
+  L.DomEvent.disableScrollPropagation(div);
+  $(div).on('mouseenter', function() { $(div).addClass('opacity-expanded'); });
+  $(div).on('mouseleave', function() { $(div).removeClass('opacity-expanded'); });
+  $(div).find('.opacity-slider').on('input change', function() {
+    Shiny.setInputValue('LayerOpacity', parseInt($(this).val(), 10), {priority: 'event'});
+  });
+  return div;
+};
+opacityControl.addTo(map);
+window.opacityControl = opacityControl;
+
+Shiny.addCustomMessageHandler('toggleOpacityControl', function(show) {
+  $(window.opacityControl.getContainer()).css('display', show ? 'flex' : 'none');
+});
+
 var zeroToggleControl = L.control({position: 'bottomright'});
 zeroToggleControl.onAdd = function(map) {
   var div = L.DomUtil.create('div', 'leaflet-bar map-round-icon-btn zero-toggle-btn');
@@ -734,17 +777,17 @@ L.control.zoom({position: 'bottomright'}).addTo(map);
         // Base tile layers managed directly in JS — guarantees only one is
         // ever visible and that the bottom picker's toggling always works,
         // independent of the R package's internal group-tracking bridge.
-        var baseTileLayers = {
-          'Map':     L.tileLayer('%s', {minZoom: 1}),
-          'Imagery': L.tileLayer('%s', {minZoom: 1}),
-          'Light':   L.tileLayer('%s', {minZoom: 1}),
-          'Slate':   L.tileLayer('%s', {minZoom: 1})
+                var baseTileLayers = {
+          'Map':     L.tileLayer(NPS_TILE_URLS.map, {minZoom: 1}),
+          'Imagery': L.tileLayer(NPS_TILE_URLS.imagery, {minZoom: 1}),
+          'Light':   L.tileLayer(NPS_TILE_URLS.light, {minZoom: 1}),
+          'Slate':   L.tileLayer(NPS_TILE_URLS.slate, {minZoom: 1})
         };
         baseTileLayers['Map'].addTo(map);   // default visible layer
         map.baseTileLayers = baseTileLayers; // stash for the swatch picker below
         
         // Compute one representative tile for preview thumbnails
-var previewLon = %s, previewLat = %s, previewZoom = 9;
+var previewLon = NPS_PREVIEW_LON, previewLat = NPS_PREVIEW_LAT, previewZoom = 9;
 function lonLatToTileXY(lon, lat, zoom) {
   var n = Math.pow(2, zoom);
   var x = Math.floor((lon + 180) / 360 * n);
@@ -760,10 +803,10 @@ function buildPreviewUrl(template) {
     .replace('{y}', previewTile.y);
 }
 var previewUrls = {
-  Map: buildPreviewUrl('%s'),
-  Imagery: buildPreviewUrl('%s'),
-  Light: buildPreviewUrl('%s'),
-  Slate: buildPreviewUrl('%s')
+  Map: buildPreviewUrl(NPS_TILE_URLS.map),
+  Imagery: buildPreviewUrl(NPS_TILE_URLS.imagery),
+  Light: buildPreviewUrl(NPS_TILE_URLS.light),
+  Slate: buildPreviewUrl(NPS_TILE_URLS.slate)
 };
 
 Shiny.setInputValue('MapLayer', 'None', {priority: 'event'});
@@ -854,12 +897,8 @@ $(div).find('.gmaps-swatch').on('click', function() {
 };
 baseLayerControl.addTo(map);
 
-
 }
-", NPSBASIC, NPSIMAGERY, NPSLIGHT, NPSSLATE,
-  base::mean(base::c(bounds$LongW, bounds$LongE)),
-  base::mean(base::c(bounds$LatS, bounds$LatN)),
-  NPSBASIC, NPSIMAGERY, NPSLIGHT, NPSSLATE))  
+"))
 })
   #       %>%
   # Optional: enable wheel zoom only while hovering (desktop), auto-disable on leave
@@ -1354,22 +1393,44 @@ baseLayerControl.addTo(map);
                    
                    EcoReg=leaflet::clearGroup(.,group=base::c("Forested","Soil") )%>% 
                      leaflet::addPolygons(., data=Ecoregion, group="Ecoregion", layerId=Ecoregion$MapClass, 
-                                          stroke=FALSE, 
+                                          stroke=FALSE, options = leaflet::pathOptions(pane = "dataLayerPane"),
                                           fillOpacity=.4, color=leaflet::colorFactor(palette=ECOREGION_COLORS, levels=ECOREGION_ORDER)(Ecoregion$MapClass),
                                           label=base::paste0("Ecoregion: ", Ecoregion$MapClass),
                                           popup=base::paste0("<b>Ecoregion:</b> ", Ecoregion$MapClass)),
                    
                    ForArea=leaflet::clearGroup(.,group=base::c("Ecoregion","Soil")) %>% 
-                     leaflet::addPolygons(.,data=Forested, group="Forested", layerId=Forested$MapClass, stroke=FALSE, 
+                     leaflet::addPolygons(.,data=Forested, group="Forested", layerId=Forested$MapClass, stroke=FALSE, options = leaflet::pathOptions(pane = "dataLayerPane"),
                                           fillOpacity=.4, color=FOREST_COLOR,
                                           label=base::paste0("Forested: ", Forested$MapClass),
                                           popup=base::paste0("<b>Forested:</b> ", Forested$MapClass)),
                    
                    Soil=leaflet::clearGroup(.,group=base::c("Ecoregion","Forested")) %>% 
-                     leaflet::addPolygons(.,data=Soil, group="Soil", layerId=Soil$MapClass, stroke=FALSE, 
+                     leaflet::addPolygons(.,data=Soil, group="Soil", layerId=Soil$MapClass, stroke=FALSE, options = leaflet::pathOptions(pane = "dataLayerPane"),
                                           fillOpacity=.4, color=leaflet::colorFactor(SOIL_COLORS,levels=Soil$MapClass)(Soil$MapClass),
                                           label=base::paste0("Soil: ", Soil$MapClass),
                                           popup=base::paste0("<b>Soil:</b> ", Soil$MapClass))
+      )}
+  })
+  
+  # Show/hide transparency slider only when a data layer is active
+  
+  shiny::observeEvent(input$MapLayer, {
+    session$sendCustomMessage("toggleOpacityControl", input$MapLayer != "None")
+  })
+  
+  # Apply transparency slider to the active data layer
+  
+  shiny::observe({
+    shiny::req(input$MapLayer, input$MapLayer != "None", input$LayerOpacity)
+    op <- input$LayerOpacity / 100
+    leaflet::leafletProxy("VegMap") %>% {
+      base::switch(input$MapLayer,
+                   EcoReg = leaflet::addPolygons(., data=Ecoregion, group="Ecoregion", layerId=Ecoregion$MapClass, stroke=FALSE, options = leaflet::pathOptions(pane = "dataLayerPane"),
+                                                 fillOpacity=op, color=leaflet::colorFactor(palette=ECOREGION_COLORS, levels=ECOREGION_ORDER)(Ecoregion$MapClass)),
+                   ForArea = leaflet::addPolygons(., data=Forested, group="Forested", layerId=Forested$MapClass, stroke=FALSE, options = leaflet::pathOptions(pane = "dataLayerPane"),
+                                                  fillOpacity=op, color=FOREST_COLOR),
+                   Soil = leaflet::addPolygons(., data=Soil, group="Soil", layerId=Soil$MapClass, stroke=FALSE, options = leaflet::pathOptions(pane = "dataLayerPane"),
+                                               fillOpacity=op, color=leaflet::colorFactor(SOIL_COLORS,levels=Soil$MapClass)(Soil$MapClass))
       )}
   })
   
@@ -1405,7 +1466,7 @@ shiny::observeEvent(input$MapPark, {
                      ForArea= leaflet::addLegend(.,title="Layer Legend",colors=FOREST_COLOR,
                                                  labels=base::unique(Forested$MapClass), layerId="LayerLegend"),
                      Soil= leaflet::addLegend(.,title="Layer Legend",pal=leaflet::colorFactor(SOIL_COLORS, levels=Soil$MapClass),
-                                              values=Soil$MapClass, layerId="LayerLegend")
+                                              values=Soil$MapClass, layerId="LayerLegend", className="info legend soil-legend")
       )}
   })
   
@@ -2317,7 +2378,7 @@ shiny::observeEvent(input$MapPark, {
   
   #### create compare plotting df #####
   
-  # ###bugfix update###########################
+  ###bugfix update###########################
   dens_all_parks <- function(VEGDATA, group, years, values, common = FALSE) {
     area_val <- if (values == "presab") "plot" else "ha"
     
@@ -3038,6 +3099,10 @@ shiny::observeEvent(input$MapPark, {
       name = grp,   
       showlegend = TRUE,        
       marker = base::list(color = bar_color),
+      hoverlabel = base::list(
+        bgcolor = "white",
+        bordercolor = bar_color,
+        font = base::list(color = "black")),
       hovertext = ~base::sprintf(
         "Species: %s<br>Mean: %.2f<br>Lower 95%%: %.2f<br>Upper 95%%: %.2f",
         LabelOpp,
@@ -3077,6 +3142,10 @@ shiny::observeEvent(input$MapPark, {
       height = plotCfg$height,
       font = base::list(size = densFontSize),
       autosize = TRUE)
+    
+    p <- p %>% plotly::config(
+      displayModeBar = base::is.null(input$screenW) || input$screenW >= 768,
+      displaylogo = FALSE)
     p
   })
   
@@ -3831,7 +3900,11 @@ shiny::observeEvent(input$MapPark, {
                              name = sp,
                              legendgroup = sp,
                              hovertext = ~hover_txt,
-                             hoverinfo = "text")}
+                             hoverinfo = "text",
+                             hoverlabel = base::list(
+                               bgcolor = "white",
+                               bordercolor = col,
+                               font = base::list(color = "black")))}
 
     # title
     park_label <- if (input$tsPark == "All") "All Parks" else NPSForVeg::getNames(VEGDATA[[input$tsPark]], "long")
@@ -3887,6 +3960,10 @@ shiny::observeEvent(input$MapPark, {
                         height = plotCfg$height,
                         font = base::list(size = font_s),
                         autosize  = TRUE)
+    
+    p <- p %>% plotly::config(
+      displayModeBar = base::is.null(input$screenW) || input$screenW >= 768,
+      displaylogo = FALSE)
     p})
   
   output$TSLimitWarning <- shiny::renderUI({
@@ -3899,6 +3976,9 @@ shiny::observeEvent(input$MapPark, {
     htmltools::tags$div(style = "font-size: 12px; color: #888; font-style: italic; margin-top: 6px; text-align: center;",
                         "* Note: On smaller screens, the legend shows only the top 5 species by overall mean. To view all species details, click or hover on a point. To view the full list, open the summary report or data table.")})
 
+  #highlight plotly item on click
+  tsSelectedSpecies <- shiny::reactiveVal(NULL)
+  
   # table title
   tsTitleText <- shiny::reactive({
     shiny::req(input$tsPark, input$tsGroup, input$tsValues, input$tsCycles)
@@ -4492,10 +4572,10 @@ shiny::observeEvent(input$MapPark, {
         text = if (iv_text_on()) {~base::sprintf("Species: %s<br>Total IV: %.2f", LabelOpp, Total)} else {NULL},
         hovertext = ~base::sprintf("Species: %s<br>Total IV: %.2f", LabelOpp, Total),
         hoverinfo = if (iv_text_on()) {"none"} else {"text"},
-          hoverlabel = base::list(
-            bgcolor = IVBaseColor(),
-          bordercolor = "white",
-          font = base::list(size = 14, color = contrastColor(IVBaseColor()))))
+        hoverlabel = base::list(
+          bgcolor = "white",
+          bordercolor = IVBaseColor(),
+          font = base::list(size = 14, color = "black")))
     } else {
       p <- plotly::plot_ly() %>%
         plotly::add_trace(
@@ -4506,8 +4586,10 @@ shiny::observeEvent(input$MapPark, {
           text = if (iv_text_on()) {~base::sprintf("%.2f", Density)} else {NULL},
           hovertext = ~base::sprintf("Species: %s<br>Density: %.2f", LabelOpp, Density),
           hoverinfo = "text",
-          hoverlabel = base::list(bgcolor = IVDensityColor(), bordercolor = "white",
-          font = base::list(size = 14, color = contrastColor(IVDensityColor())))) %>%
+          hoverlabel = base::list(
+            bgcolor = "white",
+            bordercolor = IVDensityColor(),
+            font = base::list(size = 14, color = "black"))) %>%
         plotly::add_trace(
           data = IVdf, x = ~Size, y = ~Species,
           name = "Size", type = "bar", orientation = "h",
@@ -4516,8 +4598,10 @@ shiny::observeEvent(input$MapPark, {
           text = if (iv_text_on()) {~base::sprintf("%.2f", Size)} else {NULL},
           hovertext = ~base::sprintf("Species: %s<br>Size: %.2f", LabelOpp, Size),
           hoverinfo = "text",
-          hoverlabel = base::list(bgcolor = IVSizeColor(), bordercolor = "white",
-          font = base::list(size = 14, color = contrastColor(IVSizeColor())))) %>%
+          hoverlabel = base::list(
+            bgcolor = "white",
+            bordercolor = IVSizeColor(),
+            font = base::list(size = 14, color = "black"))) %>%
         plotly::add_trace(
           data = IVdf, x = ~Distribution, y = ~Species,
           name = "Distribution", type = "bar", orientation = "h",
@@ -4526,8 +4610,10 @@ shiny::observeEvent(input$MapPark, {
           text = if (iv_text_on()) {~base::sprintf("%.2f", Distribution)} else {NULL},
           hovertext = ~base::sprintf("Species: %s<br>Distribution: %.2f", LabelOpp, Distribution),
           hoverinfo = "text",
-          hoverlabel = base::list(bgcolor = IVDistributionColor(), bordercolor = "white",
-                                  font = base::list(size = 14, color = contrastColor(IVDistributionColor()))))}
+          hoverlabel = base::list(
+            bgcolor = "white",
+            bordercolor = IVDistributionColor(),
+            font = base::list(size = 14, color = "black")))}
     
     IVFontSize <- if (!base::is.null(input$IVFontSize)) input$IVFontSize else 12
     iv_container_w <- if (!base::is.null(input$ivPlotContainer_width)) input$ivPlotContainer_width else input$screenW
@@ -4555,6 +4641,10 @@ shiny::observeEvent(input$MapPark, {
       height = plotCfg$height,
       font = base::list(size = IVFontSize),
       autosize = TRUE)
+    
+    p <- p %>% plotly::config(
+      displayModeBar = base::is.null(input$screenW) || input$screenW >= 768,
+      displaylogo = FALSE)
     p})
   
   # summary report

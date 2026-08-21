@@ -4,7 +4,7 @@
 </head>
 <body>
 <fontsize="16">
-<h3>Data by Park and Species</h3>
+<h3>Data Trends Over Time</h3>
   
 <p>These graphs show how estimates of forest vegetation abundance, size, and plot occupancy have changed across monitoring cycles for a selected park. 
 Each line represents a species (or all species combined), and each point on the line represents the mean value for that species during a given monitoring cycle.
@@ -23,7 +23,7 @@ The table shows the same data in a structured format. You can view this by selec
   To unselect a species, click on the X next to its name or press the backspace key. 
   You can choose as many species as you like. </li>
   <li><strong>All species combined:</strong> 
-  This graphs the summed data for every observed species matching the chosen data measures.</li>
+  This graphs the combined data for every observed species matching the chosen data measures.</li>
 </ul>
 </p>
 
@@ -37,7 +37,7 @@ The table shows the same data in a structured format. You can view this by selec
     It is expressed as #/ha. </li>
     <li><strong>Basal Area: </strong> 
     This is the area of the cross-section of a tree or sapling at 1.37 meters (4.5 feet) above the ground. 
-    This measure is available for trees and saplings.  </li>
+    This measure is available for trees and saplings. It is expressed as meters<sup>2</sup>/ha. </li>
     <li><strong>Percent of Plots Occupied: </strong> 
     This measure indicates the percentage of monitoring plots in a park that contain a particular species. 
     This measure, along with the map, can indicate how widespread a species and is available for all plant types.  </li>
@@ -48,25 +48,65 @@ The table shows the same data in a structured format. You can view this by selec
   This measure is available for understory plants.  </li> </ul>
 </p>
 
-<p>Gaps in a species line indicate that the species was not observed during that monitoring cycle. 
-Cycles with no observations for any species of the selected plant type are excluded from the figure and table entirely.</p>
+<p>You can change a variety of settings to customize the figure, including:</p>
+<ul>
+  <li><strong>Cycle range slider: </strong>
+    This slider allows you to select a desired cycle range.
+    Gaps in a species line indicate that the species was not observed during that monitoring cycle.
+    Cycles with no observations for any species of the selected plant type are excluded from the figure and table entirely.
+    When only one cycle is selected, no confidence intervals are generated.
+  </li>
+  <li><strong>Display Options: </strong>
+    This button houses several more figure customizations:
+    <ul>
+      <li><strong>Line Thickness: </strong>
+        This slider adjusts the trend line thickness of each species.
+      </li>
+      <li><strong>Font Size: </strong>
+        This slider adjusts the font size of the axes, legend, and title. This feature is disabled on smaller and mobile screens.
+      </li>
+      <li><strong>CI Ribbon Opacity: </strong>
+        This slider adjusts the opacity of the confidence interval ribbons.
+      </li>
+      <li><strong>Color Palette: </strong>
+        You can select one of four different color palettes dictating each species' color assignment in the legend.
+      </li>
+    </ul>
+  </li>
+  <li><strong>Selecting legend items: </strong>
+    You can temporarily remove or isolate species in the figure by clicking its legend label.
+    <ul>
+      <li><strong>One click: </strong>
+        One click will remove a species from the figure. 
+        An additional click or otherwise changing any data inputs will add the species back. 
+      </li>
+      <li><strong>Double-click: </strong>
+        A double-click will isolate the selected species and removes all other species from the figure. 
+        An additional double-click will add all species back to the figure.
+      </li>
+      </ul>
+  </li>
+  <li><strong>Order table by: </strong>
+    The data table can be sorted first by species or first by cycle.
+  </li>
+</ul>
 
 <h4>Statistical Details</h4>
 <p> 
 Statistical calculations were performed using the <a href="https://github.com/NCRN/NPSForVeg"> NPSForVeg R package developed by Schmit et al. (2024).</a>
 Mean values (averages) are always calculated by first summing the values for the monitoring plots in a park and then dividing by the number of plots in the park.  
 The means and confidence intervals are first calculated on a per-plot basis and then converted to a per-hectare basis. 
-The 95% confidence intervals are more complicated to calculate and depend on the type of data graphed.</p>
+The 95% confidence intervals are more complicated to calculate and depend on the type of data graphed. 
+The summary report that appears above the figure and data table displays the calculated overall mean of a species it trend over the selected cycle. </p>
    <p><strong>Abundance:</strong> 
-   The 95% confidence interval is calculated by fitting the number of plants found in each plot to a negative binomial distribution. 
-   Using negative binomial estimation ensures that the 95% confidence interval will never include negative numbers of plants, and often results in confidence intervals that are not symmetric around the mean.</p>
+   The 95% confidence interval is calculated by bootstrapping the observed data. </p>
   <p><strong>Basal Area:</strong> 
   Basal area measurements often do not fit any standard statistical distribution. 
   To account for this, the 95% confidence interval is calculated by bootstrapping the observed data.</p>
   <p><strong>Percent of Plots Occupied:</strong> 
   95% confidence intervals are calculated by fitting the data to a binomial distribution.</p>
   <p><strong>Percent Cover:</strong> 
-  Like basal area, confidence intervals are calculated using bootstrapping.</p>
+  Confidence intervals are calculated using bootstrapping.</p>
 
 <p>When only one monitoring plot exists for a park during a given cycle, confidence intervals cannot be estimated and are shown as NA in the table and omitted from the figure.</p>
 </fontsize>
