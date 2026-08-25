@@ -5,21 +5,37 @@
 </head>
 <body>
 <fontsize="16">
-<h3> Forestry Importance Value</h3>
+<h3> Importance Value</h3>
 <p>  
-Forestry Importance Values (IVs) give a general indication of which species are the most dominant in a forest. 
+Importance Values (IVs) give a general indication of which species are the most dominant in a forest. 
 The values are calculated using data collected from monitoring plots and are used to estimate the dominance of tree species in a forested area relative to other tree species.  
 This index was developed by <a href="https://doi.org/10.2307/1931725">Curtis and Macintosh (1951)</a> to investigate variation in forest communities. 
 No index can fully represent every aspect of ecological importance, but in practice IVs provide a general indication of species dominance in forests.
 </p>
 <p>
   The Importance Value is made up of three components. 
-  Each component has a value between 0 and 1, and the IV is the sum of the three components.
+  Each component has a value between 0 and 1, and the IV is the sum of the three components (relative density, dominance, distribution). 
+  You can check or uncheck the “Display importance values?” box to show the values on the bar plot and the “Display components of the importance value?” to show the three components of the importance values.
 </p>
 
 <p>
-  Every species found has an importance value. 
-  You can see a graph of importance values of up to 20 species by clicking on "Graph", and you can view a table with all the selected species values by clicking on "Data table".
+  In this visualizer, only trees, tree saplings, tree seedlings, and shrub seedlings are assigned an importance value. 
+  You can see a graph of importance values by clicking on "Graph" and a table with all the selected species values by clicking on "Data table".
+</p>
+<p>
+  There are three options for selecting species to graph:
+<ul>
+  <li><strong>Most common species:</strong> 
+  This displays the species with the highest mean abundance, basal area, or proportion of plot occupied. 
+  You can adjust the number of species to display.  </li>
+  <li><strong>Pick individual species:</strong> 
+  This allows you to pick which species to display. 
+  Click in the box to see a list of species or type to search. Click on a species or hit "Enter" to choose it. 
+  To unselect a species, click on the X next to its name or press the backspace key. 
+  You can choose as many species as you like. </li>
+  <li><strong>All species combined:</strong> 
+  This graphs the combined data for every observed species matching the chosen data measures.</li>
+</ul>
 </p>
 <p> The three components of importance value are:</p>
 
@@ -47,6 +63,26 @@ No index can fully represent every aspect of ecological importance, but in pract
     </p>
   </li>
 </ul>
+
+<p>You also have the ability to change a variety of settings to customize the figure in the Display Options popup, including: </p>
+<p>
+    <ul>
+    <li><strong>Base Color: </strong>
+    This adjusts the bar color of the bars when the total importance value is displayed. </li>
+    <li><strong>Density Color: </strong>
+    This adjusts the bar color of the density component when the “Display components of the importance value?”  is checked. 
+    This feature is not available when the box is not selected. </li>
+    <li><strong>Size Color: </strong>
+    This adjusts the bar color of the size component when the “Display components of the importance value?”  is checked. 
+    This feature is not available when the box is not selected. </li>
+    <li><strong>Distribution Color: </strong>
+    This adjusts the bar color of the distribution component when the “Display components of the importance value?”  is checked. 
+    This feature is not available when the box is not selected. </li>
+    <li><strong>Font Size: </strong>
+    This slider adjusts the font size of the axes, legend, and title. This feature is disabled on smaller and mobile screens. </li>
+    </li>
+    </ul>
+</p>
 </fontsize>
 </body>
 </html>

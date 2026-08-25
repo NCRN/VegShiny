@@ -1320,7 +1320,7 @@ shiny::tabPanel(
               condition = "input.densPark == null || input.densPark == '' || (input.densSpeciesType == 'Pick' && (input.densSpecies == null || input.densSpecies.length == 0))",
               htmltools::tags$div(
                 style = "text-align:center; display:flex; flex-direction:column; align-items:center; padding:20px; color:#555; font-size:15px;",
-                htmltools::tags$p("There is no data for this combination of choices. Please select a park, species, or plant type."),
+                htmltools::tags$p("There are no results for this combination of choices. Please select a park, species, or plant type."),
                 shiny::uiOutput("densGraphImage"))),
             shiny::conditionalPanel(
               condition = "!(input.densPark == null || input.densPark == '' || (input.densSpeciesType == 'Pick' && (input.densSpecies == null || input.densSpecies.length == 0)))",
@@ -1355,7 +1355,7 @@ shiny::tabPanel(
               condition = "input.densPark == null || input.densPark == '' || (input.densSpeciesType == 'Pick' && (input.densSpecies == null || input.densSpecies.length == 0))",
               htmltools::tags$div(
                 style = "text-align:center; display:flex; flex-direction:column; align-items:center; padding:20px; color:#555; font-size:15px;",
-                htmltools::tags$p("There is no data for this combination of choices. Please select a park, species, or plant type."),
+                htmltools::tags$p("There are no results for this combination of choices. Please select a park, species, or plant type."),
                 shiny::uiOutput("densTableImage"))),
             shiny::conditionalPanel(
               condition = "!(input.densPark == null || input.densPark == '' || (input.densSpeciesType == 'Pick' && (input.densSpecies == null || input.densSpecies.length == 0)))",
@@ -1419,7 +1419,7 @@ shiny::tabPanel(
                                                                            condition = "input.tsPark == null || input.tsPark == '' || (input.tsSpeciesType == 'Pick' && (input.tsSpecies == null || input.tsSpecies.length == 0))",
                                                                            htmltools::tags$div(
                                                                              style = "text-align:center; display:flex; flex-direction:column; align-items:center; padding:20px; color:#555; font-size:15px;",
-                                                                             htmltools::tags$p("There is no data for this combination of choices. Please select a park, species, or plant type."),
+                                                                             htmltools::tags$p("There are no results for this combination of choices. Please select a park, species, or plant type."),
                                                                              shiny::uiOutput("tsGraphImage"))),
                                                                          shiny::conditionalPanel(
                                                                            condition = "!(input.tsPark == null || input.tsPark == '' || (input.tsSpeciesType == 'Pick' && (input.tsSpecies == null || input.tsSpecies.length == 0)))",
@@ -1458,7 +1458,7 @@ shiny::tabPanel(
                                                                            condition = "input.tsPark == null || input.tsPark == '' || (input.tsSpeciesType == 'Pick' && (input.tsSpecies == null || input.tsSpecies.length == 0))",
                                                                            htmltools::tags$div(
                                                                              style = "text-align:center; display:flex; flex-direction:column; align-items:center; padding:20px; color:#555; font-size:15px;",
-                                                                             htmltools::tags$p("There is no data for this combination of choices. Please select a park, species, or plant type."),
+                                                                             htmltools::tags$p("There are no results for this combination of choices. Please select a park, species, or plant type."),
                                                                              shiny::uiOutput("tsTableImage"))),
                                                                          shiny::conditionalPanel(
                                                                            condition = "!(input.tsPark == null || input.tsPark == '' || (input.tsSpeciesType == 'Pick' && (input.tsSpecies == null || input.tsSpecies.length == 0)))",
@@ -1470,7 +1470,7 @@ shiny::tabPanel(
 ), # close ts
 
 ###############IV Plots
-shiny::tabPanel(htmltools::tags$div(title="Graph Importance Values", "Forestry Importance Values (IV)"),
+shiny::tabPanel(htmltools::tags$div(title="Graph Importance Values", "Importance Values (IV)"),
                 shiny::fluidRow(
                   shiny::column(
                     width = 3,
@@ -1520,7 +1520,7 @@ shiny::tabPanel(htmltools::tags$div(title="Graph Importance Values", "Forestry I
                                                                                          condition = "input.IVPark == null || input.IVPark == '' || (input.IVSpeciesType == 'Pick' && (input.IVSpecies == null || input.IVSpecies.length == 0))",
                                                                                          htmltools::tags$div(
                                                                                            style = "text-align:center; display:flex; flex-direction:column; align-items:center; padding:20px; color:#555; font-size:15px;",
-                                                                                           htmltools::tags$p("There is no data for this combination of choices. Please select a park, species, or plant type."),
+                                                                                           htmltools::tags$p("There are no results for this combination of choices. Please select a park, species, or plant type."),
                                                                                            shiny::uiOutput("ivGraphImage"))),
                                                                                        shiny::conditionalPanel(
                                                                                          condition = "!(input.IVPark == null || input.IVPark == '' || (input.IVSpeciesType == 'Pick' && (input.IVSpecies == null || input.IVSpecies.length == 0)))",
@@ -1571,7 +1571,7 @@ shiny::tabPanel(htmltools::tags$div(title="Graph Importance Values", "Forestry I
                                                                                          condition = "input.IVPark == null || input.IVPark == '' || (input.IVSpeciesType == 'Pick' && (input.IVSpecies == null || input.IVSpecies.length == 0))",
                                                                                          htmltools::tags$div(
                                                                                            style = "text-align:center; display:flex; flex-direction:column; align-items:center; padding:20px; color:#555; font-size:15px;",
-                                                                                           htmltools::tags$p("There is no data for this combination of choices. Please select a park, species, or plant type."),
+                                                                                           htmltools::tags$p("There are no results for this combination of choices. Please select a park, species, or plant type."),
                                                                                            shiny::uiOutput("ivTableImage"))),
                                                                                        shiny::conditionalPanel(
                                                                                          condition = "!(input.IVPark == null || input.IVPark == '' || (input.IVSpeciesType == 'Pick' && (input.IVSpecies == null || input.IVSpecies.length == 0)))",

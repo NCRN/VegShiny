@@ -459,7 +459,7 @@ shiny::shinyServer(function(input,output,session){
       shiny::actionButton(
         inputId = "resetMapFilters",
         title = "Click to restore view of all unfiltered monitoring plots",
-        label = "\u25cf  Showing filtered plots \u2014 Click here to show every NCRN plot ever sampled",
+        label = "\u25cf  Showing filtered plots \u2014 Click here to clear all filters",
         style = "width: 100%; text-align: left;
                  padding: 6px 12px; margin-bottom: 8px;
                  background-color: #e3f2fd; color: #1565c0;
@@ -1418,11 +1418,13 @@ baseLayerControl.addTo(map);
     session$sendCustomMessage("toggleOpacityControl", input$MapLayer != "None")
   })
   
-  # Apply transparency slider to the active data layer
+  # Apply transparency slider to the active data layer -debounce
+  LayerOpacityDebounced <- shiny::debounce(shiny::reactive(input$LayerOpacity), millis = 150)
   
+  # Apply transparency slider to the active data layer
   shiny::observe({
-    shiny::req(input$MapLayer, input$MapLayer != "None", input$LayerOpacity)
-    op <- input$LayerOpacity / 100
+    shiny::req(input$MapLayer, input$MapLayer != "None", LayerOpacityDebounced())
+    op <- LayerOpacityDebounced() / 100
     leaflet::leafletProxy("VegMap") %>% {
       base::switch(input$MapLayer,
                    EcoReg = leaflet::addPolygons(., data=Ecoregion, group="Ecoregion", layerId=Ecoregion$MapClass, stroke=FALSE, options = leaflet::pathOptions(pane = "dataLayerPane"),
@@ -2963,7 +2965,7 @@ shiny::observeEvent(input$MapPark, {
           !(base::identical(input$densSpeciesType, "Pick") &&
               (base::is.null(input$densSpecies) ||
                  base::length(input$densSpecies) == 0)),
-        "There is no data for this combination of choices. Please select a park, species, or plant type."
+        "There are no results for this combination of choices. Please select a park, species, or plant type."
       )
     )
     
@@ -3173,7 +3175,7 @@ shiny::observeEvent(input$MapPark, {
   #    else{
   #      shiny::validate(shiny::need(base::try(
   #        base::do.call(densplot,DensPlotArgs() )),
-  #       "There is no data for this combination of choices. The type of plant you selected was not found in the park during those years."
+  #       "There are no results for this combination of choices. The type of plant you selected was not found in the park during those years."
   #       ))
   #      stats::update(base::do.call(densplot, DensPlotArgs()), par.settings=base::list(fontsize=base::list(text=input$densFontSize,
   #                                                                                points=input$densPointSize )))
@@ -3290,7 +3292,7 @@ shiny::observeEvent(input$MapPark, {
   #### Make Table ####
   tempDensTable <- shiny::reactive({
     shiny::validate(shiny::need(!base::is.null(input$densPark) && base::nzchar(input$densPark),
-                                "There is no data for this combination of choices. Please select a park, species, or plant type."))
+                                "There are no results for this combination of choices. Please select a park, species, or plant type."))
     shiny::req(input$densPark, input$densGroup, input$densvalues, densYears())
     raw <- densData()
     shiny::validate(shiny::need(
@@ -3787,11 +3789,11 @@ shiny::observeEvent(input$MapPark, {
   output$tsPlot <- plotly::renderPlotly({
     shiny::validate(shiny::need(
         !base::is.null(input$tsPark) && base::nzchar(input$tsPark),
-        "There is no data for this combination of choices. Please select a park, species, or plant type."))
+        "There are no results for this combination of choices. Please select a park, species, or plant type."))
     shiny::validate(shiny::need(
       !(base::identical(input$tsSpeciesType, "Pick") &&
           (base::is.null(input$tsSpecies) || base::length(input$tsSpecies) == 0)),
-      "There is no data for this combination of choices. Please select a park, species, or plant type."))
+      "There are no results for this combination of choices. Please select a park, species, or plant type."))
     shiny::req(tsDf())
 
     df <- tsDf()
@@ -4017,7 +4019,7 @@ shiny::observeEvent(input$MapPark, {
     shiny::req(tsDf())
     full_df <- tsDf()
     shiny::validate(shiny::need(!base::is.null(input$tsPark) && input$tsPark != "", 
-                                "There is no data for this combination of choices. Please select a park, species, or plant type."))
+                                "There are no results for this combination of choices. Please select a park, species, or plant type."))
     
     
     df <- full_df %>%
@@ -4533,7 +4535,7 @@ shiny::observeEvent(input$MapPark, {
     shiny::req(IVData())
     
     if (base::is.null(input$IVPark) || base::nchar(input$IVPark) == 0) {
-      shiny::validate(shiny::need(input$IVPark, "There is no data for this combination of choices. Please select a park, species, or plant type."))}
+      shiny::validate(shiny::need(input$IVPark, "There are no results for this combination of choices. Please select a park, species, or plant type."))}
     
     IVdf <- IVData()
     
@@ -4753,7 +4755,7 @@ shiny::observeEvent(input$MapPark, {
           !(base::identical(input$IVSpeciesType, "Pick") &&
               (base::is.null(input$IVSpecies) ||
                  base::length(input$IVSpecies) == 0)),
-        "There is no data for this combination of choices. Please select a park, species, or plant type."
+        "There are no results for this combination of choices. Please select a park, species, or plant type."
       )
     )
     tempIVPlot()})
@@ -4814,10 +4816,10 @@ shiny::observeEvent(input$MapPark, {
   #tempIVTable <- shiny::reactive({
   #  shiny::validate(shiny::need(
   #    !base::is.null(input$IVPark) && base::nzchar(input$IVPark),
-  #    "There is no data for this combination of choices. Either you need to select a park, or the type of plant you selected was not found in the park during those years."))
+  #    "There are no results for this combination of choices. Either you need to select a park, or the type of plant you selected was not found in the park during those years."))
   #  df <- IVData()
   #  shiny::validate(shiny::need(!base::is.null(df) && base::nrow(df) > 0,
-  #    "There is no data for this combination of choices. Either you need to select a park, or the type of plant you selected was not found in the park during those years."))
+  #    "There are no results for this combination of choices. Either you need to select a park, or the type of plant you selected was not found in the park during those years."))
   #  df %>% dplyr::select(-LabelOpp)})
   
   
@@ -4825,13 +4827,13 @@ shiny::observeEvent(input$MapPark, {
   tempIVTable <- shiny::reactive({
     shiny::validate(shiny::need(
       !base::is.null(input$IVPark) && base::nzchar(input$IVPark),
-      "There is no data for this combination of choices. Please select a park, species, or plant type."))
+      "There are no results for this combination of choices. Please select a park, species, or plant type."))
     
     df <- IVData()
     
     shiny::validate(shiny::need(
       !base::is.null(df) && base::nrow(df) > 0,
-      "There is no data for this combination of choices. Please select a park, species, or plant type."))
+      "There are no results for this combination of choices. Please select a park, species, or plant type."))
     df <- base::switch(input$IVSpeciesType,
                        Common = {
                          shiny::req(input$IVTop)
