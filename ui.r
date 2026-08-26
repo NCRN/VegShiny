@@ -1253,6 +1253,7 @@ shiny::tabPanel(
         shiny::wellPanel(
           class = "panel panel-default controls",
           shiny::h4("Data:", class = "panel-heading"),
+          shiny::actionButton(inputId = "densResetData", label = "\u21ba Reset Data", class = "btn btn-default btn-block", style = "margin-bottom: 10px;"),
           htmltools::tags$div(title = "Select the park you want to work with", shiny::uiOutput(outputId = "densParkControl")),
           htmltools::tags$div(title = "Select the time period you want to work with", shiny::uiOutput("densCycleControl")),
           htmltools::tags$div(title = "Select the type of plant you want to work with", shiny::selectizeInput(inputId = "densGroup", label = "Type of plant:", choices = PLANTTYPES)),
@@ -1329,7 +1330,11 @@ shiny::tabPanel(
           htmltools::tags$div(id = "densOptionsOverlay", class = "info-popup-overlay"),
           htmltools::tags$div(id = "densOptionsBox", class = "info-popup-box",
                               htmltools::tags$button(class = "info-popup-close", "\u00d7"),
-                              shiny::h4("Display Options"),
+                              htmltools::tags$div(
+                                style = "display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-start; gap: 12px; margin-bottom: 10px;",
+                                shiny::h4("Display Options", style = "margin: 0;"),
+                                shiny::actionButton(inputId = "densResetDisplay", label = "\u21ba Reset Display Options",
+                                                    class = "btn btn-default btn-sm")),
                               shiny::flowLayout(
                                 cellArgs = base::list(style = "width: 160px"),
                                 shiny::selectizeInput("densBaseColor", "Base Data Color:", choices = COLORNAMES, selected = "blue", width = 150),
@@ -1376,6 +1381,8 @@ shiny::tabPanel(
         id = "tsSlideWrap",
         class = "sidebar-slide-wrap",
         shiny::wellPanel(class="panel panel-default controls", shiny::h4("Data:", class="panel-heading"),
+                         shiny::actionButton(inputId = "tsResetData", label = "\u21ba Reset Data",
+                                             class = "btn btn-default btn-block", style = "margin-bottom: 10px;"),
                          htmltools::tags$div(title="Select one or more parks to display. At least one park is required.", shiny::uiOutput(outputId="tsParkControl")),
                          htmltools::tags$div(title="Select the type of plant you want to work with", shiny::selectizeInput(inputId="tsGroup", label="Type of plant:", choices=PLANTTYPES)),
                          htmltools::tags$div(title="Toggle between common and scientific names", shiny::checkboxInput(inputId="tsCommon", label="Display common names?", value=TRUE)),
@@ -1430,7 +1437,11 @@ shiny::tabPanel(
                                                      htmltools::tags$div(id = "tsOptionsOverlay", class = "info-popup-overlay"),
                                                      htmltools::tags$div(id = "tsOptionsBox", class = "info-popup-box",
                                                                          htmltools::tags$button(class = "info-popup-close", "\u00d7"),
-                                                                         shiny::h4("Display Options"),
+                                                                         htmltools::tags$div(
+                                                                           style = "display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-start; gap: 12px; margin-bottom: 10px;",
+                                                                           shiny::h4("Display Options", style = "margin: 0;"),
+                                                                           shiny::actionButton(inputId = "tsResetDisplay", label = "\u21ba Reset Display Options",
+                                                                                               class = "btn btn-default btn-sm")),
                                                                          shiny::flowLayout(cellArgs=base::list(style="width: 160px"),
                                                                                            shiny::sliderInput("tsLineThickness", "Line Thickness", min=0.5, max=5, value=1.5, step=0.5, width=150),
                                                                                            shiny::tags$div(
@@ -1481,6 +1492,8 @@ shiny::tabPanel(htmltools::tags$div(title="Graph Importance Values", "Importance
                       class = "sidebar-slide-wrap",
                       shiny::wellPanel(class="panel panel-default controls",
                                        shiny::h4("Data:", class="panel-heading"),
+                                       shiny::actionButton(inputId = "IVResetData", label = "\u21ba Reset Data",
+                                                           class = "btn btn-default btn-block", style = "margin-bottom: 10px;"),
                                        htmltools::tags$div(title="Select the park you want to work with",shiny::uiOutput("IVParkControl")),
                                        htmltools::tags$div(title="Select the time period you want to work with", shiny::uiOutput("IVCycleControl")),
                                        htmltools::tags$div(title="Select the type of plant you want to work with", shiny::selectizeInput(inputId="IVGroup", label="Type of plant:",choices=IVPLANTTYPES)),
@@ -1530,10 +1543,13 @@ shiny::tabPanel(htmltools::tags$div(title="Graph Importance Values", "Importance
                                                                    htmltools::tags$div(id = "ivOptionsOverlay", class = "info-popup-overlay"),
                                                                    htmltools::tags$div(id = "ivOptionsBox", class = "info-popup-box",
                                                                                        htmltools::tags$button(class = "info-popup-close", "\u00d7"),
-                                                                                       shiny::h4("Display Options"),
+                                                                                       htmltools::tags$div(
+                                                                                         style = "display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-start; gap: 12px; margin-bottom: 10px;",
+                                                                                         shiny::h4("Display Options", style = "margin: 0;"),
+                                                                                         shiny::actionButton(inputId = "IVResetDisplay", label = "\u21ba Reset Display Options",
+                                                                                                             class = "btn btn-default btn-sm")),
                                                                                        shiny::tags$div(
                                                                                          style = "display: flex; flex-direction: column; align-items: center; gap: 16px;",
-                                                                                         
                                                                                          # row 1: base color + font size
                                                                                          shiny::tags$div(
                                                                                            style = "display: flex; flex-wrap: wrap; gap: 15px; justify-content: center;",
@@ -1542,7 +1558,6 @@ shiny::tabPanel(htmltools::tags$div(title="Graph Importance Values", "Importance
                                                                                            shiny::tags$div(
                                                                                              shiny::sliderInput("IVFontSize", "Change Font Size", min=6, max=18, value=12, step=2,width="175px"),
                                                                                              shiny::uiOutput("IVFontSizeNotice"))),
-                                                                                         
                                                                                          # row 2: component colors + shared notice
                                                                                          shiny::tags$div(
                                                                                            style = "display: flex; flex-direction: column; align-items: center; gap: 6px;",

@@ -2020,6 +2020,56 @@ shiny::observeEvent(input$MapPark, {
                                                                                                                                                   DATACYCLES$YearStart,"-",DATACYCLES$YearEnd))))))
   })
   
+  # dens reset buttons
+  shiny::observeEvent(input$densResetData, {
+    shiny::updateSelectizeInput(session, "densPark", selected = "")
+    shiny::updateSelectInput(session, "densCycles",
+                             selected = base::as.character(DATACYCLES$Cycle[base::nrow(DATACYCLES)]))
+    shiny::updateSelectizeInput(session, "densGroup", selected = PLANTTYPES[[1]])
+    shiny::updateCheckboxInput(session, "densCommon", value = TRUE)
+    shiny::updateCheckboxInput(session, "plotlyText", value = FALSE)
+    shiny::updateRadioButtons(session, "densSpeciesType", selected = "Common")
+    shiny::updateSelectizeInput(session, "densSpecies", selected = base::character(0))
+    shiny::updateRadioButtons(session, "CompareType", selected = "None")
+  })
+  
+  shiny::observeEvent(input$densResetDisplay, {
+    shiny::updateSelectizeInput(session, "densBaseColor", selected = "blue")
+    shiny::updateSelectizeInput(session, "densCompareColor", selected = "red")
+    shiny::updateSliderInput(session, "densErrorThickness", value = 1.5)
+    shiny::updateSliderInput(session, "densFontSize", value = 12)
+  })
+  
+  densDataIsDefault <- shiny::reactive({
+    default_cycle <- base::as.character(DATACYCLES$Cycle[base::nrow(DATACYCLES)])
+    
+    (base::is.null(input$densPark)        || base::identical(input$densPark, "")) &&
+      (base::is.null(input$densCycles)      || base::identical(input$densCycles, default_cycle)) &&
+      (base::is.null(input$densGroup)       || base::identical(input$densGroup, PLANTTYPES[[1]])) &&
+      (base::is.null(input$densCommon)      || base::isTRUE(input$densCommon)) &&
+      (base::is.null(input$plotlyText)      || !base::isTRUE(input$plotlyText)) &&
+      (base::is.null(input$densSpeciesType) || base::identical(input$densSpeciesType, "Common")) &&
+      (base::is.null(input$densSpecies)     || base::length(input$densSpecies) == 0) &&
+      (base::is.null(input$CompareType)     || base::identical(input$CompareType, "None"))
+  })
+  
+  shiny::observe({
+    shinyjs::toggleClass(id = "densResetData", class = "btn-danger",
+                         condition = !densDataIsDefault())
+  })
+  
+  densDisplayIsDefault <- shiny::reactive({
+    (base::is.null(input$densBaseColor)      || base::identical(input$densBaseColor, "blue")) &&
+      (base::is.null(input$densCompareColor)   || base::identical(input$densCompareColor, "red")) &&
+      (base::is.null(input$densErrorThickness) || input$densErrorThickness == 1.5) &&
+      (base::is.null(input$densFontSize)       || input$densFontSize == 12)
+  })
+  
+  shiny::observe({
+    shinyjs::toggleClass(id = "densResetDisplay", class = "btn-danger",
+                         condition = !densDisplayIsDefault())
+  })
+  
   #### This is currently disabled while the output of dens() for all 0s is reconsidered
   #### Need Compare species to keep the number of species to display to accepted number ####
   # CompareSpecies<-shiny::reactive({
@@ -3609,6 +3659,51 @@ shiny::observeEvent(input$MapPark, {
                            placeholder = "Select species to display",
                            plugins = base::list("remove_button"))))}},
                  All = NULL)})
+  
+  # ts reset buttons
+  shiny::observeEvent(input$tsResetData, {
+    shiny::updateSelectizeInput(session, "tsPark", selected = "")
+    shiny::updateSelectizeInput(session, "tsGroup", selected = PLANTTYPES[[1]])
+    shiny::updateCheckboxInput(session, "tsCommon", value = TRUE)
+    shiny::updateCheckboxInput(session, "tsShowCI", value = FALSE)
+    shiny::updateRadioButtons(session, "tsSpeciesType", selected = "Common")
+    shiny::updateSelectizeInput(session, "tsSpecies", selected = base::character(0))
+    shiny::updateRadioButtons(session, "tsTableOrder", selected = "species")
+  })
+  
+  shiny::observeEvent(input$tsResetDisplay, {
+    shiny::updateSliderInput(session, "tsLineThickness", value = 1.5)
+    shiny::updateSliderInput(session, "tsFontSize", value = 12)
+    shiny::updateSliderInput(session, "tsRibbonOpacity", value = 0.2)
+    shiny::updateSelectizeInput(session, "tsColorPalette", selected = "set1")
+  })
+  
+  tsDataIsDefault <- shiny::reactive({
+    (base::is.null(input$tsPark)        || base::identical(input$tsPark, "")) &&
+      (base::is.null(input$tsGroup)       || base::identical(input$tsGroup, PLANTTYPES[[1]])) &&
+      (base::is.null(input$tsCommon)      || base::isTRUE(input$tsCommon)) &&
+      (base::is.null(input$tsShowCI)      || !base::isTRUE(input$tsShowCI)) &&
+      (base::is.null(input$tsSpeciesType) || base::identical(input$tsSpeciesType, "Common")) &&
+      (base::is.null(input$tsSpecies)     || base::length(input$tsSpecies) == 0) &&
+      (base::is.null(input$tsTableOrder)  || base::identical(input$tsTableOrder, "species"))
+  })
+  
+  shiny::observe({
+    shinyjs::toggleClass(id = "tsResetData", class = "btn-danger",
+                         condition = !tsDataIsDefault())
+  })
+  
+  tsDisplayIsDefault <- shiny::reactive({
+    (base::is.null(input$tsLineThickness)  || input$tsLineThickness == 1.5) &&
+      (base::is.null(input$tsFontSize)       || input$tsFontSize == 12) &&
+      (base::is.null(input$tsRibbonOpacity)  || input$tsRibbonOpacity == 0.2) &&
+      (base::is.null(input$tsColorPalette)   || base::identical(input$tsColorPalette, "set1"))
+  })
+  
+  shiny::observe({
+    shinyjs::toggleClass(id = "tsResetDisplay", class = "btn-danger",
+                         condition = !tsDisplayIsDefault())
+  })
 
   # keep species selection when toggling common/latin
   shiny::observeEvent(input$tsCommon, {
@@ -4402,6 +4497,61 @@ shiny::observeEvent(input$MapPark, {
                                                              options = base::list(placeholder='Select a species to display',
                                                                                   plugins = base::list("remove_button"))))},
                  All = NULL)})
+  
+  # iv reset buttons
+  shiny::observeEvent(input$IVResetData, {
+    shiny::updateSelectizeInput(session, "IVPark", selected = "")
+    shiny::updateSelectInput(session, "IVCycles",
+                             selected = base::as.character(DATACYCLES$Cycle[base::nrow(DATACYCLES)]))
+    shiny::updateSelectizeInput(session, "IVGroup", selected = IVPLANTTYPES[[1]])
+    shiny::updateCheckboxInput(session, "IVCommon", value = TRUE)
+    shiny::updateCheckboxInput(session, "IVPlotlyText", value = FALSE)
+    shiny::updateCheckboxInput(session, "IVPart", value = FALSE)
+    shiny::updateRadioButtons(session, "IVSpeciesType", selected = "Common")
+    shiny::updateSelectizeInput(session, "IVSpecies", selected = base::character(0))
+  })
+  
+  shiny::observeEvent(input$IVResetDisplay, {
+    shiny::updateSelectizeInput(session, "IVBaseColor", selected = "green4")
+    shiny::updateSliderInput(session, "IVFontSize", value = 12)
+    shiny::updateSelectizeInput(session, "IVDensityColor",
+                                selected = if ("green4" %in% COLORNAMES) "green4" else COLORNAMES[[1]])
+    shiny::updateSelectizeInput(session, "IVSizeColor",
+                                selected = if ("chartreuse" %in% COLORNAMES) "chartreuse" else COLORNAMES[[1]])
+    shiny::updateSelectizeInput(session, "IVDistributionColor",
+                                selected = if ("yellow" %in% COLORNAMES) "yellow" else COLORNAMES[[1]])
+  })
+  
+  IVDataIsDefault <- shiny::reactive({
+    default_cycle <- base::as.character(DATACYCLES$Cycle[base::nrow(DATACYCLES)])
+    
+    (base::is.null(input$IVPark)        || base::identical(input$IVPark, "")) &&
+      (base::is.null(input$IVCycles)      || base::identical(input$IVCycles, default_cycle)) &&
+      (base::is.null(input$IVGroup)       || base::identical(input$IVGroup, IVPLANTTYPES[[1]])) &&
+      (base::is.null(input$IVCommon)      || base::isTRUE(input$IVCommon)) &&
+      (base::is.null(input$IVPlotlyText)  || !base::isTRUE(input$IVPlotlyText)) &&
+      (base::is.null(input$IVPart)        || !base::isTRUE(input$IVPart)) &&
+      (base::is.null(input$IVSpeciesType) || base::identical(input$IVSpeciesType, "Common")) &&
+      (base::is.null(input$IVSpecies)     || base::length(input$IVSpecies) == 0)
+  })
+  
+  shiny::observe({
+    shinyjs::toggleClass(id = "IVResetData", class = "btn-danger",
+                         condition = !IVDataIsDefault())
+  })
+  
+  IVDisplayIsDefault <- shiny::reactive({
+    (base::is.null(input$IVBaseColor)         || base::identical(input$IVBaseColor, "green4")) &&
+      (base::is.null(input$IVFontSize)          || input$IVFontSize == 12) &&
+      (base::is.null(input$IVDensityColor)      || base::identical(input$IVDensityColor, if ("green4" %in% COLORNAMES) "green4" else COLORNAMES[[1]])) &&
+      (base::is.null(input$IVSizeColor)         || base::identical(input$IVSizeColor, if ("chartreuse" %in% COLORNAMES) "chartreuse" else COLORNAMES[[1]])) &&
+      (base::is.null(input$IVDistributionColor) || base::identical(input$IVDistributionColor, if ("yellow" %in% COLORNAMES) "yellow" else COLORNAMES[[1]]))
+  })
+  
+  shiny::observe({
+    shinyjs::toggleClass(id = "IVResetDisplay", class = "btn-danger",
+                         condition = !IVDisplayIsDefault())
+  })
   
   shiny::observeEvent(input$IVCommon, {
     shiny::req(input$IVSpeciesType == "Pick")
