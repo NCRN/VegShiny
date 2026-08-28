@@ -896,10 +896,37 @@ $(div).find('.gmaps-swatch').on('click', function() {
   return div;
 };
 baseLayerControl.addTo(map);
+",
+"
+var labelToggleControl = L.control({position: 'bottomright'});
+labelToggleControl.onAdd = function(map) {
+  var div = L.DomUtil.create('div', 'leaflet-bar map-round-icon-btn label-toggle-btn');
+  div.title = 'Show plot IDs';
+  div.innerHTML = 'ID';
+  L.DomEvent.disableClickPropagation(div);
+  Shiny.setInputValue('showPlotLabels', false, {priority: 'event'});
+  $(div).on('click', function() {
+    var nowShowing = !$(div).hasClass('label-toggle-active');
+    $(div).toggleClass('label-toggle-active');
+    div.title = nowShowing ? 'Hide plot names' : 'Show plot names';
+    Shiny.setInputValue('showPlotLabels', nowShowing, {priority: 'event'});
+  });
+  return div;
+};
+labelToggleControl.addTo(map);
 
+var zeroBtn = document.querySelector('.zero-toggle-btn');
+var labelBtn = document.querySelector('.label-toggle-btn');
+if (zeroBtn && labelBtn) {
+  var zeroContainer = zeroBtn.closest('.leaflet-control');
+  var labelContainer = labelBtn.closest('.leaflet-control');
+  if (zeroContainer && labelContainer) {
+    zeroContainer.parentNode.insertBefore(labelContainer, zeroContainer.nextSibling);
+  }
+}
 }
 "))
-})
+  })
   #       %>%
   # Optional: enable wheel zoom only while hovering (desktop), auto-disable on leave
   #      onRender("
@@ -1434,6 +1461,42 @@ baseLayerControl.addTo(map);
                    Soil = leaflet::addPolygons(., data=Soil, group="Soil", layerId=Soil$MapClass, stroke=FALSE, options = leaflet::pathOptions(pane = "dataLayerPane"),
                                                fillOpacity=op, color=leaflet::colorFactor(SOIL_COLORS,levels=Soil$MapClass)(Soil$MapClass))
       )}
+  })
+  
+  # show plot numbers toggle
+  shiny::observe({
+    if (!isTRUE(input$showPlotLabels)) {
+      leaflet::leafletProxy("VegMap") %>%
+        leaflet::clearGroup("PlotLabels")
+      return()
+    }
+    
+    if (showAllPlots()) {
+      lbl_df <- AllPlotLocations()
+    } else {
+      if (showWarningOverlay()) {
+        leaflet::leafletProxy("VegMap") %>%
+          leaflet::clearGroup("PlotLabels")
+        return()
+      }
+      lbl_df <- MapData()
+    }
+    
+    shiny::req(!is.null(lbl_df) && nrow(lbl_df) > 0)
+    
+    leaflet::leafletProxy("VegMap") %>%
+      leaflet::clearGroup("PlotLabels") %>%
+      leaflet::addLabelOnlyMarkers(
+        data = lbl_df,
+        lng = lbl_df$Longitude,
+        lat = lbl_df$Latitude,
+        label = lbl_df$Plot_Name,
+        group = "PlotLabels",
+        labelOptions = leaflet::labelOptions(
+          noHide = TRUE, direction = "center", textOnly = TRUE,
+          className = "plot-name-label",
+          style = list("font-weight" = "bold", "font-size" = "11px", "color" = "#222",
+                       "text-shadow" = "-1px -1px 0 #fff, 1px -1px 0 #fff, -1px 1px 0 #fff, 1px 1px 0 #fff")))
   })
   
   # Zoom the map
@@ -1971,8 +2034,12 @@ shiny::observeEvent(input$MapPark, {
     base::switch(input$densSpeciesType,
                  Common= {max_sp <- densSpeciesCount()
                  htmltools::tags$div(title="Select the maximum number of species to plot", 
-                                             shiny::sliderInput(inputId="densTop",label="Maximum number of species to plot (in order of mean value):",
-                                                                min = 1, max = base::max(1, max_sp, na.rm = TRUE), value = base::min(5, max_sp), step = 1, ticks = FALSE))},
+                                     shiny::sliderInput(inputId="densTop",label="Maximum number of species to plot (in order of mean value):",
+                                                        min = 1, max = base::max(1, max_sp, na.rm = TRUE), value = base::min(5, max_sp), step = 1, ticks = FALSE))},
+                 Least= {max_sp <- densSpeciesCount()
+                 htmltools::tags$div(title="Select the maximum number of species to plot", 
+                                     shiny::sliderInput(inputId="densTop",label="Maximum number of species to plot (least common, in order of mean value):",
+                                                        min = 1, max = base::max(1, max_sp, na.rm = TRUE), value = base::min(5, max_sp), step = 1, ticks = FALSE))},
                  Pick= if(base::is.null(input$densPark) || base::nchar(input$densPark)==0) { base::return() }
                  else{
                    htmltools::tags$div(title="Click here to pick the species you want to graph",
@@ -2403,6 +2470,11 @@ shiny::observeEvent(input$MapPark, {
       shiny::req(input$densTop)
       df <- df %>% dplyr::arrange(dplyr::desc(Mean)) %>% dplyr::slice(1:input$densTop)}
     
+    ### radioButton: Least ###
+    if (base::identical(input$densSpeciesType, "Least")) {
+      shiny::req(input$densTop)
+      df <- df %>% dplyr::arrange(Mean) %>% dplyr::slice(1:input$densTop)}
+    
     ### radioButton: All ###
     if (base::identical(input$densSpeciesType, "All")) {
       agg_fun <- if (input$densvalues %in% base::c("count","size")) sum else mean
@@ -2603,8 +2675,7 @@ shiny::observeEvent(input$MapPark, {
       df <- df %>% dplyr::filter(Latin %in% input$densSpecies)}
     
     # Common = top N from BASE — align by Latin not display name
-    if (base::identical(input$densSpeciesType, "Common")) {
-      base_latin <- if ("Latin" %in% base::names(densDf())) {base::as.character(densDf()$Latin)
+    if (base::identical(input$densSpeciesType, "Common") || base::identical(input$densSpeciesType, "Least")) {      base_latin <- if ("Latin" %in% base::names(densDf())) {base::as.character(densDf()$Latin)
       } else {base::as.character(densDf()$Species)}
       df <- df %>% dplyr::filter(Latin %in% base_latin)}
     
@@ -3379,6 +3450,9 @@ shiny::observeEvent(input$MapPark, {
       if (base::identical(input$densSpeciesType, "Common")) {
         shiny::req(input$densTop)
         tbl <- tbl %>% dplyr::arrange(dplyr::desc(Mean)) %>% dplyr::slice(1:input$densTop)}
+      if (base::identical(input$densSpeciesType, "Least")) {
+        shiny::req(input$densTop)
+        tbl <- tbl %>% dplyr::arrange(Mean) %>% dplyr::slice(1:input$densTop)}
       if (base::identical(input$densSpeciesType, "All")) {
         agg_fun <- if (input$densvalues %in% base::c("count", "size")) sum else mean
         tbl <- tbl %>% dplyr::summarise(
@@ -3645,19 +3719,31 @@ shiny::observeEvent(input$MapPark, {
                        value = base::min(5, max_sp),
                        step = 1,
                        ticks = FALSE))},
+                 Least = {
+                   max_sp <- tsSpeciesCount()
+                   htmltools::tags$div(
+                     title = "Select the maximum number of species to plot",
+                     shiny::sliderInput(
+                       inputId = "tsTop",
+                       label = "Maximum number of species to plot (least common):",
+                       min = 1,
+                       max = base::max(1, max_sp, na.rm = TRUE),
+                       value = base::min(5, max_sp),
+                       step = 1,
+                       ticks = FALSE))},
                  Pick = {if (base::is.null(input$tsPark) || base::length(input$tsPark) == 0) {base::return()
-                   } else {
-                     htmltools::tags$div(
-                       title = "Click here to pick the species you want to graph",
-                       shiny::selectizeInput(
-                         inputId  = "tsSpecies",
-                         label = "Select one or more species",
-                         choices = tsSpecList(),
-                         multiple = TRUE,
-                         selected = input$tsSpecies,
-                         options = base::list(
-                           placeholder = "Select species to display",
-                           plugins = base::list("remove_button"))))}},
+                 } else {
+                   htmltools::tags$div(
+                     title = "Click here to pick the species you want to graph",
+                     shiny::selectizeInput(
+                       inputId  = "tsSpecies",
+                       label = "Select one or more species",
+                       choices = tsSpecList(),
+                       multiple = TRUE,
+                       selected = input$tsSpecies,
+                       options = base::list(
+                         placeholder = "Select species to display",
+                         plugins = base::list("remove_button"))))}},
                  All = NULL)})
   
   # ts reset buttons
@@ -3862,6 +3948,35 @@ shiny::observeEvent(input$MapPark, {
           Species = dplyr::if_else(base::is.na(Latin_Name), NA_character_, fmt_common(.data[[sp_col]])),
           LabelOpp = dplyr::if_else(base::is.na(Latin_Name), NA_character_, fmt_common(.data[[label_col]])))
       
+    } else if (base::identical(input$tsSpeciesType, "Least")) {
+      shiny::req(input$tsTop)
+      
+      bottom_sp <- raw %>%
+        dplyr::filter(!base::is.na(Latin_Name)) %>%
+        dplyr::group_by(Latin_Name) %>%
+        dplyr::summarise(OverallMean = base::mean(Mean, na.rm = TRUE), .groups = "drop") %>%
+        dplyr::slice_min(OverallMean, n = input$tsTop, with_ties = FALSE) %>%
+        dplyr::pull(Latin_Name)
+      
+      df <- raw %>% dplyr::filter(Latin_Name %in% bottom_sp)
+      
+      present_cycles <- df %>% dplyr::distinct(Cycle)
+      missing_cycles <- dplyr::anti_join(all_cycles, present_cycles, by = "Cycle")
+      
+      if (base::nrow(missing_cycles) > 0) {
+        fill_rows <- tidyr::crossing(Latin_Name = bottom_sp, missing_cycles) %>%
+          dplyr::mutate(
+            Mean = NA_real_,
+            Lower.95 = NA_real_,
+            Upper.95 = NA_real_,
+            Common_Name = NA_character_)
+        df <- dplyr::bind_rows(df, fill_rows)}
+      
+      df <- df %>%
+        dplyr::mutate(
+          Species = dplyr::if_else(base::is.na(Latin_Name), NA_character_, fmt_common(.data[[sp_col]])),
+          LabelOpp = dplyr::if_else(base::is.na(Latin_Name), NA_character_, fmt_common(.data[[label_col]])))
+      
     } else {
       # All species combined
       agg_fun <- if (input$tsValues %in% base::c("count", "size")) sum else mean
@@ -3897,6 +4012,7 @@ shiny::observeEvent(input$MapPark, {
     ribbon_op <- base::ifelse(base::is.null(input$tsRibbonOpacity), 0.2, input$tsRibbonOpacity)
 
     species_list <- base::unique(df$Species)
+    species_list <- species_list[!base::is.na(species_list)]
     cycle_labels <- df %>%
       dplyr::distinct(Cycle, CycleLabel) %>%
       dplyr::arrange(Cycle)
@@ -4488,14 +4604,18 @@ shiny::observeEvent(input$MapPark, {
     base::switch(input$IVSpeciesType,
                  Common = {max_sp <- IVSpeciesCount()
                  htmltools::tags$div(title = "Select the maximum number of species to plot",
-                                              shiny::sliderInput("IVTop", "Maximum number of species to plot (in order of IV):",
-                                                                 min = 1, max = base::max(1, max_sp, na.rm = TRUE), value = base::min(5, max_sp), step = 1, ticks = FALSE))},
+                                     shiny::sliderInput("IVTop", "Maximum number of species to plot (in order of IV):",
+                                                        min = 1, max = base::max(1, max_sp, na.rm = TRUE), value = base::min(5, max_sp), step = 1, ticks = FALSE))},
+                 Least = {max_sp <- IVSpeciesCount()
+                 htmltools::tags$div(title = "Select the maximum number of species to plot",
+                                     shiny::sliderInput("IVTop", "Maximum number of species to plot (least common, in order of IV):",
+                                                        min = 1, max = base::max(1, max_sp, na.rm = TRUE), value = base::min(5, max_sp), step = 1, ticks = FALSE))},
                  Pick = if (base::is.null(input$IVPark) || base::nchar(input$IVPark) == 0) {base::return()
                  } else {htmltools::tags$div(title = "Click here to pick the species you want to graph",
-                                       shiny::selectizeInput(inputId = "IVSpecies", label = "Select one or more species",
-                                                             choices = IVSpecList(), multiple = TRUE, selected = input$IVSpecies,
-                                                             options = base::list(placeholder='Select a species to display',
-                                                                                  plugins = base::list("remove_button"))))},
+                                             shiny::selectizeInput(inputId = "IVSpecies", label = "Select one or more species",
+                                                                   choices = IVSpecList(), multiple = TRUE, selected = input$IVSpecies,
+                                                                   options = base::list(placeholder='Select a species to display',
+                                                                                        plugins = base::list("remove_button"))))},
                  All = NULL)})
   
   # iv reset buttons
@@ -4685,7 +4805,9 @@ shiny::observeEvent(input$MapPark, {
     shiny::req(IVData())
     
     if (base::is.null(input$IVPark) || base::nchar(input$IVPark) == 0) {
-      shiny::validate(shiny::need(input$IVPark, "There are no results for this combination of choices. Please select a park, species, or plant type."))}
+      shiny::validate(shiny::need(
+        !base::is.null(IVdf) && base::is.data.frame(IVdf) && base::nrow(IVdf) > 0,
+        "There is no data for this combination of choices. Please select a park, species, or plant type."))}
     
     IVdf <- IVData()
     
@@ -4694,6 +4816,10 @@ shiny::observeEvent(input$MapPark, {
                          Common = {shiny::req(input$IVTop)
                            IVdf %>%
                              dplyr::slice_max(order_by = Total, n = input$IVTop, with_ties = FALSE) %>%
+                             dplyr::arrange(Total)},
+                         Least = {shiny::req(input$IVTop)
+                           IVdf %>%
+                             dplyr::slice_min(order_by = Total, n = input$IVTop, with_ties = FALSE) %>%
                              dplyr::arrange(Total)},
                          Pick = {shiny::req(input$IVSpecies)
                            IVdf %>%
@@ -4807,6 +4933,9 @@ shiny::observeEvent(input$MapPark, {
     df <- base::switch(input$IVSpeciesType,
                        Common = {shiny::req(input$IVTop)
                          df_full %>% dplyr::slice_max(order_by = Total, n = input$IVTop, with_ties = FALSE) %>%
+                           dplyr::arrange(dplyr::desc(Total))},
+                       Least = {shiny::req(input$IVTop)
+                         df_full %>% dplyr::slice_min(order_by = Total, n = input$IVTop, with_ties = FALSE) %>%
                            dplyr::arrange(dplyr::desc(Total))},
                        Pick = {shiny::req(input$IVSpecies)
                          df_full %>% dplyr::filter(if (base::isTRUE(input$IVCommon)) LabelOpp %in% input$IVSpecies
@@ -4989,6 +5118,11 @@ shiny::observeEvent(input$MapPark, {
                          shiny::req(input$IVTop)
                          df %>%
                            dplyr::slice_max(order_by = Total, n = input$IVTop, with_ties = FALSE) %>%
+                           dplyr::arrange(dplyr::desc(Total))},
+                       Least = {
+                         shiny::req(input$IVTop)
+                         df %>%
+                           dplyr::slice_min(order_by = Total, n = input$IVTop, with_ties = FALSE) %>%
                            dplyr::arrange(dplyr::desc(Total))},
                        Pick = {
                          shiny::req(input$IVSpecies)

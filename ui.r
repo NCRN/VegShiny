@@ -764,7 +764,17 @@ shiny::navbarPage(
         background-size: 18px 18px;}
       .zero-toggle-btn.zero-toggle-active {
         background-image: url('data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 24 24%27 fill=%27none%27 stroke=%27%23c0392b%27 stroke-width=%272%27 stroke-linecap=%27round%27 stroke-linejoin=%27round%27%3E%3Cpath d=%27M17.94 17.94A10.94 10.94 0 0 1 12 19c-7 0-11-7-11-7a18.5 18.5 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 7 11 7a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24%27%3E%3C/path%3E%3Cline x1=%271%27 y1=%271%27 x2=%2723%27 y2=%2723%27%3E%3C/line%3E%3C/svg%3E');}
-      
+   
+    /* plot name label toggle */
+      .label-toggle-btn {
+        margin-top: 8px;
+        font-family: Arial, sans-serif;
+        font-weight: bold;
+        font-size: 13px;
+        color: #555;}
+      .label-toggle-btn.label-toggle-active {
+        color: #2e7d32;}  
+        
   /* other reactive features to screen sizes */
    
       @media (max-height: 880px) {
@@ -846,7 +856,7 @@ shiny::navbarPage(
           max-height: 60vh !important;
           overflow-y: auto !important;}}
       @media (hover: none) {
-        .leaflet-tooltip {
+        .leaflet-tooltip:not(.plot-name-label) {
           display: none !important;}}
   ")),
                        
@@ -1263,7 +1273,7 @@ shiny::tabPanel(
                               shiny::radioButtons(
                                 inputId = "densSpeciesType",
                                 label = "Which species?",
-                                choices = base::c("Most common species" = "Common", "Pick individual species" = "Pick", "All species combined" = "All"),
+                                choices = base::c("Most common species" = "Common", "Least common species" = "Least", "Pick individual species" = "Pick", "All species combined" = "All"),
                                 inline = FALSE)),
           shiny::uiOutput(outputId = "densSpeciesControl"),
           htmltools::tags$div(title = "Select the type of data to graph",shiny::uiOutput(outputId = "densValControl")),
@@ -1389,7 +1399,7 @@ shiny::tabPanel(
                          htmltools::tags$div(title="Toggle confidence interval ribbons on or off", shiny::checkboxInput(inputId = "tsShowCI", label = "Show 95% confidence intervals", value = FALSE)),
                          htmltools::tags$div(title="Graph the most common species, species you select, or all species observed", 
                                              shiny::radioButtons(inputId="tsSpeciesType", label="Which species?", 
-                                                                 choices=base::c("Most common species"="Common", "Pick individual species"="Pick", "All species combined"="All"), inline=FALSE)),
+                                                                 choices=base::c("Most common species"="Common", "Least common species"="Least", "Pick individual species"="Pick", "All species combined"="All"), inline=FALSE)),
                          htmltools::tags$div(title="Select the measurement to display on the y-axis", shiny::uiOutput(outputId="tsValControl")),
                          shiny::uiOutput(outputId="tsSpeciesControl"),
                          htmltools::tags$div(title = "Select the range of monitoring cycles to display", shiny::uiOutput(outputId = "tsCycleControl")),
@@ -1502,7 +1512,7 @@ shiny::tabPanel(htmltools::tags$div(title="Graph Importance Values", "Importance
                                        htmltools::tags$div(title="Display density, size and disbribution separately", shiny::checkboxInput(inputId="IVPart", label="Display components of the importance value?", value=FALSE)),
                                        htmltools::tags$div(title="Graph the most common species, species you select, or all species observed", 
                                                            shiny::radioButtons(inputId="IVSpeciesType", label="Which species?", 
-                                                                               choices=base::c("Most common species"="Common","Pick individual species"="Pick", "All species combined"="All"), inline=FALSE)),
+                                                                               choices=base::c("Greatest IV species"="Common", "Smallest IV species"="Least", "Pick individual species"="Pick", "All species combined"="All"), inline=FALSE)),
                                        shiny::uiOutput(outputId="IVSpeciesControl"),
                                        shiny::conditionalPanel(
                                          condition="input.IVPanel=='Graph'",
