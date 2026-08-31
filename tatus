@@ -1,0 +1,499 @@
+[1mdiff --git a/server.r b/server.r[m
+[1mindex 49103e9..f38aa5c 100644[m
+[1m--- a/server.r[m
+[1m+++ b/server.r[m
+[36m@@ -1445,21 +1445,26 @@[m [mif (zeroBtn && labelBtn) {[m
+     session$sendCustomMessage("toggleOpacityControl", input$MapLayer != "None")[m
+   })[m
+   [m
+[31m-  # Apply transparency slider to the active data layer -debounce[m
+[32m+[m[32m  # transparency slider to the active data layer -debounce[m
+   LayerOpacityDebounced <- shiny::debounce(shiny::reactive(input$LayerOpacity), millis = 150)[m
+   [m
+[31m-  # Apply transparency slider to the active data layer[m
+   shiny::observe({[m
+     shiny::req(input$MapLayer, input$MapLayer != "None", LayerOpacityDebounced())[m
+     op <- LayerOpacityDebounced() / 100[m
+     leaflet::leafletProxy("VegMap") %>% {[m
+       base::switch(input$MapLayer,[m
+                    EcoReg = leaflet::addPolygons(., data=Ecoregion, group="Ecoregion", layerId=Ecoregion$MapClass, stroke=FALSE, options = leaflet::pathOptions(pane = "dataLayerPane"),[m
+[31m-                                                 fillOpacity=op, color=leaflet::colorFactor(palette=ECOREGION_COLORS, levels=ECOREGION_ORDER)(Ecoregion$MapClass)),[m
+[32m+[m[32m                                                 fillOpacity=op, color=leaflet::colorFactor(palette=ECOREGION_COLORS, levels=ECOREGION_ORDER)(Ecoregion$MapClass),[m
+[32m+[m[32m                                                 label=base::paste0("Ecoregion: ", Ecoregion$MapClass),[m
+[32m+[m[32m                                                 popup=base::paste0("<b>Ecoregion:</b> ", Ecoregion$MapClass)),[m
+                    ForArea = leaflet::addPolygons(., data=Forested, group="Forested", layerId=Forested$MapClass, stroke=FALSE, options = leaflet::pathOptions(pane = "dataLayerPane"),[m
+[31m-                                                  fillOpacity=op, color=FOREST_COLOR),[m
+[32m+[m[32m                                                  fillOpacity=op, color=FOREST_COLOR,[m
+[32m+[m[32m                                                  label=base::paste0("Forested: ", Forested$MapClass),[m
+[32m+[m[32m                                                  popup=base::paste0("<b>Forested:</b> ", Forested$MapClass)),[m
+                    Soil = leaflet::addPolygons(., data=Soil, group="Soil", layerId=Soil$MapClass, stroke=FALSE, options = leaflet::pathOptions(pane = "dataLayerPane"),[m
+[31m-                                               fillOpacity=op, color=leaflet::colorFactor(SOIL_COLORS,levels=Soil$MapClass)(Soil$MapClass))[m
+[32m+[m[32m                                               fillOpacity=op, color=leaflet::colorFactor(SOIL_COLORS,levels=Soil$MapClass)(Soil$MapClass),[m
+[32m+[m[32m                                               label=base::paste0("Soil: ", Soil$MapClass),[m
+[32m+[m[32m                                               popup=base::paste0("<b>Soil:</b> ", Soil$MapClass))[m
+       )}[m
+   })[m
+   [m
+[36m@@ -1971,6 +1976,12 @@[m [mshiny::observeEvent(input$MapPark, {[m
+   [m
+   [m
+   #### Plots Tab ####[m
+[32m+[m[32m  # note shown under the Top-N slider on dens/ts/IV when Common or Least is selected[m
+[32m+[m[32m  tieNote <- function() {[m
+[32m+[m[32m    htmltools::tags$div([m
+[32m+[m[32m      style = "font-size: 11px; color: #888; font-style: italic; margin-top: -8px; margin-bottom: 6px;",[m
+[32m+[m[32m      "Note: Species tied at the cutoff value are always shown together. If a tie affects the selection, the slider will automatically adjust to match the number of species actually displayed.")[m
+[32m+[m[32m  }[m
+   [m
+   #### Park Control for Density plot  ####[m
+   output$densParkControl<-shiny::renderUI({[m
+[36m@@ -2030,16 +2041,20 @@[m [mshiny::observeEvent(input$MapPark, {[m
+     out <- NPSForVeg::getPlants(object = veg, group = input$densGroup, years = densYears(), common = FALSE)[m
+     base::length(base::unique(out$Latin_Name))})[m
+   [m
+[31m-  output$densSpeciesControl<-shiny::renderUI({[m
+[32m+[m[32m    output$densSpeciesControl<-shiny::renderUI({[m
+     base::switch(input$densSpeciesType,[m
+                  Common= {max_sp <- densSpeciesCount()[m
+[31m-                 htmltools::tags$div(title="Select the maximum number of species to plot", [m
+[31m-                                     shiny::sliderInput(inputId="densTop",label="Maximum number of species to plot (in order of mean value):",[m
+[31m-                                                        min = 1, max = base::max(1, max_sp, na.rm = TRUE), value = base::min(5, max_sp), step = 1, ticks = FALSE))},[m
+[32m+[m[32m                 htmltools::tagList([m
+[32m+[m[32m                   htmltools::tags$div(title="Select the maximum number of species to plot",[m[41m [m
+[32m+[m[32m                                             shiny::sliderInput(inputId="densTop",label="Maximum number of species to plot (in order of mean value):",[m
+[32m+[m[32m                                                                min = 1, max = base::max(1, max_sp, na.rm = TRUE), value = base::min(5, max_sp), step = 1, ticks = FALSE)),[m
+[32m+[m[32m                   tieNote())},[m
+                  Least= {max_sp <- densSpeciesCount()[m
+[31m-                 htmltools::tags$div(title="Select the maximum number of species to plot", [m
+[31m-                                     shiny::sliderInput(inputId="densTop",label="Maximum number of species to plot (least common, in order of mean value):",[m
+[31m-                                                        min = 1, max = base::max(1, max_sp, na.rm = TRUE), value = base::min(5, max_sp), step = 1, ticks = FALSE))},[m
+[32m+[m[32m                 htmltools::tagList([m
+[32m+[m[32m                   htmltools::tags$div(title="Select the maximum number of species to plot",[m[41m [m
+[32m+[m[32m                                             shiny::sliderInput(inputId="densTop",label="Maximum number of species to plot (least common, in order of mean value):",[m
+[32m+[m[32m                                                                min = 1, max = base::max(1, max_sp, na.rm = TRUE), value = base::min(5, max_sp), step = 1, ticks = FALSE)),[m
+[32m+[m[32m                   tieNote())},[m
+                  Pick= if(base::is.null(input$densPark) || base::nchar(input$densPark)==0) { base::return() }[m
+                  else{[m
+                    htmltools::tags$div(title="Click here to pick the species you want to graph",[m
+[36m@@ -2468,12 +2483,12 @@[m [mshiny::observeEvent(input$MapPark, {[m
+     ### radioButton: Common ###[m
+     if (base::identical(input$densSpeciesType, "Common")) {[m
+       shiny::req(input$densTop)[m
+[31m-      df <- df %>% dplyr::arrange(dplyr::desc(Mean)) %>% dplyr::slice(1:input$densTop)}[m
+[32m+[m[32m      df <- df %>% dplyr::slice_max(order_by = Mean, n = input$densTop, with_ties = TRUE, na_rm = TRUE) %>% dplyr::arrange(dplyr::desc(Mean))}[m
+     [m
+     ### radioButton: Least ###[m
+     if (base::identical(input$densSpeciesType, "Least")) {[m
+       shiny::req(input$densTop)[m
+[31m-      df <- df %>% dplyr::arrange(Mean) %>% dplyr::slice(1:input$densTop)}[m
+[32m+[m[32m      df <- df %>% dplyr::slice_min(order_by = Mean, n = input$densTop, with_ties = TRUE, na_rm = TRUE) %>% dplyr::arrange(Mean)}[m
+     [m
+     ### radioButton: All ###[m
+     if (base::identical(input$densSpeciesType, "All")) {[m
+[36m@@ -2500,6 +2515,16 @@[m [mshiny::observeEvent(input$MapPark, {[m
+       dplyr::select(-.tie)[m
+   })[m
+   [m
+[32m+[m[32m  ### keep densTop slider in sync with actual # of species shown (ties can push the count above the requested N) ###[m
+[32m+[m[32m  shiny::observe({[m
+[32m+[m[32m    shiny::req(input$densSpeciesType %in% base::c("Common", "Least"), input$densTop)[m
+[32m+[m[32m    df <- base::tryCatch(densDf(), error = function(e) NULL)[m
+[32m+[m[32m    shiny::req(!base::is.null(df))[m
+[32m+[m[32m    actual_n <- base::nrow(df)[m
+[32m+[m[32m    if (actual_n > 0 && actual_n != input$densTop) {[m
+[32m+[m[32m      shiny::updateSliderInput(session, "densTop", value = actual_n)}[m
+[32m+[m[32m  })[m
+[32m+[m[41m  [m
+   #### create compare plotting df #####[m
+   [m
+   ###bugfix update###########################[m
+[36m@@ -2737,6 +2762,9 @@[m [mshiny::observeEvent(input$MapPark, {[m
+   #       All=NA[m
+   #     )[m
+   # })[m
+[32m+[m
+[32m+[m[32m# -------------------------------------------------------------------------[m
+[32m+[m
+   [m
+   [m
+   #### make compare and labels arguments for densplot() ####[m
+[36m@@ -3025,13 +3053,27 @@[m [mshiny::observeEvent(input$MapPark, {[m
+         [m
+       } else { NULL }[m
+     } else { NULL }[m
+[31m-[m
+[32m+[m[41m    [m
+[32m+[m[32m    # make note of tied species due to rounding[m
+[32m+[m[32m    dens_rounding_note <- {[m
+[32m+[m[32m      vals <- base::round(df$Mean, 2)[m
+[32m+[m[32m      dup_vals <- base::unique(vals[base::duplicated(vals)])[m
+[32m+[m[32m      if (base::length(dup_vals) == 0) { NULL[m
+[32m+[m[32m      } else {[m
+[32m+[m[32m        dup_species <- base::vapply(dup_vals, function(v) {[m
+[32m+[m[32m          sp <- base::as.character(df$Species[vals == v])[m
+[32m+[m[32m          base::paste(sp, collapse = ", ")}, character(1))[m
+[32m+[m[32m        base::sprintf(base::paste0("Note: The following species share the same rounded mean shown above: %s. ",[m
+[32m+[m[32m                                   "Values are rounded to two decimal places for display. Species with the same rounded display number may have different underlying values ",[m
+[32m+[m[32m                                   "in which their bars may appear as different lengths."),[m
+[32m+[m[32m                      base::paste(base::sprintf("%s (%.2f)", dup_species, dup_vals), collapse = "; "))}}[m
+     htmltools::tagList([m
+       htmltools::tags$p(htmltools::tags$span(style = "font-size: 30px; font-weight: bold;", "Summary Report:")),[m
+       htmltools::tags$p(style = "font-size: 15px;", htmltools::tags$strong(style = "font-size: 20px;", park_label), " \u2014 ", intro),[m
+       if (base::identical(input$CompareType, "None")) {htmltools::tags$ul(style = "font-size: 15px; margin: 6px 0 6px 16px; padding: 0;", bullet_tags)[m
+       } else {htmltools::tags$ul(style = "font-size: 15px; margin: 6px 0 6px 16px; padding: 0;", compare_section)},[m
+       if (!base::is.null(top_sentence)) htmltools::tags$p(style = "font-size: 15px;", top_sentence) else NULL,[m
+[32m+[m[32m      if (!base::is.null(dens_rounding_note)) htmltools::tags$p(style = "font-size: 14px; color: #b45309;", htmltools::tags$em(dens_rounding_note)) else NULL,[m
+       htmltools::tags$p(style = "font-size: 15px;",htmltools::tags$em("Species averages with 95% confidence intervals.")))})[m
+   [m
+   output$densReportGraph <- shiny::renderUI({[m
+[36m@@ -3449,10 +3491,10 @@[m [mshiny::observeEvent(input$MapPark, {[m
+         tbl <- tbl %>% dplyr::filter(Latin_Name %in% input$densSpecies)}[m
+       if (base::identical(input$densSpeciesType, "Common")) {[m
+         shiny::req(input$densTop)[m
+[31m-        tbl <- tbl %>% dplyr::arrange(dplyr::desc(Mean)) %>% dplyr::slice(1:input$densTop)}[m
+[32m+[m[32m        tbl <- tbl %>% dplyr::slice_max(order_by = Mean, n = input$densTop, with_ties = TRUE, na_rm = TRUE) %>% dplyr::arrange(dplyr::desc(Mean))}[m
+       if (base::identical(input$densSpeciesType, "Least")) {[m
+         shiny::req(input$densTop)[m
+[31m-        tbl <- tbl %>% dplyr::arrange(Mean) %>% dplyr::slice(1:input$densTop)}[m
+[32m+[m[32m        tbl <- tbl %>% dplyr::slice_min(order_by = Mean, n = input$densTop, with_ties = TRUE, na_rm = TRUE) %>% dplyr::arrange(Mean)}[m
+       if (base::identical(input$densSpeciesType, "All")) {[m
+         agg_fun <- if (input$densvalues %in% base::c("count", "size")) sum else mean[m
+         tbl <- tbl %>% dplyr::summarise([m
+[36m@@ -3709,28 +3751,32 @@[m [mshiny::observeEvent(input$MapPark, {[m
+     base::switch(input$tsSpeciesType,[m
+                  Common = {[m
+                    max_sp <- tsSpeciesCount()[m
+[31m-                   htmltools::tags$div([m
+[31m-                     title = "Select the maximum number of species to plot",[m
+[31m-                     shiny::sliderInput([m
+[31m-                       inputId = "tsTop",[m
+[31m-                       label = "Maximum number of species to plot:",[m
+[31m-                       min = 1,[m
+[31m-                       max = base::max(1, max_sp, na.rm = TRUE),[m
+[31m-                       value = base::min(5, max_sp),[m
+[31m-                       step = 1,[m
+[31m-                       ticks = FALSE))},[m
+[32m+[m[32m                   htmltools::tagList([m
+[32m+[m[32m                     htmltools::tags$div([m
+[32m+[m[32m                       title = "Select the maximum number of species to plot",[m
+[32m+[m[32m                       shiny::sliderInput([m
+[32m+[m[32m                         inputId = "tsTop",[m
+[32m+[m[32m                         label = "Maximum number of species to plot:",[m
+[32m+[m[32m                         min = 1,[m
+[32m+[m[32m                         max = base::max(1, max_sp, na.rm = TRUE),[m
+[32m+[m[32m                         value = base::min(5, max_sp),[m
+[32m+[m[32m                         step = 1,[m
+[32m+[m[32m                         ticks = FALSE)),[m
+[32m+[m[32m                     tieNote())},[m
+                  Least = {[m
+                    max_sp <- tsSpeciesCount()[m
+[31m-                   htmltools::tags$div([m
+[31m-                     title = "Select the maximum number of species to plot",[m
+[31m-                     shiny::sliderInput([m
+[31m-                       inputId = "tsTop",[m
+[31m-                       label = "Maximum number of species to plot (least common):",[m
+[31m-                       min = 1,[m
+[31m-                       max = base::max(1, max_sp, na.rm = TRUE),[m
+[31m-                       value = base::min(5, max_sp),[m
+[31m-                       step = 1,[m
+[31m-                       ticks = FALSE))},[m
+[32m+[m[32m                   htmltools::tagList([m
+[32m+[m[32m                     htmltools::tags$div([m
+[32m+[m[32m                       title = "Select the maximum number of species to plot",[m
+[32m+[m[32m                       shiny::sliderInput([m
+[32m+[m[32m                         inputId = "tsTop",[m
+[32m+[m[32m                         label = "Maximum number of species to plot (least common):",[m
+[32m+[m[32m                         min = 1,[m
+[32m+[m[32m                         max = base::max(1, max_sp, na.rm = TRUE),[m
+[32m+[m[32m                         value = base::min(5, max_sp),[m
+[32m+[m[32m                         step = 1,[m
+[32m+[m[32m                         ticks = FALSE)),[m
+[32m+[m[32m                     tieNote())},[m
+                  Pick = {if (base::is.null(input$tsPark) || base::length(input$tsPark) == 0) {base::return()[m
+                  } else {[m
+                    htmltools::tags$div([m
+[36m@@ -3926,7 +3972,7 @@[m [mshiny::observeEvent(input$MapPark, {[m
+         dplyr::filter(!base::is.na(Latin_Name)) %>%[m
+         dplyr::group_by(Latin_Name) %>%[m
+         dplyr::summarise(OverallMean = base::mean(Mean, na.rm = TRUE), .groups = "drop") %>%[m
+[31m-        dplyr::slice_max(OverallMean, n = input$tsTop, with_ties = FALSE) %>%[m
+[32m+[m[32m        dplyr::slice_max(OverallMean, n = input$tsTop, with_ties = TRUE, na_rm = TRUE) %>%[m
+         dplyr::pull(Latin_Name)[m
+       [m
+       df <- raw %>% dplyr::filter(Latin_Name %in% top_sp)[m
+[36m@@ -3955,7 +4001,7 @@[m [mshiny::observeEvent(input$MapPark, {[m
+         dplyr::filter(!base::is.na(Latin_Name)) %>%[m
+         dplyr::group_by(Latin_Name) %>%[m
+         dplyr::summarise(OverallMean = base::mean(Mean, na.rm = TRUE), .groups = "drop") %>%[m
+[31m-        dplyr::slice_min(OverallMean, n = input$tsTop, with_ties = FALSE) %>%[m
+[32m+[m[32m        dplyr::slice_min(OverallMean, n = input$tsTop, with_ties = TRUE, na_rm = TRUE) %>%[m
+         dplyr::pull(Latin_Name)[m
+       [m
+       df <- raw %>% dplyr::filter(Latin_Name %in% bottom_sp)[m
+[36m@@ -3994,6 +4040,17 @@[m [mshiny::observeEvent(input$MapPark, {[m
+     [m
+     df <- df %>% dplyr::arrange(Cycle)[m
+     df})[m
+[32m+[m[41m  [m
+[32m+[m[32m  ### keep tsTop slider in sync with actual # of species shown (ties can push the count above the requested N) ###[m
+[32m+[m[32m  shiny::observe({[m
+[32m+[m[32m    shiny::req(input$tsSpeciesType %in% base::c("Common", "Least"), input$tsTop)[m
+[32m+[m[32m    df <- base::tryCatch(tsDf(), error = function(e) NULL)[m
+[32m+[m[32m    shiny::req(!base::is.null(df))[m
+[32m+[m[32m    valid_latin <- df$Latin_Name[!base::is.na(df$Latin_Name)][m
+[32m+[m[32m    actual_n <- base::length(base::unique(valid_latin))[m
+[32m+[m[32m    if (actual_n > 0 && actual_n != input$tsTop) {[m
+[32m+[m[32m      shiny::updateSliderInput(session, "tsTop", value = actual_n)}[m
+[32m+[m[32m  })[m
+ [m
+   # plot[m
+   output$tsPlot <- plotly::renderPlotly({[m
+[36m@@ -4603,13 +4660,17 @@[m [mshiny::observeEvent(input$MapPark, {[m
+   output$IVSpeciesControl <- shiny::renderUI({[m
+     base::switch(input$IVSpeciesType,[m
+                  Common = {max_sp <- IVSpeciesCount()[m
+[31m-                 htmltools::tags$div(title = "Select the maximum number of species to plot",[m
+[31m-                                     shiny::sliderInput("IVTop", "Maximum number of species to plot (in order of IV):",[m
+[31m-                                                        min = 1, max = base::max(1, max_sp, na.rm = TRUE), value = base::min(5, max_sp), step = 1, ticks = FALSE))},[m
+[32m+[m[32m                 htmltools::tagList([m
+[32m+[m[32m                   htmltools::tags$div(title = "Select the maximum number of species to plot",[m
+[32m+[m[32m                                       shiny::sliderInput("IVTop", "Maximum number of species to plot (in order of IV):",[m
+[32m+[m[32m                                                          min = 1, max = base::max(1, max_sp, na.rm = TRUE), value = base::min(5, max_sp), step = 1, ticks = FALSE)),[m
+[32m+[m[32m                   tieNote())},[m
+                  Least = {max_sp <- IVSpeciesCount()[m
+[31m-                 htmltools::tags$div(title = "Select the maximum number of species to plot",[m
+[31m-                                     shiny::sliderInput("IVTop", "Maximum number of species to plot (least common, in order of IV):",[m
+[31m-                                                        min = 1, max = base::max(1, max_sp, na.rm = TRUE), value = base::min(5, max_sp), step = 1, ticks = FALSE))},[m
+[32m+[m[32m                 htmltools::tagList([m
+[32m+[m[32m                   htmltools::tags$div(title = "Select the maximum number of species to plot",[m
+[32m+[m[32m                                       shiny::sliderInput("IVTop", "Maximum number of species to plot (least common, in order of IV):",[m
+[32m+[m[32m                                                          min = 1, max = base::max(1, max_sp, na.rm = TRUE), value = base::min(5, max_sp), step = 1, ticks = FALSE)),[m
+[32m+[m[32m                   tieNote())},[m
+                  Pick = if (base::is.null(input$IVPark) || base::nchar(input$IVPark) == 0) {base::return()[m
+                  } else {htmltools::tags$div(title = "Click here to pick the species you want to graph",[m
+                                              shiny::selectizeInput(inputId = "IVSpecies", label = "Select one or more species",[m
+[36m@@ -4800,42 +4861,59 @@[m [mshiny::observeEvent(input$MapPark, {[m
+   output$IVComponentColorNotice <- shiny::renderUI({ ivComponentColorDisabledMsg() })[m
+   shiny::outputOptions(output, "IVComponentColorNotice", suspendWhenHidden = FALSE)[m
+   [m
+[32m+[m[32m  #### IV species selection (shared by plot, report, and table) ####[m
+[32m+[m[32m  IVSelectedDf <- shiny::reactive({[m
+[32m+[m[32m    shiny::req(IVData())[m
+[32m+[m[32m    IVdf <- IVData()[m
+[32m+[m[41m    [m
+[32m+[m[32m    base::switch(input$IVSpeciesType,[m[41m [m
+[32m+[m[32m                 Common = {shiny::req(input$IVTop)[m
+[32m+[m[32m                   IVdf %>%[m
+[32m+[m[32m                     dplyr::slice_max(order_by = base::round(Total, 2), n = input$IVTop, with_ties = TRUE, na_rm = TRUE) %>%[m
+[32m+[m[32m                     dplyr::arrange(Total)},[m
+[32m+[m[32m                 Least = {shiny::req(input$IVTop)[m
+[32m+[m[32m                   IVdf %>%[m
+[32m+[m[32m                     dplyr::slice_min(order_by = base::round(Total, 2), n = input$IVTop, with_ties = TRUE, na_rm = TRUE) %>%[m
+[32m+[m[32m                     dplyr::arrange(Total)},[m
+[32m+[m[32m                 Pick = {shiny::req(input$IVSpecies)[m
+[32m+[m[32m                   IVdf %>%[m
+[32m+[m[32m                     dplyr::filter([m
+[32m+[m[32m                       if (base::isTRUE(input$IVCommon)) LabelOpp %in% input$IVSpecies[m
+[32m+[m[32m                       else Species %in% input$IVSpecies) %>%[m
+[32m+[m[32m                     dplyr::arrange(Total)},[m
+[32m+[m[32m                 All = IVdf %>%[m
+[32m+[m[32m                   dplyr::summarise([m
+[32m+[m[32m                     Species = "All species ",[m
+[32m+[m[32m                     Density = base::round(base::mean(Density, na.rm = TRUE), 2),[m
+[32m+[m[32m                     Size = base::round(base::mean(Size, na.rm = TRUE), 2),[m
+[32m+[m[32m                     Distribution = base::round(base::mean(Distribution, na.rm = TRUE), 2),[m
+[32m+[m[32m                     Total = base::round(base::mean(Total, na.rm = TRUE), 2),[m
+[32m+[m[32m                     LabelOpp = "All species") %>%[m
+[32m+[m[32m                   dplyr::arrange(Total))[m
+[32m+[m[32m  })[m
+[32m+[m[41m  [m
+[32m+[m[32m  ### keep IVTop slider in sync with actual # of species shown (ties can push the count above the requested N) ###[m
+[32m+[m[32m  shiny::observe({[m
+[32m+[m[32m    shiny::req(input$IVSpeciesType %in% base::c("Common", "Least"), input$IVTop)[m
+[32m+[m[32m    df <- base::tryCatch(IVSelectedDf(), error = function(e) NULL)[m
+[32m+[m[32m    shiny::req(!base::is.null(df))[m
+[32m+[m[32m    actual_n <- base::nrow(df)[m
+[32m+[m[32m    if (actual_n > 0 && actual_n != input$IVTop) {[m
+[32m+[m[32m      shiny::updateSliderInput(session, "IVTop", value = actual_n)}[m
+[32m+[m[32m  })[m
+[32m+[m[41m  [m
+   #### IV Plot ####[m
+   tempIVPlot <- shiny::reactive({[m
+     shiny::req(IVData())[m
+     [m
+     if (base::is.null(input$IVPark) || base::nchar(input$IVPark) == 0) {[m
+[31m-      shiny::validate(shiny::need([m
+[31m-        !base::is.null(IVdf) && base::is.data.frame(IVdf) && base::nrow(IVdf) > 0,[m
+[31m-        "There is no data for this combination of choices. Please select a park, species, or plant type."))}[m
+[32m+[m[32m      shiny::validate(shiny::need(input$IVPark, "There is no data for this combination of choices. Please select a park, species, or plant type."))}[m
+     [m
+[31m-    IVdf <- IVData()[m
+[32m+[m[32m    IVdf <- IVSelectedDf()[m
+     [m
+[31m-    # sets number of displayed species[m
+[31m-    IVdf <- base::switch(input$IVSpeciesType, [m
+[31m-                         Common = {shiny::req(input$IVTop)[m
+[31m-                           IVdf %>%[m
+[31m-                             dplyr::slice_max(order_by = Total, n = input$IVTop, with_ties = FALSE) %>%[m
+[31m-                             dplyr::arrange(Total)},[m
+[31m-                         Least = {shiny::req(input$IVTop)[m
+[31m-                           IVdf %>%[m
+[31m-                             dplyr::slice_min(order_by = Total, n = input$IVTop, with_ties = FALSE) %>%[m
+[31m-                             dplyr::arrange(Total)},[m
+[31m-                         Pick = {shiny::req(input$IVSpecies)[m
+[31m-                           IVdf %>%[m
+[31m-                             dplyr::filter([m
+[31m-                               if (base::isTRUE(input$IVCommon)) LabelOpp %in% input$IVSpecies[m
+[31m-                               else Species %in% input$IVSpecies) %>%[m
+[31m-                             dplyr::arrange(Total)},[m
+[31m-                         All = IVdf %>%[m
+[31m-                           dplyr::summarise([m
+[31m-                             Species = "All species ",[m
+[31m-                             Density = base::round(base::mean(Density, na.rm = TRUE), 2),[m
+[31m-                             Size = base::round(base::mean(Size, na.rm = TRUE), 2),[m
+[31m-                             Distribution = base::round(base::mean(Distribution, na.rm = TRUE), 2),[m
+[31m-                             Total = base::round(base::mean(Total, na.rm = TRUE), 2),[m
+[31m-                             LabelOpp = "All species") %>%[m
+[31m-                           dplyr::arrange(Total))[m
+[32m+[m[32m    shiny::validate(shiny::need([m
+[32m+[m[32m      !base::is.null(IVdf) && base::is.data.frame(IVdf) && base::nrow(IVdf) > 0,[m
+[32m+[m[32m      "There is no data for this combination of choices. Please select a park, species, or plant type."))[m
+     [m
+     ### plot in plotly ###[m
+     if (!input$IVPart) {[m
+[36m@@ -4930,26 +5008,9 @@[m [mshiny::observeEvent(input$MapPark, {[m
+     df_full <- base::tryCatch(IVData(), error = function(e) NULL)[m
+     if (base::is.null(df_full) || base::nrow(df_full) == 0) base::return(NULL)[m
+     [m
+[31m-    df <- base::switch(input$IVSpeciesType,[m
+[31m-                       Common = {shiny::req(input$IVTop)[m
+[31m-                         df_full %>% dplyr::slice_max(order_by = Total, n = input$IVTop, with_ties = FALSE) %>%[m
+[31m-                           dplyr::arrange(dplyr::desc(Total))},[m
+[31m-                       Least = {shiny::req(input$IVTop)[m
+[31m-                         df_full %>% dplyr::slice_min(order_by = Total, n = input$IVTop, with_ties = FALSE) %>%[m
+[31m-                           dplyr::arrange(dplyr::desc(Total))},[m
+[31m-                       Pick = {shiny::req(input$IVSpecies)[m
+[31m-                         df_full %>% dplyr::filter(if (base::isTRUE(input$IVCommon)) LabelOpp %in% input$IVSpecies[m
+[31m-                                                   else Species %in% input$IVSpecies) %>%[m
+[31m-                           dplyr::arrange(dplyr::desc(Total))},[m
+[31m-                       All = df_full %>%[m
+[31m-                         dplyr::summarise([m
+[31m-                           Species = "All species", LabelOpp = "All species",[m
+[31m-                           Density = base::round(base::mean(Density, na.rm = TRUE), 2),[m
+[31m-                           Size = base::round(base::mean(Size, na.rm = TRUE), 2),[m
+[31m-                           Distribution = base::round(base::mean(Distribution, na.rm = TRUE), 2),[m
+[31m-                           Total = base::round(base::mean(Total, na.rm = TRUE), 2)))[m
+[31m-    [m
+[32m+[m[32m    df <- base::tryCatch(IVSelectedDf(), error = function(e) NULL)[m
+     if (base::is.null(df) || base::nrow(df) == 0) base::return(NULL)[m
+[32m+[m[32m    df <- df %>% dplyr::arrange(dplyr::desc(Total))[m
+     [m
+     park_label <- NPSForVeg::getNames(VEGDATA[[input$IVPark]], "long")[m
+     group_label <- base::switch(input$IVGroup, trees = "trees", saplings = "saplings", seedlings = "tree seedlings", shseedlings = "shrub seedlings", input$IVGroup)[m
+[36m@@ -4976,11 +5037,60 @@[m [mshiny::observeEvent(input$MapPark, {[m
+     footnote <- "Importance value (IV) is the sum of relative density (Density), relative size (Size, based on basal area), and relative distribution (Distribution). [m
+                 Each component ranges from 0 to 1; total IV ranges from 0 to 1."[m
+     [m
+[32m+[m[32m    # make note of tied species due to rounding[m
+[32m+[m[32m    find_rounding_dupes <- function(col_name, label) {[m
+[32m+[m[32m      vals <- base::round(df[[col_name]], 2)[m
+[32m+[m[32m      dup_vals <- base::unique(vals[base::duplicated(vals)])[m
+[32m+[m[32m      if (base::length(dup_vals) == 0) base::return(NULL)[m
+[32m+[m[32m      base::lapply(dup_vals, function(v) {[m
+[32m+[m[32m        base::list(component = base::sprintf("%s (%.2f)", label, v),[m
+[32m+[m[32m                   species   = base::as.character(df$Species[vals == v]))})}[m
+[32m+[m[41m    [m
+[32m+[m[32m    all_dups <- base::Filter(base::Negate(base::is.null), base::c([m
+[32m+[m[32m      find_rounding_dupes("Total", "Total IV"),[m
+[32m+[m[32m      find_rounding_dupes("Density", "Density"),[m
+[32m+[m[32m      find_rounding_dupes("Size", "Size"),[m
+[32m+[m[32m      find_rounding_dupes("Distribution", "Distribution")))[m
+[32m+[m[41m    [m
+[32m+[m[32m    rounding_note <- if (base::length(all_dups) > 0) {[m
+[32m+[m[32m      species_key <- base::sapply(all_dups, function(d) base::paste(base::sort(d$species), collapse = ", "))[m
+[32m+[m[32m      grouped <- base::split(all_dups, species_key)[m
+[32m+[m[32m      group_lines <- base::sapply(grouped, function(g) {[m
+[32m+[m[32m        species_str <- base::paste(g[[1]]$species, collapse = ", ")[m
+[32m+[m[32m        comps_str <- base::paste(base::sapply(g, function(d) d$component), collapse = ", ")[m
+[32m+[m[32m        base::sprintf("%s — %s", species_str, comps_str)})[m
+[32m+[m[32m      base::sprintf(base::paste0("Note: The following species share the same rounded value(s) shown above: %s. ",[m
+[32m+[m[32m                                 "Values are rounded to two decimal places for display. Species with the same rounded display number may have different underlying values ",[m
+[32m+[m[32m                                 "in which their bars may appear as different lengths."),[m
+[32m+[m[32m                    base::paste(group_lines, collapse = "; "))[m
+[32m+[m[32m    } else { NULL }[m
+[32m+[m[41m    [m
+[32m+[m[32m    # note for values that round down to 0.00 but aren't actually zero[m
+[32m+[m[32m    find_zero_rounding <- function(col_name, label) {[m
+[32m+[m[32m      raw_vals <- df[[col_name]][m
+[32m+[m[32m      rounded <- base::round(raw_vals, 2)[m
+[32m+[m[32m      idx <- !base::is.na(raw_vals) & rounded == 0 & raw_vals != 0[m
+[32m+[m[32m      if (!base::any(idx)) base::return(NULL)[m
+[32m+[m[32m      base::sprintf("%s (%s)", label, base::paste(base::as.character(df$Species[idx]), collapse = ", "))}[m
+[32m+[m[41m    [m
+[32m+[m[32m    zero_lines <- base::Filter(base::Negate(base::is.null), base::list([m
+[32m+[m[32m      find_zero_rounding("Total", "Total IV"),[m
+[32m+[m[32m      find_zero_rounding("Density", "Density"),[m
+[32m+[m[32m      find_zero_rounding("Size", "Size"),[m
+[32m+[m[32m      find_zero_rounding("Distribution", "Distribution")))[m
+[32m+[m[41m    [m
+[32m+[m[32m    zero_rounding_note <- if (base::length(zero_lines) > 0) {[m
+[32m+[m[32m      base::sprintf("Note: Some species show 0.00 above but are not actually zero \u2014 the underlying value is a small positive number rounded down for display: %s.",[m
+[32m+[m[32m                    base::paste(base::unlist(zero_lines), collapse = "; "))[m
+[32m+[m[32m    } else { NULL }[m
+[32m+[m[41m    [m
+     htmltools::tagList([m
+       htmltools::tags$p(htmltools::tags$span(style = "font-size: 30px; font-weight: bold;", "Summary Report:")),[m
+       htmltools::tags$p(style = "font-size: 15px;", htmltools::tags$strong(style = "font-size: 20px;", park_label), " \u2014 ", intro),[m
+       htmltools::tags$ul(style = "font-size: 15px; margin: 6px 0 6px 16px; padding: 0;", bullet_tags),[m
+       if (!base::is.null(top_sentence)) htmltools::tags$p(style = "font-size: 15px;", top_sentence) else NULL,[m
+[32m+[m[32m      if (!base::is.null(rounding_note)) htmltools::tags$p(style = "font-size: 14px; color: #b45309;", htmltools::tags$em(rounding_note)) else NULL,[m
+[32m+[m[32m      if (!base::is.null(zero_rounding_note)) htmltools::tags$p(style = "font-size: 14px; color: #b45309;", htmltools::tags$em(zero_rounding_note)) else NULL,[m
+       htmltools::tags$p(style = "font-size: 15px;", htmltools::tags$em(footnote)))})[m
+   [m
+   output$ivReport <- shiny::renderUI({[m
+[36m@@ -5106,39 +5216,15 @@[m [mshiny::observeEvent(input$MapPark, {[m
+   tempIVTable <- shiny::reactive({[m
+     shiny::validate(shiny::need([m
+       !base::is.null(input$IVPark) && base::nzchar(input$IVPark),[m
+[31m-      "There are no results for this combination of choices. Please select a park, species, or plant type."))[m
+[32m+[m[32m      "There is no data for this combination of choices. Please select a park, species, or plant type."))[m
+     [m
+[31m-    df <- IVData()[m
+[32m+[m[32m    df_full <- IVData()[m
+     [m
+     shiny::validate(shiny::need([m
+[31m-      !base::is.null(df) && base::nrow(df) > 0,[m
+[31m-      "There are no results for this combination of choices. Please select a park, species, or plant type."))[m
+[31m-    df <- base::switch(input$IVSpeciesType,[m
+[31m-                       Common = {[m
+[31m-                         shiny::req(input$IVTop)[m
+[31m-                         df %>%[m
+[31m-                           dplyr::slice_max(order_by = Total, n = input$IVTop, with_ties = FALSE) %>%[m
+[31m-                           dplyr::arrange(dplyr::desc(Total))},[m
+[31m-                       Least = {[m
+[31m-                         shiny::req(input$IVTop)[m
+[31m-                         df %>%[m
+[31m-                           dplyr::slice_min(order_by = Total, n = input$IVTop, with_ties = FALSE) %>%[m
+[31m-                           dplyr::arrange(dplyr::desc(Total))},[m
+[31m-                       Pick = {[m
+[31m-                         shiny::req(input$IVSpecies)[m
+[31m-                         df %>%[m
+[31m-                           dplyr::filter([m
+[31m-                             if (base::isTRUE(input$IVCommon)) LabelOpp %in% input$IVSpecies[m
+[31m-                             else Species %in% input$IVSpecies) %>%[m
+[31m-                           dplyr::arrange(dplyr::desc(Total))},[m
+[31m-                       All = df %>%[m
+[31m-                         dplyr::summarise([m
+[31m-                           Species = "All species",[m
+[31m-                           Density = base::round(base::mean(Density, na.rm = TRUE), 2),[m
+[31m-                           Size = base::round(base::mean(Size, na.rm = TRUE), 2),[m
+[31m-                           Distribution = base::round(base::mean(Distribution, na.rm = TRUE), 2),[m
+[31m-                           Total = base::round(base::mean(Total, na.rm = TRUE), 2)) %>%[m
+[31m-                         dplyr::arrange(Total))[m
+[32m+[m[32m      !base::is.null(df_full) && base::nrow(df_full) > 0,[m
+[32m+[m[32m      "There is no data for this combination of choices. Please select a park, species, or plant type."))[m
+[32m+[m[41m    [m
+[32m+[m[32m    df <- IVSelectedDf() %>% dplyr::arrange(dplyr::desc(Total))[m
+     [m
+     if (!input$IVPart) {df <- df %>% dplyr::select(Species, Total)[m
+     } else {df <- df %>% dplyr::select(Species, Density, Size, Distribution, Total)}[m
