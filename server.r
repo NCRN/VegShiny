@@ -1549,7 +1549,7 @@ shiny::observeEvent(input$MapPark, {
       selectedPlot <- all_df[all_df$Plot_Name == ShapeOver$id, ]
       if (base::nrow(selectedPlot) == 0) base::return()
       leaflet::leafletProxy("VegMap") %>%
-        leaflet::clearPopups() %>%
+        leaflet::removePopup(layerId = "MouseOverPopup") %>%
         leaflet::addPopups(
           map     = .,
           lat     = ShapeOver$lat + .001,
@@ -1569,7 +1569,7 @@ shiny::observeEvent(input$MapPark, {
     selectedPlot <- md[md$Plot_Name == ShapeOver$id, ]
     if (base::nrow(selectedPlot) == 0) base::return()
     leaflet::leafletProxy("VegMap") %>%
-      leaflet::clearPopups() %>% {
+      leaflet::removePopup(layerId = "MouseOverPopup") %>% {
         base::switch(ShapeOver$group,
                      Circles = leaflet::addPopups(
                        map     = .,
@@ -1592,9 +1592,9 @@ shiny::observeEvent(input$MapPark, {
       }
   })
   
-  shiny::observeEvent(input$VegMap_shape_mouseout,{    #clear popup when mouse leaves circle
+  shiny::observeEvent(input$VegMap_shape_mouseout,{    #clear hover popup only when mouse leaves circle
     leaflet::leafletProxy("VegMap") %>%
-      leaflet::clearPopups()
+      leaflet::removePopup(layerId = "MouseOverPopup")
   })
   
   # Mouse Click 
@@ -1612,6 +1612,7 @@ shiny::observeEvent(input$MapPark, {
           lat     = ShapeClick$lat + .001,
           lng     = ShapeClick$lng,
           layerId = "CircleClickPopup",
+          options = leaflet::popupOptions(autoClose = FALSE, closeOnClick = TRUE, closeButton = TRUE),
           popup   = base::paste0(
             shiny::h5(NPSForVeg::getNames(VEGDATA[[selectedPlot$Unit_Code]], "long")),
             retiredPlotNote(selectedPlot$Plot_Name),
@@ -1644,12 +1645,25 @@ shiny::observeEvent(input$MapPark, {
         base::do.call(NPSForVeg::SiteXSpec,
                       base::c(sxs_args_base, base::list(values=input$MapValues, area="ha")))[-1]
       } else {
-        base::do.call(NPSForVeg::SiteXSpec,
-                      base::list(object=VEGDATA[[selectedPlot$Unit_Code]], group=input$MapGroup,
-                                 years=selectedPlot$Year, plots=ShapeClick$id,
-                                 values=input$MapValues, common=input$mapCommon, plot.type = "all"))[-1]
+        herbData <- base::do.call(NPSForVeg::SiteXSpec,
+                                  base::list(object=VEGDATA[[selectedPlot$Unit_Code]], group=input$MapGroup,
+                                             years=selectedPlot$Year, plots=ShapeClick$id,
+                                             values=input$MapValues, common=input$mapCommon, plot.type = "all"))[-1]
+        herbData[ , base::setdiff(base::names(herbData), "Total"), drop = FALSE]
       }
       base::names(tempData) <- fmt_common(base::names(tempData))
+      is_total <- base::names(tempData) == "Total"
+      
+      # Recompute Total as the sum of the *rounded* species values, so it
+      # matches what a user adding up the visible rows would get — rather
+      # than SiteXSpec's own unrounded Total, which can be off by a hair
+      # from the rounded figures shown above it.
+      if (base::any(is_total)) {
+        rounded_vals <- base::signif(base::unlist(tempData[ , !is_total, drop = FALSE]), 2)
+        tempData[ , is_total] <- base::sum(rounded_vals, na.rm = TRUE)
+      }
+      
+      tempData <- tempData[ , base::order(is_total, -base::unlist(tempData)), drop = FALSE]
       content <- base::paste0(
         shiny::h5(NPSForVeg::getNames(VEGDATA[[selectedPlot$Unit_Code]], "long")),
         retiredPlotNote(selectedPlot$Plot_Name),
@@ -1659,10 +1673,11 @@ shiny::observeEvent(input$MapPark, {
         htmltools::tagList(htmltools::tags$table(
           base::mapply(
             FUN = function(Name, Value) {
+              displayValue <- if (Name == "Total") Value else base::signif(Value, 2)
               htmltools::tags$tr(
                 htmltools::tags$td(base::sprintf("%s:  ", Name)),
                 htmltools::tags$td(align = "right",
-                                   base::sprintf("%s", base::format(base::signif(Value, 2), big.mark = ",")))
+                                   base::sprintf("%s", base::format(displayValue, big.mark = ",")))
               )
             },
             Name     = base::names(tempData),
@@ -1674,7 +1689,9 @@ shiny::observeEvent(input$MapPark, {
     leaflet::leafletProxy("VegMap") %>%
       leaflet::clearPopups() %>% {
         base::switch(ShapeClick$group,
-                     Circles   = leaflet::addPopups(map = ., lat = ShapeClick$lat + .001, lng = ShapeClick$lng, layerId = "CircleClickPopup", popup = content)
+                     Circles   = leaflet::addPopups(map = ., lat = ShapeClick$lat + .001, lng = ShapeClick$lng, layerId = "CircleClickPopup",
+                                                    options = leaflet::popupOptions(autoClose = FALSE, closeOnClick = TRUE, closeButton = TRUE),
+                                                    popup = content)
         )
       }
   })
