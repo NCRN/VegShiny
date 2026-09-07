@@ -30,8 +30,58 @@ base::names(VEGDATA)<-NPSForVeg::getNames(VEGDATA, name.class="code")
 PARKLIST<-NPSForVeg::getNames(VEGDATA,name.class="code")
 base::names(PARKLIST)<-NPSForVeg::getNames(VEGDATA)
 
+# TODO: remove this patch after the 2026 data package
+# clear ROCR-0079 subunit code from foci
+unassign_subunit_patch <- function() {
+  target_plot <- "ROCR-0079"
+  slots_to_check <- base::c("Plots","Events","Trees","Saplings","Seedlings","Shrubs","ShSeedlings","Vines","Herbs","CWD")
+  
+  rocr <- VEGDATA[["ROCR"]]
+  changed <- FALSE
+  for (s in slots_to_check) {
+    dat <- methods::slot(rocr, s)
+    if ("Subunit_Code" %in% base::names(dat) && "Plot_Name" %in% base::names(dat)) {
+      idx <- dat$Plot_Name == target_plot
+      if (base::any(idx)) {
+        dat$Subunit_Code[idx] <- "na"
+        methods::slot(rocr, s) <- dat
+        changed <- TRUE
+      }
+    }
+  }
+  if (changed) VEGDATA[["ROCR"]] <<- rocr
+}
+if (base::identical(NETWORK, "NCRN")) unassign_subunit_patch()
+
+# TODO: remove once NPSForVeg is updated - fixes the "Captial" typo
+if (base::identical(NETWORK, "NCRN") && !base::is.null(VEGDATA[["NACE"]])) {
+  VEGDATA[["NACE"]]@LongName <- "National Capital Parks-East"
+}
+
 # bound parks for zoom
 PARKBOUNDS<-utils::read.csv("boundboxes.csv", as.is=TRUE)
+
+# assign long names subunit codes from metadata XML
+SUBUNITLABELS<-base::tryCatch({
+  subunit_xml <- xml2::read_xml("./Data/NCRN/ncrn_forest_vegetation_cumulative_through2025_metadata.xml")
+  
+  code_nodes <- xml2::xml_find_all(
+    subunit_xml,
+    ".//*[local-name()='attribute'][.//*[local-name()='attributeName']/text()='Subunit_Code']//*[local-name()='codeDefinition']"
+  )
+  
+  labels <- base::unique(base::data.frame(
+    Code  = base::trimws(xml2::xml_text(xml2::xml_find_first(code_nodes, ".//*[local-name()='code']"))),
+    Label = base::trimws(xml2::xml_text(xml2::xml_find_first(code_nodes, ".//*[local-name()='definition']"))),
+    stringsAsFactors = FALSE
+  ))
+  
+  # drop "na"s, no subunits present
+  labels[base::tolower(labels$Code) != "na", ]
+}, error = function(e) {
+  base::warning("Could not parse Subunit_Code labels from metadata XML: ", base::conditionMessage(e))
+  base::data.frame(Code=base::character(0), Label=base::character(0), stringsAsFactors=FALSE)
+})
 
 # year range into cycles
 DATACYCLES<-NPSForVeg::getCycles(VEGDATA[[1]])
@@ -348,20 +398,21 @@ shiny::shinyServer(function(input,output,session){
         .groups = "drop")
   })
   
-  # Plot is retired if its last sampled year predates the most recent cycle
+  # Plot is retired if its last sampled year predates the second-to-last cycle
+  # used by retiredPlotNote() and by the Species List plot map)
   latestCycleStart <- base::max(DATACYCLES$YearStart)
+  RETIREMENT_THRESHOLD <- {
+    cycle_starts <- base::sort(base::unique(DATACYCLES$YearStart))
+    if (base::length(cycle_starts) >= 2) {
+      cycle_starts[base::length(cycle_starts) - 1]
+    } else {cycle_starts[base::length(cycle_starts)]}
+  }
   
   retiredPlotNote <- function(plot_name) {
     yr <- PlotYearRanges() %>% dplyr::filter(Plot_Name == plot_name)
     if (base::nrow(yr) == 0) base::return("")
     
-    cycle_starts <- base::sort(base::unique(DATACYCLES$YearStart))
-    
-    retirement_threshold <- if (base::length(cycle_starts) >= 2) {
-      cycle_starts[base::length(cycle_starts) - 1]
-    } else {cycle_starts[base::length(cycle_starts)]}
-    
-    if (yr$LastYear[1] >= retirement_threshold) base::return("")
+    if (yr$LastYear[1] >= RETIREMENT_THRESHOLD) base::return("")
     
     last_cycle_row <- DATACYCLES %>%
       dplyr::filter(YearStart <= yr$LastYear[1], YearEnd >= yr$LastYear[1])
@@ -1583,7 +1634,7 @@ shiny::observeEvent(input$MapPark, {
                          shiny::h6("Year Monitored:", selectedPlot$Year),
                          shiny::h6(
                            base::names(MapSpecList()[MapSpecList() == input$MapSpecies]), ":",
-                           base::format(base::signif(selectedPlot$Values, 2), big.mark = ","),
+                           base::format(base::round(selectedPlot$Values, 1), nsmall = 1, big.mark = ","),
                            " ", MapMetaData()$Title),
                          htmltools::tags$h6("Click on plot to see full list")
                        )
@@ -1659,7 +1710,7 @@ shiny::observeEvent(input$MapPark, {
       # than SiteXSpec's own unrounded Total, which can be off by a hair
       # from the rounded figures shown above it.
       if (base::any(is_total)) {
-        rounded_vals <- base::signif(base::unlist(tempData[ , !is_total, drop = FALSE]), 2)
+        rounded_vals <- base::round(base::unlist(tempData[ , !is_total, drop = FALSE]), 1)
         tempData[ , is_total] <- base::sum(rounded_vals, na.rm = TRUE)
       }
       
@@ -1673,11 +1724,11 @@ shiny::observeEvent(input$MapPark, {
         htmltools::tagList(htmltools::tags$table(
           base::mapply(
             FUN = function(Name, Value) {
-              displayValue <- if (Name == "Total") Value else base::signif(Value, 2)
+              displayValue <- if (Name == "Total") Value else base::round(Value, 1)
               htmltools::tags$tr(
-                htmltools::tags$td(base::sprintf("%s:  ", Name)),
+                htmltools::tags$td(style = "padding-right: 14px;", base::sprintf("%s:", Name)),
                 htmltools::tags$td(align = "right",
-                                   base::sprintf("%s", base::format(displayValue, big.mark = ",")))
+                                   base::sprintf("%s", base::format(displayValue, nsmall = 1, big.mark = ",")))
               )
             },
             Name     = base::names(tempData),
@@ -5275,31 +5326,228 @@ shiny::observeEvent(input$MapPark, {
     ) 
   })
   
+  # species list subunit control
   
-  
-  #### Species list plot control ####
-  
-  output$SpListPlotControl <-shiny::renderUI({
-    shiny::validate(
-      shiny::need(input$SpListPark!="", message = F)
-    )
-    shiny::selectizeInput(inputId="SpListPlot", choices=base::c("All Plots"="All", NPSForVeg::getPlotNames(VEGDATA[[input$SpListPark]],type="all")),
-                          label="Plots (optional)", multiple=TRUE, selected="All", options = base::list(plugins = base::list("remove_button"))
-    )
+  SpListSubunitList <- shiny::reactive({
+    shiny::req(input$SpListPark)
+    raw_subunits <- base::as.character(NPSForVeg::getPlots(VEGDATA[[input$SpListPark]], type = "all")$Subunit_Code)
+    base::sort(base::unique(raw_subunits[
+      !base::is.na(raw_subunits) & base::tolower(base::trimws(raw_subunits)) != "na"]))
   })
+  
+  output$SpListSubunitControl <- shiny::renderUI({
+    shiny::validate(shiny::need(input$SpListPark != "", message = FALSE))
+    subunits <- SpListSubunitList()
+    shiny::validate(shiny::need(base::length(subunits) > 0, message = FALSE))
+    subunit_labels <- base::sapply(subunits, function(cd) {
+      lbl <- SUBUNITLABELS$Label[SUBUNITLABELS$Code == cd]
+      if (base::length(lbl) == 0) cd else lbl})
+    shiny::selectizeInput(inputId = "SpListSubunit", 
+                          choices = base::c("All Sub-Units" = "All", stats::setNames(subunits, subunit_labels)),
+                          label = "Sub-Unit (optional)", selected = "All")
+  })
+  
+  # species list plot map
+  
+  SpListPlotsDf <- shiny::reactive({
+    shiny::req(input$SpListPark)
+    subunit_sel <- input$SpListSubunit
+    if (base::is.null(subunit_sel) || subunit_sel == "" || subunit_sel == "All" || !(subunit_sel %in% SpListSubunitList())) {
+      subunit_sel <- NA}
+    NPSForVeg::getPlots(VEGDATA[[input$SpListPark]], type = "all", subparks = subunit_sel) %>%
+      dplyr::select(Plot_Name, Latitude, Longitude) %>%
+      dplyr::filter(!base::is.na(Latitude), !base::is.na(Longitude))
+  })
+  
+  # selected plots - resets to "everything currently shown" whenever park/subunit changes
+  SpListSelectedPlots <- shiny::reactiveVal(base::character(0))
+  
+  shiny::observeEvent(SpListPlotsDf(), {SpListSelectedPlots(SpListPlotsDf()$Plot_Name)})
+  
+  output$SpListPlotMap <- leaflet::renderLeaflet({
+    bounds <- PARKBOUNDS[PARKBOUNDS$ParkCode == NETWORK, ]
+    leaflet::leaflet(options = leaflet::leafletOptions(minZoom = 1)) %>%
+      leaflet::addTiles(urlTemplate = NPSBASIC) %>%
+      leaflet::fitBounds(
+        lng1 = bounds$LongW, lat1 = bounds$LatS,
+        lng2 = bounds$LongE, lat2 = bounds$LatN) %>%
+      leaflet.extras::addDrawToolbar(
+        targetGroup = "SpListDrawn",
+        polylineOptions = FALSE, polygonOptions = FALSE, circleOptions = FALSE,
+        markerOptions = FALSE, circleMarkerOptions = FALSE,
+        rectangleOptions = leaflet.extras::drawRectangleOptions(
+          shapeOptions = leaflet.extras::drawShapeOptions(color = "#2e7d32", weight = 2, dashArray = "6,4", fillOpacity = 0.05)),
+        editOptions = leaflet.extras::editToolbarOptions(edit = FALSE, remove = FALSE)) %>%
+        htmlwidgets::onRender("
+        function(el, x) {
+          var map = this;
+          var drawGroup = this.layerManager.getLayerGroup('SpListDrawn');
+          
+          $('.leaflet-draw-draw-rectangle').attr('title', 'Draw a rectangle to select multiple plots at once');
+                    
+          // clicking rectangle tool starts a fresh selection (like clear all plots button)
+          map.on('draw:drawstart', function(e) {
+            if (e.layerType === 'rectangle') {
+              Shiny.setInputValue('SpListDrawRectStart', Math.random(), {priority: 'event'});
+            }
+          });
+          
+          map.on('draw:created', function(e) {
+            setTimeout(function() { drawGroup.clearLayers(); }, 50);
+          });
+          
+          // reuse map page plot id toggle
+                    var idToggleControl = L.control({position: 'bottomright'});
+          idToggleControl.onAdd = function(map) {
+            var div = L.DomUtil.create('div', 'leaflet-bar map-round-icon-btn label-toggle-btn');
+            div.title = 'Show plot IDs';
+            div.innerHTML = 'ID';
+            L.DomEvent.disableClickPropagation(div);
+            Shiny.setInputValue('SpListShowLabels', false, {priority: 'event'});
+            $(div).on('click', function() {
+              var nowShowing = !$(div).hasClass('label-toggle-active');
+              $(div).toggleClass('label-toggle-active');
+              div.title = nowShowing ? 'Hide plot IDs' : 'Show plot IDs';
+              Shiny.setInputValue('SpListShowLabels', nowShowing, {priority: 'event'});
+            });
+            return div;
+          };
+          
+          idToggleControl.addTo(map);
+          
+          // make map expandable
+          var expandControl = L.control({position: 'topright'});
+          expandControl.onAdd = function(map) {
+            var div = L.DomUtil.create('div', 'leaflet-bar map-round-icon-btn spmap-expand-btn');
+            div.title = 'Expand map';
+            L.DomEvent.disableClickPropagation(div);
+            L.DomEvent.on(div, 'click', function(e) {
+              L.DomEvent.preventDefault(e);
+              if (window.toggleSpMapExpand) window.toggleSpMapExpand();
+            });
+            return div;
+          };
+          expandControl.addTo(map);
+        }
+      ")
+  })
+  
+  # auto zoom to the selected park/sub-unit's plots
+  shiny::observe({
+    df <- SpListPlotsDf()
+    shiny::req(base::nrow(df) > 0)
+    leaflet::leafletProxy("SpListPlotMap") %>%
+      leaflet::fitBounds(
+        lng1 = base::min(df$Longitude), lat1 = base::min(df$Latitude),
+        lng2 = base::max(df$Longitude), lat2 = base::max(df$Latitude),
+        options = base::list(padding = base::c(20, 20)))
+  })
+  
+  # redraw markers + labels whenever the plot list, selection, or label toggle changes
+  shiny::observe({
+    df <- SpListPlotsDf()
+    selected <- SpListSelectedPlots()
+    show_labels <- base::isTRUE(input$SpListShowLabels)
+    
+    proxy <- leaflet::leafletProxy("SpListPlotMap") %>%
+      leaflet::clearGroup("SpListCircles") %>%
+      leaflet::clearGroup("SpListLabels")
+    
+    shiny::req(base::nrow(df) > 0)
+    
+    df$Selected <- df$Plot_Name %in% selected
+    cols <- base::ifelse(df$Selected, "#2e7d32", "#999999")
+    
+    # rename retired plots (uses the same RETIREMENT_THRESHOLD as the Map page's retiredPlotNote())
+    df <- df %>% dplyr::left_join(PlotYearRanges(), by = "Plot_Name")
+    df$Retired <- !base::is.na(df$LastYear) & df$LastYear < RETIREMENT_THRESHOLD
+    df$LabelText <- base::ifelse(df$Retired, base::paste0(df$Plot_Name, " (retired since ", df$LastYear, ")"), df$Plot_Name)
+    
+    proxy <- proxy %>%
+      leaflet::addCircleMarkers(
+        data = df, lng = ~Longitude, lat = ~Latitude, layerId = ~Plot_Name,
+        radius = 7, color = cols, fillColor = cols, fillOpacity = 0.85,
+        weight = 2, stroke = TRUE, group = "SpListCircles")
+    
+    if (show_labels) {
+      proxy <- proxy %>%
+        leaflet::addLabelOnlyMarkers(
+          data = df, lng = ~Longitude, lat = ~Latitude, label = ~LabelText,
+          group = "SpListLabels",
+          labelOptions = leaflet::labelOptions(
+            noHide = TRUE, direction = "top", textOnly = TRUE, offset = base::c(0, -10),
+            className = "plot-name-label",
+            style = base::list("font-weight" = "bold", "font-size" = "10px", "color" = "#222", 
+                               "text-shadow" = "-1px -1px 0 #fff, 1px -1px 0 #fff, -1px 1px 0 #fff, 1px 1px 0 #fff")))}
+  })
+  
+  # click a plot to toggle it in/out of the selection
+  shiny::observeEvent(input$SpListPlotMap_marker_click, {
+    clicked_id <- input$SpListPlotMap_marker_click$id
+    shiny::req(clicked_id)
+    current <- SpListSelectedPlots()
+    if (clicked_id %in% current) {
+      SpListSelectedPlots(base::setdiff(current, clicked_id))
+    } else {SpListSelectedPlots(base::union(current, clicked_id))}
+  })
+  
+  # draw a rectangle to add all plot inside it to the selection
+  shiny::observeEvent(input$SpListPlotMap_draw_new_feature, {
+    feature <- input$SpListPlotMap_draw_new_feature
+    shiny::req(base::identical(feature$properties$feature_type, "rectangle"))
+    
+    coords <- feature$geometry$coordinates[[1]]
+    lngs <- base::sapply(coords, function(pt) pt[[1]])
+    lats <- base::sapply(coords, function(pt) pt[[2]])
+    
+    df <- SpListPlotsDf()
+    shiny::req(base::nrow(df) > 0)
+    
+    in_box <- df$Longitude >= base::min(lngs) & df$Longitude <= base::max(lngs) &
+      df$Latitude  >= base::min(lats) & df$Latitude  <= base::max(lats)
+    
+    SpListSelectedPlots(base::union(SpListSelectedPlots(), df$Plot_Name[in_box]))
+  })
+  
+  # select all and clear all buttons
+  shiny::observeEvent(input$SpListSelectAllPlots, {SpListSelectedPlots(SpListPlotsDf()$Plot_Name)})
+  shiny::observeEvent(input$SpListResetPlots, {SpListSelectedPlots(base::character(0))})
+  shiny::observeEvent(input$SpListDrawRectStart, {SpListSelectedPlots(base::character(0))})
+  
+  output$SpListPlotCountLabel <- shiny::renderText({
+    total <- base::nrow(SpListPlotsDf())
+    sel <- base::length(SpListSelectedPlots())
+    base::sprintf("%d of %d plots selected", sel, total)
+  })
+  shiny::outputOptions(output, "SpListPlotCountLabel", suspendWhenHidden = FALSE)
   
   output$hasSpPark <- shiny::reactive({!base::is.null(input$SpListPark) && input$SpListPark != ""})
   shiny::outputOptions(output, "hasSpPark", suspendWhenHidden = FALSE)
   
+  #### Species list attribute filter controls ####
+  output$SpFamilyControl <- shiny::renderUI({
+    shiny::validate(shiny::need(input$SpListPark != "", message = FALSE))
+    choices <- base::sort(base::unique(stats::na.omit(MonitoringListFull()$Family)))
+    shiny::selectizeInput(inputId = "SpFamily", choices = choices, label = "Family:",
+                          multiple = TRUE, options = base::list(plugins = base::list("remove_button"), placeholder = "All families"))
+  })
+  
+  output$SpGenusControl <- shiny::renderUI({
+    shiny::validate(shiny::need(input$SpListPark != "", message = FALSE))
+    choices <- base::sort(base::unique(stats::na.omit(MonitoringListFull()$Genus)))
+    shiny::selectizeInput(inputId = "SpGenus", choices = choices, label = "Genus:",
+                          multiple = TRUE, options = base::list(plugins = base::list("remove_button"), placeholder = "All genera"))
+  })
+  
   SpListPlotUse<-shiny::reactive({
-    if(base::length(input$SpListPlot)==0 || "All" %in%  input$SpListPlot ) base::return(NA) else base::return(input$SpListPlot)
-    
+    selected <- SpListSelectedPlots()
+    all_plots <- SpListPlotsDf()$Plot_Name
+    if (base::length(selected) > 0 && base::setequal(selected, all_plots)) base::return(NA)
+    base::return(selected)
   })
   
   LatinList<-shiny::reactive({
-    shiny::validate(
-      shiny::need(input$SpListPark, message=FALSE)  
-    )
+    shiny::validate(shiny::need(input$SpListPark, message=FALSE)  )
     base::unique(base::c(
       NPSForVeg::getPlants(object=VEGDATA[[input$SpListPark]], group="trees", plots=SpListPlotUse())$Latin_Name,
       NPSForVeg::getPlants(object=VEGDATA[[input$SpListPark]], group="saplings",plots=SpListPlotUse())$Latin_Name,
@@ -5307,20 +5555,60 @@ shiny::observeEvent(input$MapPark, {
       NPSForVeg::getPlants(object=VEGDATA[[input$SpListPark]], group="shrubs", plots=SpListPlotUse())$Latin_Name,
       NPSForVeg::getPlants(object=VEGDATA[[input$SpListPark]], group="shseedlings", plots=SpListPlotUse())$Latin_Name,
       NPSForVeg::getPlants(object=VEGDATA[[input$SpListPark]], group="vines", plots=SpListPlotUse())$Latin_Name,
-      NPSForVeg::getPlants(object=VEGDATA[[input$SpListPark]], group="herbs", plots=SpListPlotUse())$Latin_Name
-    ))
+      NPSForVeg::getPlants(object=VEGDATA[[input$SpListPark]], group="herbs", plots=SpListPlotUse())$Latin_Name))
   })
   
   CommonList <- shiny::reactive({
     fmt_common(NPSForVeg::getPlantNames(object = VEGDATA[[input$SpListPark]],
-                                          names = LatinList(), out.style = "common", in.style = "Latin"))})  
+                                        names = LatinList(), out.style = "common", in.style = "Latin"))})  
   
-  MonitoringList <- shiny::reactive({
+  ### Species attribute lookup (Family, Genus, growth habit, native status) from CommonNames.csv ###
+  SpeciesAttrDf <- shiny::reactive({
+    selected_commons() %>%
+      dplyr::distinct(Latin_Name, .keep_all = TRUE) %>%
+      dplyr::select(Latin_Name, Family, Genus, Tree, Shrub, Herbaceous, Vine, Exotic)
+  })
+  
+  MonitoringListFull <- shiny::reactive({
     tibble::tibble(
       `Latin Name` = LatinList(),
       `Common Name` = CommonList()) |>
-      dplyr::arrange(`Common Name`) |>
-      dplyr::select(`Common Name`, `Latin Name`)})
+      dplyr::left_join(SpeciesAttrDf(), by = c(`Latin Name` = "Latin_Name")) |>
+      dplyr::mutate(`Growth Habit` = base::trimws(base::gsub("(^,\\s*)|(,\\s*$)", "",
+          base::paste0(
+            base::ifelse(!base::is.na(Tree) & Tree == 1, "Tree, ", ""),
+            base::ifelse(!base::is.na(Shrub) & Shrub == 1, "Shrub, ", ""),
+            base::ifelse(!base::is.na(Herbaceous) & Herbaceous == 1, "Herbaceous, ", ""),
+            base::ifelse(!base::is.na(Vine) & Vine == 1, "Vine, ", "")))),
+        `Growth Habit` = base::ifelse(`Growth Habit` == "", NA_character_, `Growth Habit`),
+        `Nativity` = dplyr::case_when(
+          Exotic == 1 ~ "Non-native",
+          Exotic == 0 ~ "Native",
+          TRUE ~ NA_character_)) |>
+      dplyr::arrange(`Common Name`)
+  })
+  
+  MonitoringListFiltered <- shiny::reactive({
+    df <- MonitoringListFull()
+    
+    if (!base::is.null(input$SpFamily) && base::length(input$SpFamily) > 0) {df <- df[df$Family %in% input$SpFamily, ]}
+    if (!base::is.null(input$SpGenus) && base::length(input$SpGenus) > 0) {df <- df[df$Genus %in% input$SpGenus, ]}
+    if (!base::is.null(input$SpNativity) && input$SpNativity != "All") {
+      df <- df[!base::is.na(df$`Nativity`) & df$`Nativity` == input$SpNativity, ]}
+    habit_match <- base::rep(FALSE, base::nrow(df))
+    if ("Tree" %in% input$SpGrowthHabit) habit_match <- habit_match | (!base::is.na(df$Tree) & df$Tree == 1)
+    if ("Shrub" %in% input$SpGrowthHabit) habit_match <- habit_match | (!base::is.na(df$Shrub) & df$Shrub == 1)
+    if ("Herbaceous" %in% input$SpGrowthHabit) habit_match <- habit_match | (!base::is.na(df$Herbaceous) & df$Herbaceous == 1)
+    if ("Vine" %in% input$SpGrowthHabit) habit_match <- habit_match | (!base::is.na(df$Vine) & df$Vine == 1)
+    if ("All" %in% input$SpGrowthHabit) {no_habit <- (base::is.na(df$Tree) | df$Tree != 1) &
+        (base::is.na(df$Shrub) | df$Shrub != 1) &
+        (base::is.na(df$Herbaceous) | df$Herbaceous != 1) &
+        (base::is.na(df$Vine) | df$Vine != 1)
+      habit_match <- habit_match | no_habit}
+    df <- df[habit_match, ]
+    
+    df %>% dplyr::select(`Common Name`, `Latin Name`, Family, Genus, `Growth Habit`, `Nativity`)
+  })
   
   ###Make URL for and get data from NPSpecies
   NPSpeciesURL<-shiny::reactive({base::paste0("https://irmaservices.nps.gov/v3/rest/npspecies/checklist/",input$SpListPark,"/Vascular%20Plant?format=Json")})
@@ -5361,16 +5649,33 @@ shiny::observeEvent(input$MapPark, {
   
   SpeciesTableData <- shiny::reactive({
     base::switch(input$SpListType,
-                 Monitoring = MonitoringList(),
+                 Monitoring = MonitoringListFiltered(),
                  NPSpecies  = NPSpeciesList())})
   
   output$SpeciesTableTitle <- shiny::renderText({
     SpeciesTableTitle()})
   
+  # drop family and genus from small screens + note that they are present on larger screens
+  output$SpTableMobileNotice <- shiny::renderUI({
+    sw <- input$screenW
+    small_screen <- !base::is.null(sw) && sw < 768
+    if (small_screen && base::identical(input$SpListType, "Monitoring")) {
+      htmltools::tags$div(
+        style = "font-size: 12px; color: #888; font-style: italic; margin: 4px 0 8px 0;", 
+        "*Family and Genus columns are available on wider screens.")
+    } else { NULL }})
+  shiny::outputOptions(output, "SpTableMobileNotice", suspendWhenHidden = FALSE)
+  
   output$SpeciesTable <- DT::renderDataTable({
     shiny::validate(shiny::need(input$SpListPark != "",""))
     df <- SpeciesTableData()
     shiny::validate(shiny::need(base::is.data.frame(df), "Data not available."))
+    
+    sw <- input$screenW
+    small_screen <- !base::is.null(sw) && sw < 768
+    if (small_screen && base::identical(input$SpListType, "Monitoring")) {
+      df <- df %>% dplyr::select(-dplyr::any_of(base::c("Family", "Genus")))}
+    
     DT::datatable(df, rownames = FALSE, selection = "single", class = "display compact") |>
       DT::formatStyle("Latin Name", fontStyle = "italic")})
   

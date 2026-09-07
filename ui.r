@@ -775,6 +775,47 @@ shiny::navbarPage(
       .label-toggle-btn.label-toggle-active {
         color: #2e7d32;}  
         
+  /* species list */
+    
+    /* map plot size and expansion */
+    
+      #SpListPlotMap {border-radius: 6px; overflow: hidden; border: 1px solid #ddd;}
+      
+      #SpListPlotMapWrapper {position: relative;}
+      #SpListPlotMapWrapper.expanded {
+        position: fixed;
+        top: 90px; left: 16px; right: 16px; bottom: 16px;
+        z-index: 10850;
+        background-color: #ffffff;
+        border-radius: 8px;
+        box-shadow: 0 4px 24px rgba(0,0,0,0.35);
+        padding: 8px;
+        box-sizing: border-box;}
+      #SpListPlotMapWrapper.expanded #SpListPlotMap {height: 100% !important;}
+      #SpListPlotMapOverlay {
+        position: fixed;
+        top: 0; left: 0; width: 100%; height: 100%;
+        background-color: rgba(0,0,0,0.4);
+        z-index: 10840;
+        display: none;}
+      #SpListPlotMapOverlay.active {display: block;}
+      
+      .spmap-expand-btn {
+        background-image: url('data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 24 24%27 fill=%27none%27 stroke=%27%23555%27 stroke-width=%272%27 stroke-linecap=%27round%27 stroke-linejoin=%27round%27%3E%3Cpolyline points=%2715 3 21 3 21 9%27%3E%3C/polyline%3E%3Cpolyline points=%279 21 3 21 3 15%27%3E%3C/polyline%3E%3Cline x1=%2721%27 y1=%273%27 x2=%2714%27 y2=%2710%27%3E%3C/line%3E%3Cline x1=%273%27 y1=%2721%27 x2=%2710%27 y2=%2714%27%3E%3C/line%3E%3C/svg%3E');
+        background-repeat: no-repeat;
+        background-position: center;
+        background-size: 16px 16px;}
+      .spmap-expand-btn.spmap-expand-active {
+        background-image: url('data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 24 24%27 fill=%27none%27 stroke=%27%232e7d32%27 stroke-width=%272%27 stroke-linecap=%27round%27 stroke-linejoin=%27round%27%3E%3Cpolyline points=%274 14 10 14 10 20%27%3E%3C/polyline%3E%3Cpolyline points=%2720 10 14 10 14 4%27%3E%3C/polyline%3E%3Cline x1=%2714%27 y1=%2710%27 x2=%2721%27 y2=%273%27%3E%3C/line%3E%3Cline x1=%2710%27 y1=%2714%27 x2=%273%27 y2=%2721%27%3E%3C/line%3E%3C/svg%3E');}
+      
+    /* map plot icon */
+
+      .leaflet-draw-toolbar a.leaflet-draw-draw-rectangle {
+        background-image: url('data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 24 24%27%3E%3Crect x=%271%27 y=%272%27 width=%2722%27 height=%2720%27 rx=%271%27 fill=%27none%27 stroke=%27%23333%27 stroke-width=%271.6%27 stroke-dasharray=%273,2%27%3E%3C/rect%3E%3Cpath d=%27M1 2L1 15L4.5 12L7 18.5L9.5 17.3L7 11L11 11Z%27 fill=%27%23333%27 stroke=%27none%27%3E%3C/path%3E%3C/svg%3E') !important;
+        background-size: 22px 22px !important;
+        background-repeat: no-repeat !important;
+        background-position: center !important;}
+        
   /* other reactive features to screen sizes */
    
       @media (max-height: 880px) {
@@ -855,6 +896,7 @@ shiny::navbarPage(
         .report-body.open {
           max-height: 60vh !important;
           overflow-y: auto !important;}}
+
       @media (hover: none) {
         .leaflet-tooltip:not(.plot-name-label) {
           display: none !important;}}
@@ -1041,6 +1083,7 @@ Shiny.addCustomMessageHandler('resetMapLayers', function(msg) {
 htmltools::tags$script(htmltools::HTML("
 function lockToggleTabPosition($sidebarOuter, $toggleTab) {
   if ($toggleTab.data('lockedTop') === undefined) {
+    if ($sidebarOuter.hasClass('collapsed')) return; // only measure while sidebar is open
     var outerH = $sidebarOuter.outerHeight();
     var tabH = $toggleTab.outerHeight();
     if (!outerH || !tabH) return;
@@ -1055,8 +1098,9 @@ $(document).on('shiny:connected', function() {
     var sidebarOuterId = (panelId === 'sp') ? 'SpeciesControls' : (panelId + 'Sidebar');
     var $sidebarOuter = $('#' + sidebarOuterId);
     var $toggleTab = $('#toggle_' + panelId);
+    var $main = $('#' + panelId + 'Main');
     if ($sidebarOuter.length && $toggleTab.length) {
-      lockToggleTabPosition($sidebarOuter, $toggleTab);
+      lockToggleTabPosition($sidebarOuter, $toggleTab, $main);
     }
   });
 });
@@ -1100,7 +1144,7 @@ $(document).on('shiny:connected', function() {
       }
     }
 
-    if (!isMobile) lockToggleTabPosition($sidebarOuter, $toggleTab);
+            if (!isMobile) lockToggleTabPosition($sidebarOuter, $toggleTab);
 
     setTimeout(function() {
       $('.plotly').each(function() {
@@ -1111,13 +1155,14 @@ $(document).on('shiny:connected', function() {
           $(this).DataTable().columns.adjust();
         }
       });
+      var spMapWidget = window.HTMLWidgets && HTMLWidgets.find('#SpListPlotMap');
+      if (spMapWidget && spMapWidget.getMap) { spMapWidget.getMap().invalidateSize(); }
       $(window).trigger('resize');
     }, 320);
   });
 });
 
-$(document).on('shown.bs.tab', 'a[data-toggle=\"tab\"]', function() {
-  var $parentUl = $(this).closest('ul');
+$(document).on('shown.bs.tab', 'a[data-toggle=\"tab\"]', function() {  var $parentUl = $(this).closest('ul');
   if ($parentUl.hasClass('navbar-nav')) {
     var isMobile = $(window).width() <= 1024;
     $('.sidebar-slide-wrap.collapsed').removeClass('collapsed');
@@ -1125,6 +1170,10 @@ $(document).on('shown.bs.tab', 'a[data-toggle=\"tab\"]', function() {
     if (!isMobile) $('.main-full-width').removeClass('main-full-width');
     $('.sidebar-toggle-tab span').text('\u00ab');
     $('.sidebar-toggle-tab').attr('title', 'Close data control panel');
+    setTimeout(function() {
+      var spMapWidget = window.HTMLWidgets && HTMLWidgets.find('#SpListPlotMap');
+      if (spMapWidget && spMapWidget.getMap) { spMapWidget.getMap().invalidateSize(); }
+    }, 350);
   }
 });
 ")),
@@ -1195,6 +1244,29 @@ $(document).on('shiny:connected', function() {
   trackContainerWidth('densPlotContainer');
   trackContainerWidth('tsPlotContainer');
   trackContainerWidth('ivPlotContainer');
+});
+")),
+
+htmltools::tags$script(htmltools::HTML("
+window.toggleSpMapExpand = function() {
+  var $wrap = $('#SpListPlotMapWrapper');
+  var $overlay = $('#SpListPlotMapOverlay');
+  var expanding = !$wrap.hasClass('expanded');
+  $wrap.toggleClass('expanded');
+  $overlay.toggleClass('active');
+  var btn = document.querySelector('.spmap-expand-btn');
+  if (btn) {
+    btn.title = expanding ? 'Collapse map' : 'Expand map';
+    btn.classList.toggle('spmap-expand-active', expanding);
+  }
+  setTimeout(function() {
+    var widget = window.HTMLWidgets && HTMLWidgets.find('#SpListPlotMap');
+    if (widget && widget.getMap) { widget.getMap().invalidateSize(); }
+  }, 320);
+};
+
+$(document).on('click', '#SpListPlotMapOverlay', function() {
+  if ($('#SpListPlotMapWrapper').hasClass('expanded')) window.toggleSpMapExpand();
 });
 ")),
                        
@@ -1624,10 +1696,34 @@ shiny::tabPanel(id="SpeciesPanel",
                                        htmltools::tags$div(
                                          title="Select the type of species list", 
                                          shiny::radioButtons(inputId="SpListType", label="Select a species list:",
-                                                             choices=base::c("Vascular plants in the monitorng plots"= "Monitoring", "All vascular plants known from the park"="NPSpecies"))),
+                                                             choices=base::c("NCRN: Vascular plants in the monitorng plots"= "Monitoring", "NPSpecies: All vascular plants known from the park"="NPSpecies"))),
                                        htmltools::tags$div(title="Select a park to work with",shiny::uiOutput("SpListParkControl")),
+                                                                              shiny::conditionalPanel(condition="input.SpListType=='Monitoring'",
+                                                               htmltools::tags$div(title="Select a park sub-unit (optional):", shiny::uiOutput("SpListSubunitControl")),
+                                                               htmltools::tags$div(
+                                                                 title = "Click a plot to select/deselect it, or use the rectangle tool to select several at once",
+                                                                 style = "margin-bottom: 10px;",
+                                                                 htmltools::tags$label("Plots:"),
+                                                                 htmltools::tags$div(id = "SpListPlotMapOverlay"),
+                                                                 htmltools::tags$div(id = "SpListPlotMapWrapper",
+                                                                  leaflet::leafletOutput("SpListPlotMap", height = "340px")),
+                                                                 htmltools::tags$div(
+                                                                   style = "display: flex; gap: 8px; margin-top: 6px;",
+                                                                   shiny::actionButton(inputId = "SpListSelectAllPlots", label = "Select All Plots", class = "btn btn-default btn-sm", style = "flex:1;"),
+                                                                   shiny::actionButton(inputId = "SpListResetPlots", label = "\u21ba Clear All Plots", class = "btn btn-default btn-sm", style = "flex:1;")),
+                                                                 htmltools::tags$div(style = "font-size: 11px; color: #888; margin-top: 4px;",
+                                                                   shiny::textOutput("SpListPlotCountLabel", inline = TRUE)))),
                                        shiny::conditionalPanel(condition="input.SpListType=='Monitoring'",
-                                                               htmltools::tags$div(title="Select one or more plots, select and backspace to delete.", shiny::uiOutput("SpListPlotControl"))),
+                                                               shiny::hr(),
+                                                               shiny::h5("Advanced Species List Filters (optional):"),
+                                                               htmltools::tags$div(title="Filter by plant family", shiny::uiOutput("SpFamilyControl")),
+                                                               htmltools::tags$div(title="Filter by genus", shiny::uiOutput("SpGenusControl")),
+                                                               htmltools::tags$div(title="Filter by native status", shiny::radioButtons(inputId="SpNativity", label="Native status:", 
+                                                                                                                                        choices=base::c("All"="All","Native"="Native","Non-native"="Non-native"), selected="All")),
+                                                               htmltools::tags$div(title="Filter by growth habit (a species may match more than one; 'All' includes species with no growth habit assigned)", 
+                                                                                   shiny::checkboxGroupInput(inputId="SpGrowthHabit", label="Growth habit:", 
+                                                                                                             choices=base::c("Tree"="Tree","Shrub"="Shrub","Herbaceous"="Herbaceous","Vine"="Vine","All (includes unassigned species)"="All"),
+                                                                                                             selected=base::c("Tree","Shrub","Herbaceous","Vine","All")))),
                                        shiny::conditionalPanel(
                                          condition = "output.hasSpPark",
                                          shiny::hr(),
@@ -1646,6 +1742,7 @@ shiny::tabPanel(id="SpeciesPanel",
                                                     htmltools::includeHTML("www/AboutLists.html")),
                                 shiny::h3(shiny::textOutput("SpeciesTableTitle")),
                                 shiny::uiOutput("NPSpeciesLink"),
+                                shiny::uiOutput("SpTableMobileNotice"),
                                 shiny::hr(),
                                 shiny::conditionalPanel(
                                   condition = "!output.hasSpPark",
