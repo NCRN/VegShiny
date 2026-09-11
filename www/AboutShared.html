@@ -1,0 +1,66 @@
+<div class="about-tab-panel" data-about-panel="shared">
+
+  <h4>Data Controls</h4>
+
+  <p><strong>Park: </strong>Pick a park to act as a filter. The species control will only show plots and species from the chosen park.<br>
+  <em class="about-appears-on">Appears on: Map, Data by Park and Species, Data Trends Over Time, Importance Values, Species Lists</em></p>
+
+  <p><strong>Type of plant: </strong>Toggle between the types of plants (see the "About" tab for details on plant types). This filters the species available for selection.<br>
+  <em class="about-appears-on">Appears on: Map, Data by Park and Species, Data Trends Over Time, Importance Values</em></p>
+
+  <p>The only plant types that have calculated IV values are: trees, tree saplings, tree seedlings, and shrub seedlings.</p>
+
+  <p><strong>Common Names: </strong>Check to show common names for plants. Uncheck for Latin names.<br>
+  <em class="about-appears-on">Appears on: Map, Data by Park and Species, Data Trends Over Time, Importance Values</em></p>
+
+  <p><strong>Years: </strong>Each forest monitoring plot is visited once every four years. Choose a 4-year cycle to display from the dropdown list.<br>
+  <em class="about-appears-on">Appears on: Map, Data by Park and Species, Importance Values</em></p>
+
+  <p>On the “Data Trends Over Time” page, select multiple time periods with this slider. Gaps in the graphed species line indicate a species was not observed during that monitoring cycle. Cycles with no species observations are excluded from the figure and table entirely. If only one cycle is selected, no confidence intervals are generated.</p>
+
+  <p>Over time, a few monitoring plots have been removed from the study and others have been added. Choosing different time periods therefore results in slightly different groups of plots being displayed. Due to limitations on field work, the monitoring cycle that included the COVID-19 pandemic (2018-2022) took five years to complete rather than four.</p>
+
+  <p><strong>Species: </strong></p>
+  <ul>
+    <li><strong>Most common / Highest IV: </strong>the species with the highest means or importance values. Use slider to set how many are shown.<br>
+    <em class="about-appears-on">Appears on: Data by Park and Species, Data Trends Over Time, Importance Values</em></li>
+    <li><strong>Least common / Lowest IV: </strong>the species with the lowest values. Use the slider to set how many are shown.<br>
+    <em class="about-appears-on">Appears on: Data by Park and Species, Data Trends Over Time, Importance Values</em></li>
+    <li><strong>Pick individual species: </strong>click the box to browse or type to search. Click a species (or press Enter) to add it; click the X next to a name or press Backspace to remove it. No limit to the number of species that can be selected.<br>
+    <em class="about-appears-on">Appears on: Data by Park and Species, Data Trends Over Time, Importance Values</em></li>
+    <li><strong>All species combined: </strong>combines data across every observed species matching the chosen measures.<br>
+    <em class="about-appears-on">Appears on: Data by Park and Species, Data Trends Over Time</em></li>
+  </ul>
+
+  <p><strong>Data to Graph/Map: </strong>Depending on the type of plant selected, you can choose which measurement to display:</p>
+  <ul>
+    <li><strong>Abundance </strong>(individuals per forested hectare, #/ha)<br>
+    <em class="about-appears-on">Appears on: Map, Data by Park and Species, Data Trends Over Time</em></li>
+    <li><strong>Basal Area </strong>(cross-sectional trunk area at 1.37 m (4.5 ft) above ground, m²/ha)<br>
+    <em class="about-appears-on">Appears on: Map, Data by Park and Species, Data Trends Over Time</em></li>
+    <li><strong>Proportion of Plots Occupied </strong>(% of a park's plots containing the species)<br>
+    <em class="about-appears-on">Appears on: Data by Park and Species, Data Trends Over Time</em></li>
+    <li><strong>Percent Cover </strong>(% of a plot covered by the species' leaves and stems)<br>
+    <em class="about-appears-on">Appears on: Map, Data by Park and Species, Data Trends Over Time</em></li>
+  </ul>
+
+  <p><strong>Reset button: </strong>Clears all filters and settings back to default. The button at the top of the data controls resets the applied data filters. A separate button, at the top of the Display Controls panel, resets display settings.<br>
+  <em class="about-appears-on">Appears on: Map, Data by Park and Species, Data Trends Over Time, Importance Values</em></p>
+  
+  <h4>Display Controls</h4>
+
+  <p><strong>Bar color: </strong>Adjust bar color(s) on the figure:</p>
+  <ul>
+    <li><strong>Data by Park and Species: </strong>Available for base dataset and comparison dataset when selected.</li>
+    <li><strong>Importance Values: </strong>Available for total, density, size, and distribution bars when selected.</li>
+  </ul>
+
+  <p><strong>Font Size: </strong>Adjusts the font size of the axes, legend, and title. It is only available on larger screens and desktops.<br>
+  <em class="about-appears-on">Appears on: Data by Park and Species, Data Trends Over Time, Importance Values</em></p>
+
+  <h4>Statistical Details</h4>
+  
+  <p>Calculations use the <a href="https://irma.nps.gov/DataStore/Reference/Profile/2248037"> NPSForVeg R package (Schmit et al., 2024) </a>. Means (averages) are calculated by summing plot-level values within a park and dividing by plot count. Means and confidence intervals are calculated per-plot first, then converted to a per-hectare basis. 95% confidence intervals for Abundance, Basal Area, and Percent Cover are calculated by bootstrapping. Proportion of Plots Occupied, by fitting to a binomial distribution.<br>
+  <em class="about-appears-on">Appears on: Map, Data by Park and Species, Data Trends Over Time</em></p>
+
+</div>

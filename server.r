@@ -285,7 +285,7 @@ shiny::shinyServer(function(input,output,session){
   #  Park control
   
   output$MapParkControl<-shiny::renderUI({
-    shiny::selectizeInput(inputId="MapPark", label="Filter species list by park:",
+    shiny::selectizeInput(inputId="MapPark", label="Park:",
                           choices = base::c("All Parks" = "All", PARKLIST),
                           selected = NULL,
                           options = base::list(placeholder = "Select a park",
@@ -334,7 +334,7 @@ shiny::shinyServer(function(input,output,session){
   # Cycles control
   output$MapCycleControl<-shiny::renderUI({
     shiny::req(DATACYCLES)
-    shiny::selectizeInput(inputId="MapCycles", label="Display data from years:", 
+    shiny::selectizeInput(inputId="MapCycles", label="Years to display:", 
                           choices=base::rev(stats::setNames(base::as.character(DATACYCLES$Cycle), base::paste0(DATACYCLES$Name,":", DATACYCLES$YearStart,"-",DATACYCLES$YearEnd))),
                           selected = NULL, options = base::list(placeholder = "Select a cycle",
                                                                 onInitialize = base::I('function() { this.setValue(""); }')))})
@@ -745,7 +745,7 @@ var div = L.DomUtil.create('div', 'leaflet-bar plotsize-picker');  div.innerHTML
   '<span class=\"psdot psdot-lg\"></span>' +
 '</div>' +
     '<div class=\"plotsize-strip\">' +
-      '<div class=\"plotsize-label\">Plot Marker Point Size</div>' +
+      '<div class=\"plotsize-label\">Resize Plot Markers</div>' +
       '<input type=\"range\" class=\"plotsize-slider\" min=\"1\" max=\"10\" step=\"1\" value=\"5\">' +
       '<div class=\"plotsize-endlabel-row\">' +
         '<span class=\"plotsize-endlabel\">1x</span>' +
@@ -1449,7 +1449,7 @@ if (zeroBtn && labelBtn) {
   output$MapSpeciesControl <- shiny::renderUI({
     shiny::selectizeInput(
       inputId = "MapSpecies",
-      label = "Select a species present in selected park:",
+      label = "Choose a species:",
       choices = NULL,
       selected = NULL,
       options = base::list(
@@ -1727,12 +1727,9 @@ shiny::observeEvent(input$MapPark, {
               displayValue <- if (Name == "Total") Value else base::round(Value, 1)
               htmltools::tags$tr(
                 htmltools::tags$td(style = "padding-right: 14px;", base::sprintf("%s:", Name)),
-                htmltools::tags$td(align = "right",
-                                   base::sprintf("%s", base::format(displayValue, nsmall = 1, big.mark = ",")))
-              )
-            },
-            Name     = base::names(tempData),
-            Value    = base::unlist(tempData),
+                htmltools::tags$td(align = "right", base::sprintf("%s", base::format(displayValue, nsmall = 1, big.mark = ","))))},
+            Name = base::names(tempData),
+            Value = base::unlist(tempData),
             SIMPLIFY = FALSE
           )))
       )
@@ -2062,7 +2059,7 @@ shiny::observeEvent(input$MapPark, {
   #### Dens Cycles ####
   output$densCycleControl<-shiny::renderUI({
     shiny::req(DATACYCLES)
-    shiny::selectInput(inputId="densCycles", label="Display data from years:", 
+    shiny::selectInput(inputId="densCycles", label="Years to display:", 
                        choices=base::rev(stats::setNames(base::as.character(DATACYCLES$Cycle), base::paste0(DATACYCLES$Name,":",
                                                                                                             DATACYCLES$YearStart,"-",DATACYCLES$YearEnd)))
     )
@@ -2165,7 +2162,7 @@ shiny::observeEvent(input$MapPark, {
                                                                                                shrubs=, shseedlings=base::c(Shrubs="shrubs", "Shrub Seedlings"="shseedlings"),
                                                                                                vines=,herbs=base::c('Only one growth stage monitored.'=NA)))),
                  Time=htmltools::tags$div(title= "Select a second range of years",
-                                          shiny::selectInput(inputId="compCycles", label="Display data from years:", 
+                                          shiny::selectInput(inputId="compCycles", label="Years to display:", 
                                                              choices=base::rev(stats::setNames(base::as.character(DATACYCLES$Cycle), base::paste0(DATACYCLES$Name,":",
                                                                                                                                                   DATACYCLES$YearStart,"-",DATACYCLES$YearEnd))))))
   })
@@ -4699,7 +4696,7 @@ shiny::observeEvent(input$MapPark, {
     shiny::req(DATACYCLES)
     shiny::selectInput(
       inputId = "IVCycles",
-      label = "Display data from years:",
+      label = "Years to display:",
       choices = base::rev(stats::setNames(
         base::as.character(DATACYCLES$Cycle),
         base::paste0(DATACYCLES$Name, ":", DATACYCLES$YearStart, "-", DATACYCLES$YearEnd))))})
@@ -4744,8 +4741,7 @@ shiny::observeEvent(input$MapPark, {
                                              shiny::selectizeInput(inputId = "IVSpecies", label = "Select one or more species",
                                                                    choices = IVSpecList(), multiple = TRUE, selected = input$IVSpecies,
                                                                    options = base::list(placeholder='Select a species to display',
-                                                                                        plugins = base::list("remove_button"))))},
-                 All = NULL)})
+                                                                                        plugins = base::list("remove_button"))))})})
   
   # iv reset buttons
   shiny::observeEvent(input$IVResetData, {
@@ -4948,15 +4944,7 @@ shiny::observeEvent(input$MapPark, {
                      dplyr::filter(
                        if (base::isTRUE(input$IVCommon)) LabelOpp %in% input$IVSpecies
                        else Species %in% input$IVSpecies) %>%
-                     dplyr::arrange(Total)},
-                 All = IVdf %>%
-                   dplyr::summarise(
-                     Species = "All species ",
-                     Density = base::round(base::mean(Density, na.rm = TRUE), 2),
-                     Size = base::round(base::mean(Size, na.rm = TRUE), 2),
-                     Distribution = base::round(base::mean(Distribution, na.rm = TRUE), 2),
-                     Total = base::round(base::mean(Total, na.rm = TRUE), 2),
-                     LabelOpp = "All species") %>%
+                     dplyr::arrange(Total)} %>%
                    dplyr::arrange(Total))
   })
   
@@ -5343,8 +5331,8 @@ shiny::observeEvent(input$MapPark, {
       lbl <- SUBUNITLABELS$Label[SUBUNITLABELS$Code == cd]
       if (base::length(lbl) == 0) cd else lbl})
     shiny::selectizeInput(inputId = "SpListSubunit", 
-                          choices = base::c("All Sub-Units" = "All", stats::setNames(subunits, subunit_labels)),
-                          label = "Sub-Unit (optional)", selected = "All")
+                          choices = base::c("All Park Areas" = "All", stats::setNames(subunits, subunit_labels)),
+                          label = "Park Areas (optional)", selected = "All")
   })
   
   # species list plot map
@@ -5526,17 +5514,23 @@ shiny::observeEvent(input$MapPark, {
   
   #### Species list attribute filter controls ####
   output$SpFamilyControl <- shiny::renderUI({
-    shiny::validate(shiny::need(input$SpListPark != "", message = FALSE))
-    choices <- base::sort(base::unique(stats::na.omit(MonitoringListFull()$Family)))
-    shiny::selectizeInput(inputId = "SpFamily", choices = choices, label = "Family:",
-                          multiple = TRUE, options = base::list(plugins = base::list("remove_button"), placeholder = "All families"))
+    no_park <- base::is.null(input$SpListPark) || input$SpListPark == ""
+    choices <- if (no_park) base::character(0) else base::sort(base::unique(stats::na.omit(MonitoringListFull()$Family)))
+    
+    ctrl <- shiny::selectizeInput(inputId = "SpFamily", choices = choices, label = "Family:", multiple = TRUE, 
+                                  options = base::list(plugins = base::list("remove_button"),
+                                                       placeholder = if (no_park) "Select a park first" else "All families"))
+    if (no_park) shinyjs::disabled(ctrl) else ctrl
   })
   
   output$SpGenusControl <- shiny::renderUI({
-    shiny::validate(shiny::need(input$SpListPark != "", message = FALSE))
-    choices <- base::sort(base::unique(stats::na.omit(MonitoringListFull()$Genus)))
-    shiny::selectizeInput(inputId = "SpGenus", choices = choices, label = "Genus:",
-                          multiple = TRUE, options = base::list(plugins = base::list("remove_button"), placeholder = "All genera"))
+    no_park <- base::is.null(input$SpListPark) || input$SpListPark == ""
+    choices <- if (no_park) base::character(0) else base::sort(base::unique(stats::na.omit(MonitoringListFull()$Genus)))
+    
+    ctrl <- shiny::selectizeInput(inputId = "SpGenus", choices = choices, label = "Genus:",
+                                  multiple = TRUE, options = base::list(plugins = base::list("remove_button"),
+                                                                        placeholder = if (no_park) "Select a park first" else "All genera"))
+    if (no_park) shinyjs::disabled(ctrl) else ctrl
   })
   
   SpListPlotUse<-shiny::reactive({
@@ -5662,7 +5656,7 @@ shiny::observeEvent(input$MapPark, {
     if (small_screen && base::identical(input$SpListType, "Monitoring")) {
       htmltools::tags$div(
         style = "font-size: 12px; color: #888; font-style: italic; margin: 4px 0 8px 0;", 
-        "*Family and Genus columns are available on wider screens.")
+        "* Family and Genus columns are available on wider screens.")
     } else { NULL }})
   shiny::outputOptions(output, "SpTableMobileNotice", suspendWhenHidden = FALSE)
   

@@ -5,118 +5,36 @@
 <body>
 <fontsize="16">
 <h3>Data Trends Over Time</h3>
-  
-<p>These graphs show how estimates of forest vegetation abundance, size, and plot occupancy have changed across monitoring cycles for a selected park. 
-Each line represents a species (or all species combined), and each point on the line represents the mean value for that species during a given monitoring cycle.
-Confidence intervals are represented by opaque ribbons of the same color and are optionally shown on the figure.
-The table shows the same data in a structured format. You can view this by selecting the "Data table" tab at the top of the page.</p>
 
-<p>
-  There are four options for selecting species to graph:
-<ul>
-  <li><strong>Most common species:</strong> 
-  This displays the species with the highest mean abundance, basal area, or proportion of plot occupied. 
-  You can adjust the number of species to display.  </li>
-  <li><strong>Least common species:</strong> 
-  This displays the species with the lowest mean abundance, basal area, or proportion of plot occupied. 
-  You can adjust the number of species to display.  </li>
-  <li><strong>Pick individual species:</strong> 
-  This allows you to pick which species to display. 
-  Click in the box to see a list of species or type to search. Click on a species or hit "Enter" to choose it. 
-  To unselect a species, click on the X next to its name or press the backspace key. 
-  You can choose as many species as you like. </li>
-  <li><strong>All species combined:</strong> 
-  This graphs the combined data for every observed species matching the chosen data measures.</li>
-</ul>
-</p>
+  <p>
+  These graphs show how estimates of forest vegetation abundance, size, and plot occupancy have changed across monitoring cycles for a selected park. 
+  Each line represents a species (or all species combined), and each point on the line represents the mean value for that species during a given monitoring cycle. 
+  Confidence intervals (CI) are represented by opaque ribbons and are optionally shown on the figure. 
+  A graph and data table are available for download. </p>
 
-<p>Depending on the type of plant selected there are a variety of measurements that can be graphed (<a href="https://irma.nps.gov/DataStore/Reference/Profile/2210263">NCRN forest vegetation monitoring protocol</a>):</p>
-<p>
+  <hr>
+
+  <div class="about-tab-buttons">
+    <button class="about-tab-btn active" data-about-tab="tsonly">Data Trends Over Time Controls</button>
+    <button class="about-tab-btn" data-about-tab="shared">Common Controls and More Information</button>
+  </div>
+
+  <div class="about-tab-panel active" data-about-panel="tsonly">
+
+    <p><strong>Display 95% Confidence Intervals: </strong>Toggles whether each species' CI ribbon is shown.</p>
+    <p>When only one monitoring plot exists for a park during a given cycle, confidence intervals can't be estimated; they are shown as NA in the table and omitted from the figure.</p>
+    <p><strong>Line Thickness: </strong>Slider adjusting the trend line thickness.</p>
+    <p><strong>CI Ribbon Opacity: </strong>Slider adjusting the opacity of the confidence interval ribbons.</p>
+    <p><strong>Color Palette: </strong>Choose from four palettes for species color assignment in the figure.</p>
+    <p><strong>Legend click behavior: </strong></p>
     <ul>
-    <li><strong>Abundance: </strong>
-    This is an estimate of how many individuals of a given species are found in each forested hectare of a park. 
-    A hectare is 2.47 acres, or approximately the size of two football fields. 
-    This measure is available for trees, saplings, tree seedlings, shrubs, shrub seedlings, and vines on trees. 
-    It is expressed as #/ha. </li>
-    <li><strong>Basal Area: </strong> 
-    This is the area of the cross-section of a tree or sapling at 1.37 meters (4.5 feet) above the ground. 
-    This measure is available for trees and saplings. It is expressed as meters<sup>2</sup>/ha. </li>
-    <li><strong>Percent of Plots Occupied: </strong> 
-    This measure indicates the percentage of monitoring plots in a park that contain a particular species. 
-    This measure, along with the map, can indicate how widespread a species and is available for all plant types.  </li>
-  <li><strong>Percent Cover: </strong> 
-  This is a measure of what percent of a plot is covered by the leaves and stems of a plant species. 
-  It can be used as a measure of size or abundance. 
-  This is particularly useful for species which grow as numerous small individuals, such as blades of grass, which cannot be easily counted.  
-  This measure is available for understory plants.  </li> </ul>
-</p>
-
-<p>Clicking on the red reset button at the top of the data input panel will clear all applied filters. </p>
-
-<p>You can change a variety of settings to customize the figure, including:</p>
-<ul>
-  <li><strong>Cycle range slider: </strong>
-    This slider allows you to select a desired cycle range.
-    Gaps in a species line indicate that the species was not observed during that monitoring cycle.
-    Cycles with no observations for any species of the selected plant type are excluded from the figure and table entirely.
-    When only one cycle is selected, no confidence intervals are generated.
-  </li>
-  <li><strong>Display Options: </strong>
-    This button houses several more figure customizations:
-    <ul>
-      <li><strong>Line Thickness: </strong>
-        This slider adjusts the trend line thickness of each species.
-      </li>
-      <li><strong>Font Size: </strong>
-        This slider adjusts the font size of the axes, legend, and title. This feature is disabled on smaller and mobile screens.
-      </li>
-      <li><strong>CI Ribbon Opacity: </strong>
-        This slider adjusts the opacity of the confidence interval ribbons.
-      </li>
-      <li><strong>Color Palette: </strong>
-        You can select one of four different color palettes dictating each species' color assignment in the legend.
-      </li>
+      <li>Single-click a legend label to remove that species from the figure (click again, or change any input, to restore it)</li>
+      <li>Double-click on one legend label to isolate that species and hide all others (double-click again to restore all)</li>
     </ul>
-  </li></ul>
+    <p><strong>Order table by: </strong>Sort the data table by species first or by cycle first.</p>
 
-<p>Clicking on the red reset button at the top of the "Display Options" panel will reset all display settings. </p>
+  </div>
 
-  <ul><li><strong>Selecting legend items: </strong>
-    You can temporarily remove or isolate species in the figure by clicking its legend label.
-    <ul>
-      <li><strong>One click: </strong>
-        One click will remove a species from the figure. 
-        An additional click or otherwise changing any data inputs will add the species back. 
-      </li>
-      <li><strong>Double-click: </strong>
-        A double-click will isolate the selected species and removes all other species from the figure. 
-        An additional double-click will add all species back to the figure.
-      </li>
-      </ul>
-  </li>
-  <li><strong>Order table by: </strong>
-    The data table can be sorted first by species or first by cycle.
-  </li>
-</ul>
-
-<h4>Statistical Details</h4>
-<p> 
-Statistical calculations were performed using the <a href="https://github.com/NCRN/NPSForVeg"> NPSForVeg R package developed by Schmit et al. (2024).</a>
-Mean values (averages) are always calculated by first summing the values for the monitoring plots in a park and then dividing by the number of plots in the park.  
-The means and confidence intervals are first calculated on a per-plot basis and then converted to a per-hectare basis. 
-The 95% confidence intervals are more complicated to calculate and depend on the type of data graphed. 
-The summary report that appears above the figure and data table displays the calculated overall mean of a species it trend over the selected cycle. </p>
-   <p><strong>Abundance:</strong> 
-   The 95% confidence interval is calculated by bootstrapping the observed data. </p>
-  <p><strong>Basal Area:</strong> 
-  Basal area measurements often do not fit any standard statistical distribution. 
-  To account for this, the 95% confidence interval is calculated by bootstrapping the observed data.</p>
-  <p><strong>Percent of Plots Occupied:</strong> 
-  95% confidence intervals are calculated by fitting the data to a binomial distribution.</p>
-  <p><strong>Percent Cover:</strong> 
-  Confidence intervals are calculated using bootstrapping.</p>
-
-<p>When only one monitoring plot exists for a park during a given cycle, confidence intervals cannot be estimated and are shown as NA in the table and omitted from the figure.</p>
 </fontsize>
 </body>
-<html>
+</html>

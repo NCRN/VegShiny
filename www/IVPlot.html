@@ -1,95 +1,41 @@
 <!DOCTYPE html>
 <html>
 <head>
-  
 </head>
 <body>
 <fontsize="16">
-<h3> Importance Value</h3>
-<p>  
-Importance Values (IVs) give a general indication of which species are the most dominant in a forest. 
-The values are calculated using data collected from monitoring plots and are used to estimate the dominance of tree species in a forested area relative to other tree species.  
-This index was developed by <a href="https://doi.org/10.2307/1931725">Curtis and Macintosh (1951)</a> to investigate variation in forest communities. 
-No index can fully represent every aspect of ecological importance, but in practice IVs provide a general indication of species dominance in forests.
-</p>
-<p>
-  The Importance Value is made up of three components. 
-  Each component has a value between 0 and 1, and the IV is the sum of the three components (relative density, dominance, distribution). 
-  You can check or uncheck the “Display importance values?” box to show the values on the bar plot and the “Display components of the importance value?” to show the three components of the importance values.
-</p>
+<h3>Importance Values</h3>
 
-<p>
-  In this visualizer, only trees, tree saplings, tree seedlings, and shrub seedlings are assigned an importance value. 
-  You can see a graph of importance values by clicking on "Graph" and a table with all the selected species values by clicking on "Data table".
-</p>
-<p>
-  There are four options for selecting species to graph:
-<ul>
-  <li><strong>Greatest IV species:</strong> 
-  This displays the species with the highest importance values. 
-  You can adjust the number of species to display.  </li>
-  <li><strong>Smallest IV species:</strong> 
-  This displays the species with the lowest importance values. 
-  You can adjust the number of species to display.  </li>
-  <li><strong>Pick individual species:</strong> 
-  This allows you to pick which species to display. 
-  Click in the box to see a list of species or type to search. Click on a species or hit "Enter" to choose it. 
-  To unselect a species, click on the X next to its name or press the backspace key. 
-  You can choose as many species as you like. </li>
-  <li><strong>All species combined:</strong> 
-  This graphs the combined data for every observed species matching the chosen data measures.</li>
-</ul>
-</p>
-<p> The three components of importance value are:</p>
+  <p>
+  Importance Values (IVs) give a general indication of which species are the most dominant in a forest relative to other tree species. 
+  The index was developed by <a href="https://doi.org/10.2307/1931725"> Curtis and McIntosh (1951) </a> to investigate variation in forest communities. 
+  The Importance Value is made up of three components (below). 
+  Each component has a value between 0 and 1, and the IV is the sum of the three components. </p>
 
-<ul>
-  <li><strong>Relative Density:</strong>
-    <p>Density is typically measured as the number of individual plants (trees, saplings etc.) found per plot. 
-    Relative density (also known as relative abundance) measures the abundance of each species compared to the combined abundance of all species. 
-    For a given species "X", the relative density is: <br><br>
-    <i> Relative density of X = (Density of X) / (Density of all Species)</i> <br>
-  </p>
-  </li>
-  <li><strong>Relative Dominance (Size)</strong>
-    <p> Relative dominance is a measure of the size of each species compared to the combined size of all species. 
-    Dominance of trees and saplings is measured as the basal area of the plant, which is the area of a cross-section of the plant measured at 1.37m above the ground. 
-    For seedlings, dominance is measured by the height of the seedlings. 
-    For a given species "X", the relative dominance is: <br><br>
-    <i> Relative dominance of X = (Dominance of X) / (Dominance of all Species)</i> <br>
-    </p>
-  </li>
-  <li><strong>Relative Distribution</strong>
-    <p> Distribution is measured as the number of monitoring plots that a species occurs in.
-        Relative distribution is a measure of how often each species is found compared to how often all species are found.
-        For a given species "X", the relative distribution is: <br><br>
-    <i> Relative distribution of X = (Distribution of X) / (Distribution of all Species)</i> <br>
-    </p>
-  </li>
-</ul>
+  <div class="about-tab-buttons">
+    <button class="about-tab-btn active" data-about-tab="ivonly">IV Controls</button>
+    <button class="about-tab-btn" data-about-tab="shared">Common Controls and More Information</button>
+  </div>
 
-<p>Clicking on the red reset button at the top of the data input panel will clear all applied filters. </p>
+  <div class="about-tab-panel active" data-about-panel="ivonly">
 
-<p>You also have the ability to change a variety of settings to customize the figure in the Display Options popup, including: </p>
-<p>
+    <p><strong>Display Importance Values: </strong>Toggles whether each species' IV is shown on the figure.</p>
+    <p><strong>Display IV components: </strong>Toggles whether each bar is broken into its density, size, and distribution components.</p>
+
+    <p><strong>Statistical Details: </strong> IV is made up of three components. Each component has a value between 0 and 1 ( IV is the sum of these components):</p>
     <ul>
-    <li><strong>Base Color: </strong>
-    This adjusts the bar color of the bars when the total importance value is displayed. </li>
-    <li><strong>Density Color: </strong>
-    This adjusts the bar color of the density component when the “Display components of the importance value?”  is checked. 
-    This feature is not available when the box is not selected. </li>
-    <li><strong>Size Color: </strong>
-    This adjusts the bar color of the size component when the “Display components of the importance value?”  is checked. 
-    This feature is not available when the box is not selected. </li>
-    <li><strong>Distribution Color: </strong>
-    This adjusts the bar color of the distribution component when the “Display components of the importance value?”  is checked. 
-    This feature is not available when the box is not selected. </li>
-    <li><strong>Font Size: </strong>
-    This slider adjusts the font size of the axes, legend, and title. This feature is disabled on smaller and mobile screens. </li>
-    </li>
+      <li><strong>Relative Density: </strong>Density is typically measured as the number of individual plants (trees, saplings, etc.) found per plot. Relative density (also known as relative abundance) measures the abundance of each species compared to the combined abundance of all species. For a given species "X", the relative density is:
+        <p>Relative density of X = (Density of X) / (Density of all species)</p>
+      </li>
+      <li><strong>Size (Relative Dominance): </strong>Relative dominance is a measure of the size of each species compared to the combined size of all species. Dominance of trees and saplings is measured as the basal area of the plant, which is the area of a cross-section of the plant measured at 1.37 meters above the ground. For seedlings, dominance is measured by the height of the seedlings. For a given species "X", the relative dominance is:
+        <p>Relative dominance of X = (Dominance of X) / (Dominance of all species)</p>
+      </li>
+      <li><strong>Relative Distribution: </strong>Distribution is measured as the number of monitoring plots that a species occurs in. Relative distribution is a measure of how often each species is found compared to how often all species are found. For a given species "X", the relative distribution is:
+        <p>Relative distribution of X = (Distribution of X) / (Distribution of all species)</p>
+      </li>
     </ul>
-</p>
 
-<p>Clicking on the red reset button at the top of the "Display Options" panel will reset all display settings. </p>
+  </div>
 
 </fontsize>
 </body>

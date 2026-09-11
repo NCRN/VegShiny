@@ -5,97 +5,30 @@
 <body>
 <fontsize="16">
 <h3>Data by Park and Species</h3>
+
   <p>
-  These graphs allow you to see estimates of the abundance, size, and percent of monitoring plots occupied by particular species in each park. 
-  The graphs show the mean and the 95% confidence intervals (bars) for the selected species. 
-  The table shows Data to Graph (abundance, basal area, and proportion of plots occupied) at a park, in a given time period. 
-  You can view this by selecting the "Data table" tab at the top of the page.</p>
-<p>
-  There are four options for selecting species to graph:
-<ul>
-  <li><strong>Most common species:</strong> 
-  This displays the species with the highest mean abundance, basal area, or proportion of plot occupied. 
-  You can adjust the number of species to display.  </li>
-  <li><strong>Least common species:</strong> 
-  This displays the species with the lowest mean abundance, basal area, or proportion of plot occupied. 
-  You can adjust the number of species to display.  </li>
-  <li><strong>Pick individual species:</strong> 
-  This allows you to pick which species to display. 
-  Click in the box to see a list of species or type to search. Click on a species or hit "Enter" to choose it. 
-  To unselect a species, click on the X next to its name or press the backspace key. 
-  You can choose as many species as you like. </li>
-  <li><strong>All species combined:</strong> 
-  This graphs the combined data for every observed species matching the chosen data measures.</li>
-</ul>
-</p>
-<p>Depending on the type of plant selected there are a variety of measurements that can be graphed (<a href="https://irma.nps.gov/DataStore/Reference/Profile/2210263">NCRN forest vegetation monitoring protocol</a>):</p>
-<p>
-    <ul>
-    <li><strong>Abundance: </strong>
-    This is an estimate of how many individuals of a given species are found in each forested hectare of a park. 
-    A hectare is 2.47 acres, or approximately the size of two football fields. 
-    This measure is available for trees, saplings, tree seedlings, shrubs, shrub seedlings, and vines on trees. 
-    It is expressed as #/ha. </li>
-    <li><strong>Basal Area: </strong> 
-    This is the area of the cross-section of a tree or sapling at 1.37 meters (4.5 feet) above the ground. 
-    This measure is available for trees and saplings. It is expressed as meters<sup>2</sup>/ha. </li>
-    <li><strong>Percent of Plots Occupied: </strong> 
-    This measure indicates the percentage of monitoring plots in a park that contain a particular species. 
-    This measure, along with the map, can indicate how widespread a species and is available for all plant types.  </li>
-  <li><strong>Percent Cover: </strong> 
-  This is a measure of what percent of a plot is covered by the leaves and stems of a plant species. 
-  It can be used as a measure of size or abundance. 
-  This is particularly useful for species which grow as numerous small individuals, such as blades of grass, which cannot be easily counted.  
-  This measure is available for understory plants.  </li> </ul>
-</p>
-  <p>Once you have selected the primary data you wish to graph, you can add comparison data. Three options are available:
-  <ul>
-    <li><strong>Park:</strong> 
-    This will allow you to select a second comparison park. 
-    If you have chosen to graph the "Most common species", then the most common species from the first park selected will be displayed. 
-    If you have chosen "Pick individual species", then you can only pick species present in the first park.</li>
-    <li><strong>Growth Stage:</strong> 
-    This allows you to compare two different growth stages of the same species. 
-    You can make comparisons between trees, saplings, and tree seedlings, or between shrubs and shrub seedlings. 
-    This option is not available for understory plants or vines on trees, as only one growth stage of these species is monitored.</li>
-    <li><strong>Time:</strong> This option allows you to make comparisons between different sets of years.  </li>
-  </ul>
-</p>
+  These figures display estimates of the abundance, size, and proportion of monitoring plots occupied by a species in each park. 
+  They show the mean and the 95% confidence intervals for the selected species. 
+  A graph and data table are available for download. </p>
 
-<p>Clicking on the red reset button at the top of the data input panel will clear all applied filters. </p>
+  <div class="about-tab-buttons">
+    <button class="about-tab-btn active" data-about-tab="densonly">Data by Park and Species Controls</button>
+    <button class="about-tab-btn" data-about-tab="shared">Common Controls and More Information</button>
+  </div>
 
-<p>You also have the ability to change a variety of settings to customize the figure in the Display Options popup, including: </p>
-<p>
+  <div class="about-tab-panel active" data-about-panel="densonly">
+
+    <p><strong>Display Summary Statistics: </strong>Toggles whether each species' summary statistics are shown on the figure.</p>
+    <p><strong>Comparison Data: </strong>Adds a second dataset to compare against:</p>
     <ul>
-    <li><strong>Base Data Color: </strong>
-    This adjusts the bar color of the species generated in the "Data:" panel. </li>
-    <li><strong>Comparison Data Color: </strong>
-    This adjusts the bar color of the species generated in the "Comparison Data:" panel. This feature is not available when no comparison data is selected. </li>
-    <li><strong>Error Bar Thickness: </strong>
-    This slider adjusts the thickness of the error bars. </li>
-    <li><strong>Font Size: </strong>
-    This slider adjusts the font size of the axes, legend, and title. This feature is disabled on smaller and mobile screens. </li>
-    </li>
+      <li>Park (compare two parks)</li>
+      <li>Growth Stage (compare trees vs. saplings vs. tree seedlings of the same species)</li>
+      <li>Time (compare two cycles)</li>
     </ul>
-</p>
+    <p><strong>Error Bar Thickness: </strong>Slider adjusting the thickness of the confidence-interval error bars.</p>
 
-<p>Clicking on the red reset button at the top of the "Display Options" panel will reset all display settings. </p>
+  </div>
 
-<h4>Statistical Details</h4>
-<p> 
-Statistical calculations were performed using the <a href="https://github.com/NCRN/NPSForVeg"> NPSForVeg R package developed by Schmit et al. (2024).</a>
-Mean values (averages) are always calculated by first summing the values for the monitoring plots in a park and then dividing by the number of plots in the park.  
-The means and confidence intervals are first calculated on a per-plot basis and then converted to a per-hectare basis. 
-The 95% confidence intervals are more complicated to calculate and depend on the type of data graphed.</p>
-   <p><strong>Abundance:</strong> 
-   The 95% confidence interval is calculated by bootstrapping the observed data. </p>
-  <p><strong>Basal Area:</strong> 
-  Basal area measurements often do not fit any standard statistical distribution. 
-  To account for this, the 95% confidence interval is calculated by bootstrapping the observed data.</p>
-  <p><strong>Percent of Plots Occupied:</strong> 
-  95% confidence intervals are calculated by fitting the data to a binomial distribution.</p>
-  <p><strong>Percent Cover:</strong> 
-  Confidence intervals are calculated using bootstrapping.</p>
 </fontsize>
 </body>
 </html>

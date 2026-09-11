@@ -169,7 +169,7 @@ shiny::navbarPage(
  
 /* shared features across tabs */
 
-    /* display options popup (dens, ts, iv) */
+    /* Display Controls popup (dens, ts, iv) */
     
       #densOptionsBox, #tsOptionsBox, #ivOptionsBox {width: min(92vw, 900px) !important;}
       #densOptionsBox .shiny-flow-layout, #tsOptionsBox .shiny-flow-layout, #ivOptionsBox .shiny-flow-layout {
@@ -252,6 +252,29 @@ shiny::navbarPage(
         border: none;
         background: none;}
       .info-popup-close:hover {color: #333;}
+
+      .about-tab-buttons {
+        display: flex;
+        gap: 8px;
+        margin-bottom: 16px;
+        border-bottom: 1px solid #ddd;}
+      .about-tab-btn {
+        background: none;
+        border: none;
+        padding: 8px 14px;
+        font-size: 14px;
+        font-weight: 600;
+        color: #666;
+        cursor: pointer;
+        border-bottom: 2px solid transparent;}
+      .about-tab-btn.active {
+        color: #2c3e50;
+        border-bottom: 2px solid #2c3e50;}
+      .about-tab-panel {display: none;}
+      .about-tab-panel.active {display: block;}
+      .about-appears-on {color: #999;}
+ 
+    /* sidebar (dens, ts, iv, sp list) */
  
     /* sidebar (dens, ts, iv, sp list) */
     
@@ -1011,15 +1034,14 @@ $(document).on('click', '.report-header', function() {
 htmltools::tags$script(htmltools::HTML("
 $(document).on('click', '.info-icon-btn, .options-toggle-btn', function() {
   var targetId = $(this).data('target');
+  var $box = $('#' + targetId + 'Box');
   $('#' + targetId + 'Overlay').addClass('active');
-  $('#' + targetId + 'Box').addClass('active');
+  $box.addClass('active');
+  $box.find('.about-tab-btn').removeClass('active').first().addClass('active');
+  $box.find('.about-tab-panel').removeClass('active').first().addClass('active');
 });
 
 $(document).on('click', '.info-popup-close, .info-popup-overlay', function(e) {
-  // ignore this click if a selectize dropdown is still open, OR if one
-  // just closed within the last 300ms — covers touch devices where
-  // selectize's own outside-tap handling can resolve before this handler
-  // runs, so a live DOM check alone isn't reliable.
   if ($('.info-popup-box .selectize-control.dropdown-active').length > 0) return;
   if (Date.now() - (window.lastSelectizeCloseTime || 0) < 300) return;
   $('.info-popup-overlay').removeClass('active');
@@ -1028,6 +1050,16 @@ $(document).on('click', '.info-popup-close, .info-popup-overlay', function(e) {
 
 $(document).on('click', '.info-popup-box', function(e) {
   e.stopPropagation();
+});
+
+$(document).on('click', '.about-tab-btn', function(e) {
+  e.stopPropagation();
+  var $box = $(this).closest('.info-popup-box');
+  var target = $(this).data('about-tab');
+  $box.find('.about-tab-btn').removeClass('active');
+  $(this).addClass('active');
+  $box.find('.about-tab-panel').removeClass('active');
+  $box.find('[data-about-panel=\"' + target + '\"]').addClass('active');
 });
 ")),
 
@@ -1294,8 +1326,8 @@ shiny::tabPanel(htmltools::tags$div(title="Map the data", "Map"), value = "Map",
                                                          shiny::selectizeInput(inputId="MapGroup", label="Type of plant:", choices=PLANTTYPES, selected = "", 
                                                                                options = base::list(placeholder = "Select a plant type", onInitialize = base::I('function() { this.setValue(""); }')))),
                                      htmltools::tags$div(title="Select a species of plants to map", shiny::uiOutput("MapSpeciesControl")),
-                                     htmltools::tags$div(title="Toggle between common and scientific names", shiny::checkboxInput(inputId="mapCommon", label="Display common names?", value=TRUE )),
-                                     htmltools::tags$div(title="Select live or dead", shiny::selectizeInput(inputId="TreeStatus", label="Alive or dead",
+                                     htmltools::tags$div(title="Toggle between common and scientific names", shiny::checkboxInput(inputId="mapCommon", label="Common names?", value=TRUE )),
+                                     htmltools::tags$div(title="Select live or dead", shiny::selectizeInput(inputId="TreeStatus", label="Alive or Dead",
                                                                                                             choices=base::c("Alive"='alive',"Dead" = 'snag',"All"='all'), selected = NULL,
                                                                                                             options = base::list(placeholder = "Select a tree status",
                                                                                                                                  onInitialize = base::I('function() { this.setValue(""); }')))),
@@ -1316,7 +1348,8 @@ shiny::tabPanel(htmltools::tags$div(title="Map the data", "Map"), value = "Map",
                 htmltools::tags$div(id = "mapInfoOverlay", class = "info-popup-overlay"),
                 htmltools::tags$div(id = "mapInfoBox", class = "info-popup-box",
                                     htmltools::tags$button(class = "info-popup-close", "\u00d7"),
-                                    htmltools::includeHTML("www/AboutMap.html"))
+                                    htmltools::includeHTML("www/AboutMap.html"),
+                                    htmltools::includeHTML("www/AboutShared.html"))
 ),  ## end of map page
 
 ######################################## Graphs Panel ##########################################################
@@ -1339,9 +1372,9 @@ shiny::tabPanel(
           htmltools::tags$div(title = "Select the park you want to work with", shiny::uiOutput(outputId = "densParkControl")),
           htmltools::tags$div(title = "Select the time period you want to work with", shiny::uiOutput("densCycleControl")),
           htmltools::tags$div(title = "Select the type of plant you want to work with", shiny::selectizeInput(inputId = "densGroup", label = "Type of plant:", choices = PLANTTYPES)),
-          htmltools::tags$div(title = "Toggle between common and scientific names", shiny::checkboxInput(inputId = "densCommon", label = "Display common names?", value = TRUE)),
+          htmltools::tags$div(title = "Toggle between common and scientific names", shiny::checkboxInput(inputId = "densCommon", label = "Common names?", value = TRUE)),
           htmltools::tags$div(title = "Toggle summary statistics on or off", shiny::checkboxInput(inputId = "plotlyText", label = "Display summary statistics?", value = FALSE)),
-          htmltools::tags$div(title = "Graph the most common species, species you select, or all species observed",
+          htmltools::tags$div(title = "Graph the most common species, least common species, species you select, or all species observed",
                               shiny::radioButtons(
                                 inputId = "densSpeciesType",
                                 label = "Which species?",
@@ -1352,7 +1385,7 @@ shiny::tabPanel(
           shiny::conditionalPanel(
             condition = "input.densPanel=='Graph'",
             shiny::hr(),
-            shiny::actionButton(inputId = "densGraphButton", label = "Display Options", class = "btn btn-primary btn-block action-button options-toggle-btn", `data-target` = "densOptions")),
+            shiny::actionButton(inputId = "densGraphButton", label = "Display Controls", class = "btn btn-primary btn-block action-button options-toggle-btn", `data-target` = "densOptions")),
           shiny::conditionalPanel(
             condition = "input.densPanel=='Table'",
             shiny::hr(),
@@ -1385,7 +1418,8 @@ shiny::tabPanel(
       htmltools::tags$div(id = "densInfoOverlay", class = "info-popup-overlay"),
       htmltools::tags$div(id = "densInfoBox", class = "info-popup-box",
                           htmltools::tags$button(class = "info-popup-close", "\u00d7"),
-                          htmltools::includeHTML("www/DensPlot.html")),
+                          htmltools::includeHTML("www/DensPlot.html"),
+                          htmltools::includeHTML("www/AboutShared.html")),
       shiny::tabsetPanel(
         id = "densPanel",
         type = "pills",
@@ -1414,18 +1448,18 @@ shiny::tabPanel(
                               htmltools::tags$button(class = "info-popup-close", "\u00d7"),
                               htmltools::tags$div(
                                 style = "display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-start; gap: 12px; margin-bottom: 10px;",
-                                shiny::h4("Display Options", style = "margin: 0;"),
-                                shiny::actionButton(inputId = "densResetDisplay", label = "\u21ba Reset Display Options",
+                                shiny::h4("Display Controls", style = "margin: 0;"),
+                                shiny::actionButton(inputId = "densResetDisplay", label = "\u21ba Reset Display Controls",
                                                     class = "btn btn-default btn-sm")),
                               shiny::flowLayout(
                                 cellArgs = base::list(style = "width: 160px"),
-                                shiny::selectizeInput("densBaseColor", "Base Data Color:", choices = COLORNAMES, selected = "blue", width = 150),
+                                shiny::selectizeInput("densBaseColor", "Bar Color (Base Data):", choices = COLORNAMES, selected = "blue", width = 150),
                                 shiny::tags$div(
-                                  shiny::selectizeInput("densCompareColor", "Comparison Data Color:", choices = COLORNAMES, selected = "red", width = 150),
+                                  shiny::selectizeInput("densCompareColor", "Bar Color (Comparison Data):", choices = COLORNAMES, selected = "red", width = 150),
                                   shiny::uiOutput("densCompareColorNotice")),
                                 shiny::sliderInput("densErrorThickness", "Error Bar Thickness", min = 0.5, max = 5, value = 1.5, step = 0.5, width = 150),
                                 shiny::tags$div(
-                                  shiny::sliderInput("densFontSize", "Change Font Size", min = 6, max = 18, value = 12, step = 2, width = 150),
+                                  shiny::sliderInput("densFontSize", "Font Size", min = 6, max = 18, value = 12, step = 2, width = 150),
                                   shiny::uiOutput("densFontSizeNotice"))))),
         shiny::tabPanel(
           htmltools::tags$div(title = "See all data in a table", "Data table"),
@@ -1467,15 +1501,15 @@ shiny::tabPanel(
                                              class = "btn btn-default btn-block", style = "margin-bottom: 10px;"),
                          htmltools::tags$div(title="Select one or more parks to display. At least one park is required.", shiny::uiOutput(outputId="tsParkControl")),
                          htmltools::tags$div(title="Select the type of plant you want to work with", shiny::selectizeInput(inputId="tsGroup", label="Type of plant:", choices=PLANTTYPES)),
-                         htmltools::tags$div(title="Toggle between common and scientific names", shiny::checkboxInput(inputId="tsCommon", label="Display common names?", value=TRUE)),
+                         htmltools::tags$div(title="Toggle between common and scientific names", shiny::checkboxInput(inputId="tsCommon", label="Common names?", value=TRUE)),
                          htmltools::tags$div(title="Toggle confidence interval ribbons on or off", shiny::checkboxInput(inputId = "tsShowCI", label = "Show 95% confidence intervals", value = FALSE)),
-                         htmltools::tags$div(title="Graph the most common species, species you select, or all species observed", 
+                         htmltools::tags$div(title="Graph the most common species, least common species, species you select, or all species observed", 
                                              shiny::radioButtons(inputId="tsSpeciesType", label="Which species?", 
                                                                  choices=base::c("Most common species"="Common", "Least common species"="Least", "Pick individual species"="Pick", "All species combined"="All"), inline=FALSE)),
                          htmltools::tags$div(title="Select the measurement to display on the y-axis", shiny::uiOutput(outputId="tsValControl")),
                          shiny::uiOutput(outputId="tsSpeciesControl"),
                          htmltools::tags$div(title = "Select the range of monitoring cycles to display", shiny::uiOutput(outputId = "tsCycleControl")),
-                         shiny::conditionalPanel(condition="input.tsPanel=='Graph'", shiny::hr(), shiny::actionButton(inputId="tsGraphButton", label="Display Options", class="btn btn-primary btn-block action-button options-toggle-btn", `data-target` = "tsOptions")),
+                         shiny::conditionalPanel(condition="input.tsPanel=='Graph'", shiny::hr(), shiny::actionButton(inputId="tsGraphButton", label="Display Controls", class="btn btn-primary btn-block action-button options-toggle-btn", `data-target` = "tsOptions")),
                          shiny::conditionalPanel(condition="input.tsPanel=='Table'", shiny::hr(),
                                                  shiny::radioButtons(inputId = "tsTableOrder", label = "Order table by:", 
                                                                      choices = base::c("Species" = "species", "Cycle" = "cycle"),
@@ -1515,14 +1549,14 @@ shiny::tabPanel(
                                                                            plotly::plotlyOutput(outputId="tsPlot", height="auto")),
                                                                          shiny::uiOutput("TSLimitWarning")),
 
-                                                     # floating display options panel
+                                                     # floating Display Controls panel
                                                      htmltools::tags$div(id = "tsOptionsOverlay", class = "info-popup-overlay"),
                                                      htmltools::tags$div(id = "tsOptionsBox", class = "info-popup-box",
                                                                          htmltools::tags$button(class = "info-popup-close", "\u00d7"),
                                                                          htmltools::tags$div(
                                                                            style = "display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-start; gap: 12px; margin-bottom: 10px;",
-                                                                           shiny::h4("Display Options", style = "margin: 0;"),
-                                                                           shiny::actionButton(inputId = "tsResetDisplay", label = "\u21ba Reset Display Options",
+                                                                           shiny::h4("Display Controls", style = "margin: 0;"),
+                                                                           shiny::actionButton(inputId = "tsResetDisplay", label = "\u21ba Reset Display Controls",
                                                                                                class = "btn btn-default btn-sm")),
                                                                          shiny::flowLayout(cellArgs=base::list(style="width: 160px"),
                                                                                            shiny::sliderInput("tsLineThickness", "Line Thickness", min=0.5, max=5, value=1.5, step=0.5, width=150),
@@ -1579,17 +1613,17 @@ shiny::tabPanel(htmltools::tags$div(title="Graph Importance Values", "Importance
                                        htmltools::tags$div(title="Select the park you want to work with",shiny::uiOutput("IVParkControl")),
                                        htmltools::tags$div(title="Select the time period you want to work with", shiny::uiOutput("IVCycleControl")),
                                        htmltools::tags$div(title="Select the type of plant you want to work with", shiny::selectizeInput(inputId="IVGroup", label="Type of plant:",choices=IVPLANTTYPES)),
-                                       htmltools::tags$div(title="Toggle between common and scientific names", shiny::checkboxInput(inputId="IVCommon", label="Display common names?", value=TRUE)),
+                                       htmltools::tags$div(title="Toggle between common and scientific names", shiny::checkboxInput(inputId="IVCommon", label="Common names?", value=TRUE)),
                                        htmltools::tags$div(title="Toggle importance values on or off", shiny::checkboxInput(inputId="IVPlotlyText", label="Display importance values?", value=FALSE)),
                                        htmltools::tags$div(title="Display density, size and disbribution separately", shiny::checkboxInput(inputId="IVPart", label="Display components of the importance value?", value=FALSE)),
-                                       htmltools::tags$div(title="Graph the most common species, species you select, or all species observed", 
+                                       htmltools::tags$div(title="Graph the species with the greatest IV, lowet IV, or species you select", 
                                                            shiny::radioButtons(inputId="IVSpeciesType", label="Which species?", 
-                                                                               choices=base::c("Greatest IV species"="Common", "Smallest IV species"="Least", "Pick individual species"="Pick", "All species combined"="All"), inline=FALSE)),
+                                                                               choices=base::c("Greatest IV species"="Common", "Smallest IV species"="Least", "Pick individual species"="Pick"), inline=FALSE)),
                                        shiny::uiOutput(outputId="IVSpeciesControl"),
                                        shiny::conditionalPanel(
                                          condition="input.IVPanel=='Graph'",
                                          shiny::hr(),
-                                         shiny::actionButton(inputId="IVGraphButton", label="Display Options", class="btn btn-primary btn-block action-button options-toggle-btn", `data-target` = "ivOptions")),
+                                         shiny::actionButton(inputId="IVGraphButton", label="Display Controls", class="btn btn-primary btn-block action-button options-toggle-btn", `data-target` = "ivOptions")),
                                        shiny::conditionalPanel(
                                          condition="input.IVPanel=='Table'",
                                          shiny::hr(),
@@ -1604,7 +1638,8 @@ shiny::tabPanel(htmltools::tags$div(title="Graph Importance Values", "Importance
                                 htmltools::tags$div(id = "ivInfoOverlay", class = "info-popup-overlay"),
                                 htmltools::tags$div(id = "ivInfoBox", class = "info-popup-box",
                                                     htmltools::tags$button(class = "info-popup-close", "\u00d7"),
-                                                    htmltools::includeHTML("www/IVPlot.html")),
+                                                    htmltools::includeHTML("www/IVPlot.html"),
+                                                    htmltools::includeHTML("www/AboutShared.html")),
                                 shiny::tabsetPanel(id="IVPanel",type="pills",
                                                    shiny::tabPanel(value="Graph",
                                                                    htmltools::tags$div(title="Graph the data","Graph"),
@@ -1627,8 +1662,8 @@ shiny::tabPanel(htmltools::tags$div(title="Graph Importance Values", "Importance
                                                                                        htmltools::tags$button(class = "info-popup-close", "\u00d7"),
                                                                                        htmltools::tags$div(
                                                                                          style = "display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-start; gap: 12px; margin-bottom: 10px;",
-                                                                                         shiny::h4("Display Options", style = "margin: 0;"),
-                                                                                         shiny::actionButton(inputId = "IVResetDisplay", label = "\u21ba Reset Display Options",
+                                                                                         shiny::h4("Display Controls", style = "margin: 0;"),
+                                                                                         shiny::actionButton(inputId = "IVResetDisplay", label = "\u21ba Reset Display Controls",
                                                                                                              class = "btn btn-default btn-sm")),
                                                                                        shiny::tags$div(
                                                                                          style = "display: flex; flex-direction: column; align-items: center; gap: 16px;",
@@ -1636,9 +1671,9 @@ shiny::tabPanel(htmltools::tags$div(title="Graph Importance Values", "Importance
                                                                                          shiny::tags$div(
                                                                                            style = "display: flex; flex-wrap: wrap; gap: 15px; justify-content: center;",
                                                                                            shiny::tags$div(
-                                                                                             shiny::selectizeInput("IVBaseColor","Base Color:",choices=COLORNAMES, selected="green4",width="125px")),
+                                                                                             shiny::selectizeInput("IVBaseColor","Bar Color (Total):",choices=COLORNAMES, selected="green4",width="125px")),
                                                                                            shiny::tags$div(
-                                                                                             shiny::sliderInput("IVFontSize", "Change Font Size", min=6, max=18, value=12, step=2,width="175px"),
+                                                                                             shiny::sliderInput("IVFontSize", "Font Size", min=6, max=18, value=12, step=2,width="175px"),
                                                                                              shiny::uiOutput("IVFontSizeNotice"))),
                                                                                          # row 2: component colors + shared notice
                                                                                          shiny::tags$div(
@@ -1699,7 +1734,7 @@ shiny::tabPanel(id="SpeciesPanel",
                                                              choices=base::c("NCRN: Vascular plants in the monitorng plots"= "Monitoring", "NPSpecies: All vascular plants known from the park"="NPSpecies"))),
                                        htmltools::tags$div(title="Select a park to work with",shiny::uiOutput("SpListParkControl")),
                                                                               shiny::conditionalPanel(condition="input.SpListType=='Monitoring'",
-                                                               htmltools::tags$div(title="Select a park sub-unit (optional):", shiny::uiOutput("SpListSubunitControl")),
+                                                               htmltools::tags$div(title="Select a park area (optional):", shiny::uiOutput("SpListSubunitControl")),
                                                                htmltools::tags$div(
                                                                  title = "Click a plot to select/deselect it, or use the rectangle tool to select several at once",
                                                                  style = "margin-bottom: 10px;",
@@ -1739,7 +1774,8 @@ shiny::tabPanel(id="SpeciesPanel",
                                 htmltools::tags$div(id = "spInfoOverlay", class = "info-popup-overlay"),
                                 htmltools::tags$div(id = "spInfoBox", class = "info-popup-box",
                                                     htmltools::tags$button(class = "info-popup-close", "\u00d7"),
-                                                    htmltools::includeHTML("www/AboutLists.html")),
+                                                    htmltools::includeHTML("www/AboutLists.html"),
+                                                    htmltools::includeHTML("www/AboutShared.html")),
                                 shiny::h3(shiny::textOutput("SpeciesTableTitle")),
                                 shiny::uiOutput("NPSpeciesLink"),
                                 shiny::uiOutput("SpTableMobileNotice"),

@@ -121,7 +121,7 @@
     }
   });
 
-  // Graph display options controls
+  // Graph Display Controls
   $(document).on('change', '#densBaseColor', function(e) {
     gtag('event', 'dens_base_color_select', { value: $(e.currentTarget).val() });
   });
@@ -160,7 +160,7 @@
     gtag('event', 'iv_top_species_count_change', { value: $(e.currentTarget).val() });
   });
 
-  // IV display options open/close
+  // IV Display Controls open/close
   $(document).on('click', '#IVGraphButton', function() {
     gtag('event', 'iv_display_options_open', { panel: 'iv' });
   });
@@ -168,7 +168,7 @@
     gtag('event', 'iv_display_options_close', { panel: 'iv' });
   });
 
-  // IV display options controls
+  // IV Display Controls
   $(document).on('change', '#IVBaseColor', function(e) {
     gtag('event', 'iv_base_color_select', { value: $(e.currentTarget).val() });
   });
