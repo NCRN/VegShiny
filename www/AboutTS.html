@@ -12,26 +12,27 @@
   Confidence intervals (CI) are represented by opaque ribbons and are optionally shown on the figure. 
   A graph and data table are available for download. </p>
 
-  <hr>
-
   <div class="about-tab-buttons">
     <button class="about-tab-btn active" data-about-tab="tsonly">Data Trends Over Time Controls</button>
     <button class="about-tab-btn" data-about-tab="shared">Common Controls and More Information</button>
   </div>
 
   <div class="about-tab-panel active" data-about-panel="tsonly">
-
-    <p><strong>Display 95% Confidence Intervals: </strong>Toggles whether each species' CI ribbon is shown.</p>
-    <p>When only one monitoring plot exists for a park during a given cycle, confidence intervals can't be estimated; they are shown as NA in the table and omitted from the figure.</p>
+    
+    <p><strong>Display 95% Confidence Intervals: </strong>When only one monitoring plot exists for a park during a given cycle, confidence intervals can't be estimated; they are shown as NA in the table and omitted from the figure.</p>
+    <p><strong>Year Range: </strong>Gaps in the graphed species line indicate a species was not observed during that monitoring cycle. Cycles with no species observations are excluded from the figure and table entirely. If only one cycle is selected, no confidence intervals are generated.</p>
+    
+    <!--
     <p><strong>Line Thickness: </strong>Slider adjusting the trend line thickness.</p>
     <p><strong>CI Ribbon Opacity: </strong>Slider adjusting the opacity of the confidence interval ribbons.</p>
     <p><strong>Color Palette: </strong>Choose from four palettes for species color assignment in the figure.</p>
+    -->
+    
     <p><strong>Legend click behavior: </strong></p>
     <ul>
       <li>Single-click a legend label to remove that species from the figure (click again, or change any input, to restore it)</li>
       <li>Double-click on one legend label to isolate that species and hide all others (double-click again to restore all)</li>
     </ul>
-    <p><strong>Order table by: </strong>Sort the data table by species first or by cycle first.</p>
 
   </div>
 

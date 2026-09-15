@@ -334,7 +334,7 @@ shiny::shinyServer(function(input,output,session){
   # Cycles control
   output$MapCycleControl<-shiny::renderUI({
     shiny::req(DATACYCLES)
-    shiny::selectizeInput(inputId="MapCycles", label="Years to display:", 
+    shiny::selectizeInput(inputId="MapCycles", label="Years:", 
                           choices=base::rev(stats::setNames(base::as.character(DATACYCLES$Cycle), base::paste0(DATACYCLES$Name,":", DATACYCLES$YearStart,"-",DATACYCLES$YearEnd))),
                           selected = NULL, options = base::list(placeholder = "Select a cycle",
                                                                 onInitialize = base::I('function() { this.setValue(""); }')))})
@@ -874,7 +874,8 @@ var filtersControl = L.control({position: 'topleft'}); filtersControl.onAdd = fu
   return div;
 };
 filtersControl.addTo(map);
-      
+      ",
+  "
 // Top-right: native Leaflet layers control (same icon/position as original),
 // repurposed to control Ecoregion / Forested Area / Soil via dummy trigger layers
 var noneLayer    = L.layerGroup().addTo(map);  // added first so it shows as the initial checked option
@@ -901,8 +902,8 @@ var baseLayerControl = L.control({position: 'bottomleft'});
 baseLayerControl.onAdd = function(map) {
   var div = L.DomUtil.create('div', 'gmaps-style-basepicker');
 div.innerHTML =
-    '<div class=\"gmaps-toggle\" title=\"Map layers\" style=\"background-image:url(' + previewUrls.Imagery + ')\"><span>\u2637 Layers</span></div>' +
-    '<div class=\"gmaps-strip\">' +
+      '<div class=\"gmaps-toggle\" title=\"Map layers\" style=\"background-image:url(' + previewUrls.Imagery + ')\"><span><svg width=\"12\" height=\"12\" viewBox=\"0 0 16 16\" xmlns=\"http://www.w3.org/2000/svg\" style=\"vertical-align:-1px;margin-right:3px;filter:drop-shadow(0 1px 2px rgba(0,0,0,0.9));\"><rect x=\"1\" y=\"7\" width=\"8\" height=\"8\" rx=\"1\" fill=\"none\" stroke=\"#fff\" stroke-width=\"1.6\"/><rect x=\"4\" y=\"4\" width=\"8\" height=\"8\" rx=\"1\" fill=\"none\" stroke=\"#fff\" stroke-width=\"1.6\"/><rect x=\"7\" y=\"1\" width=\"8\" height=\"8\" rx=\"1\" fill=\"none\" stroke=\"#fff\" stroke-width=\"1.6\"/></svg>Layers</span></div>' +    
+      '<div class=\"gmaps-strip\">' +
       '<div class=\"gmaps-swatch active\" data-layer=\"Map\" style=\"background-image:url(' + previewUrls.Map + ')\"><span>Map</span></div>' +
       '<div class=\"gmaps-swatch\" data-layer=\"Imagery\" style=\"background-image:url(' + previewUrls.Imagery + ')\"><span>Imagery</span></div>' +
       '<div class=\"gmaps-swatch\" data-layer=\"Light\" style=\"background-image:url(' + previewUrls.Light + ')\"><span>Light</span></div>' +
@@ -952,7 +953,7 @@ baseLayerControl.addTo(map);
 var labelToggleControl = L.control({position: 'bottomright'});
 labelToggleControl.onAdd = function(map) {
   var div = L.DomUtil.create('div', 'leaflet-bar map-round-icon-btn label-toggle-btn');
-  div.title = 'Show plot IDs';
+  div.title = 'Show/hide plot IDs';
   div.innerHTML = 'ID';
   L.DomEvent.disableClickPropagation(div);
   Shiny.setInputValue('showPlotLabels', false, {priority: 'event'});
@@ -1319,7 +1320,7 @@ if (zeroBtn && labelBtn) {
       }
       
       cn <- cn %>%
-        dplyr::filter(!(name_word_count == 1 & base::any(name_word_count >= 2))) %>%
+        dplyr::filter(!(name_word_cofunt == 1 & base::any(name_word_count >= 2))) %>%
         dplyr::slice(1)
       
       cn$commonName <- fmt_common(cn$commonName)
@@ -2059,7 +2060,7 @@ shiny::observeEvent(input$MapPark, {
   #### Dens Cycles ####
   output$densCycleControl<-shiny::renderUI({
     shiny::req(DATACYCLES)
-    shiny::selectInput(inputId="densCycles", label="Years to display:", 
+    shiny::selectInput(inputId="densCycles", label="Years:", 
                        choices=base::rev(stats::setNames(base::as.character(DATACYCLES$Cycle), base::paste0(DATACYCLES$Name,":",
                                                                                                             DATACYCLES$YearStart,"-",DATACYCLES$YearEnd)))
     )
@@ -2162,7 +2163,7 @@ shiny::observeEvent(input$MapPark, {
                                                                                                shrubs=, shseedlings=base::c(Shrubs="shrubs", "Shrub Seedlings"="shseedlings"),
                                                                                                vines=,herbs=base::c('Only one growth stage monitored.'=NA)))),
                  Time=htmltools::tags$div(title= "Select a second range of years",
-                                          shiny::selectInput(inputId="compCycles", label="Years to display:", 
+                                          shiny::selectInput(inputId="compCycles", label="Years:", 
                                                              choices=base::rev(stats::setNames(base::as.character(DATACYCLES$Cycle), base::paste0(DATACYCLES$Name,":",
                                                                                                                                                   DATACYCLES$YearStart,"-",DATACYCLES$YearEnd))))))
   })
@@ -4696,7 +4697,7 @@ shiny::observeEvent(input$MapPark, {
     shiny::req(DATACYCLES)
     shiny::selectInput(
       inputId = "IVCycles",
-      label = "Years to display:",
+      label = "Years:",
       choices = base::rev(stats::setNames(
         base::as.character(DATACYCLES$Cycle),
         base::paste0(DATACYCLES$Name, ":", DATACYCLES$YearStart, "-", DATACYCLES$YearEnd))))})
@@ -5388,7 +5389,7 @@ shiny::observeEvent(input$MapPark, {
                     var idToggleControl = L.control({position: 'bottomright'});
           idToggleControl.onAdd = function(map) {
             var div = L.DomUtil.create('div', 'leaflet-bar map-round-icon-btn label-toggle-btn');
-            div.title = 'Show plot IDs';
+            div.title = 'Show/hide plot IDs';
             div.innerHTML = 'ID';
             L.DomEvent.disableClickPropagation(div);
             Shiny.setInputValue('SpListShowLabels', false, {priority: 'event'});
