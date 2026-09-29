@@ -7,7 +7,14 @@ library(bslib)
 library(htmltools)
 
 shiny::navbarPage(
-  title=htmltools::HTML("National&nbsp;Capital&nbsp;Region&nbsp;Network<wbr> Forest&nbsp;Vegetation"),
+  title=htmltools::HTML(base::paste0(
+    base::switch(NETWORK,
+                 NCRN="National&nbsp;Capital&nbsp;Region&nbsp;Network",
+                 ERMN="Eastern&nbsp;Rivers&nbsp;and&nbsp;Mountains&nbsp;Network",
+                 MIDN="Mid-Atlantic&nbsp;Network",
+                 NETN="Northeast&nbsp;Temperate&nbsp;Network"),
+                 #SHEN="Shenandoah&nbsp;National&nbsp;Park"),
+    "<wbr> Forest&nbsp;Vegetation")),
   position = "static-top", inverse=TRUE, collapsible = TRUE, fluid=TRUE, windowTitle = base::paste(NETWORK, "Forest Vegetation"),
   theme="https://www.nps.gov/lib/bootstrap/3.3.2/css/nps-bootstrap.min.css", id="MainNavBar",
   
@@ -1432,6 +1439,7 @@ shiny::tabPanel(
             shiny::br(),
             shiny::uiOutput("densReportGraph"),
             shiny::uiOutput("densMissingWarningGraph"),
+            shiny::uiOutput("compareAllParksExclusionGraph"),
             shiny::uiOutput("densOnePlotWarningGraph"),
             shiny::conditionalPanel(
               condition = "input.densPark == null || input.densPark == '' || (input.densSpeciesType == 'Pick' && (input.densSpecies == null || input.densSpecies.length == 0))",
@@ -1471,6 +1479,7 @@ shiny::tabPanel(
             shiny::h3(shiny::textOutput("densTableTitle")),
             shiny::hr(),
             shiny::uiOutput("densMissingWarningTable"),
+            shiny::uiOutput("compareAllParksExclusionTable"),
             shiny::uiOutput("densOnePlotWarningTable"),
             shiny::conditionalPanel(
               condition = "input.densPark == null || input.densPark == '' || (input.densSpeciesType == 'Pick' && (input.densSpecies == null || input.densSpecies.length == 0))",
@@ -1732,7 +1741,9 @@ shiny::tabPanel(id="SpeciesPanel",
                                        htmltools::tags$div(
                                          title="Select the type of species list", 
                                          shiny::radioButtons(inputId="SpListType", label="Select a species list:",
-                                                             choices=base::c("NCRN: Plants in the monitorng plots"= "Monitoring", "NPSpecies: All vascular plants known from the park"="NPSpecies"))),
+                                                             choices=stats::setNames(
+                                                               base::c("Monitoring", "NPSpecies"),
+                                                               base::c(base::paste0(NETWORK, ": Vascular plants in the monitorng plots"), "NPSpecies: All vascular plants known from the park")))),
                                        htmltools::tags$div(title="Park determines the plots and species shown on map and table",shiny::uiOutput("SpListParkControl")),
                                                                               shiny::conditionalPanel(condition="input.SpListType=='Monitoring'",
                                                                htmltools::tags$div(title="Select a park area (optional):", shiny::uiOutput("SpListSubunitControl")),
@@ -1757,9 +1768,7 @@ shiny::tabPanel(id="SpeciesPanel",
                                                                htmltools::tags$div(title="Native or non-native to the National Capital Region; nativity does not indicate species' invasive status", shiny::radioButtons(inputId="SpNativity", label="Nativity status:", 
                                                                                                                                         choices=base::c("All"="All","Native"="Native","Non-native"="Non-native"), selected="All")),
                                                                htmltools::tags$div(title="Species may match more than one; 'All' includes species with no growth habit assigned)", 
-                                                                                   shiny::checkboxGroupInput(inputId="SpGrowthHabit", label="Growth habit:", 
-                                                                                                             choices=base::c("Tree"="Tree","Shrub"="Shrub","Herbaceous"="Herbaceous","Vine"="Vine","All (includes unassigned species)"="All"),
-                                                                                                             selected=base::c("Tree","Shrub","Herbaceous","Vine","All")))),
+                                                                                   shiny::uiOutput("SpGrowthHabitControl"))),
                                        shiny::conditionalPanel(
                                          condition = "output.hasSpPark",
                                          shiny::hr(),

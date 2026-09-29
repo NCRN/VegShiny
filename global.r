@@ -1,33 +1,62 @@
 #### Network specific settings ####
-NETWORK<-"NCRN"
+NETWORK<-"NETN"
 NETWORKURL<-base::switch(NETWORK,
                    ERMN=, MIDN=, NCRN=, NETN = base::paste0('https://www.nps.gov/im/',base::tolower(NETWORK)),
                    SHEN='https://www.nps.gov/shen/index.htm'
 )
 
 PLANTTYPES<-base::switch(NETWORK,
-    ERMN=base::list(Trees='trees',Saplings="saplings","Tree seedlings"="seedlings", "Understory plants"="herbs","Coarse Woody Debris"='cwd'),
-    MIDN=base::list(Trees='trees',Saplings="saplings","Tree seedlings"="seedlings", "Understory plants"="herbs","Vines on Trees"="vines",
-              "Coarse Woody Debris"='cwd'),
+    ERMN=base::list(Trees='trees',Saplings="saplings","Tree seedlings"="seedlings", "Understory plants"="herbs"),
+                    #"Coarse Woody Debris"='cwd'),
+    MIDN=base::list(Trees='trees',Saplings="saplings","Tree seedlings"="seedlings", "Understory plants"="herbs","Vines on Trees"="vines"),
+                    #"Coarse Woody Debris"='cwd'),
     NCRN=base::list(Trees="trees",Saplings="saplings","Tree seedlings"="seedlings", Shrubs="shrubs", "Shrub seedlings"="shseedlings",
-                "Understory plants"="herbs","Vines on Trees"="vines"),
-    NETN=base::list(Trees="trees",Saplings="saplings","Tree seedlings"="seedlings", "Understory plants"="herbs","Vines on Trees"="vines", 
-              "Coarse Woody Debris"='cwd'),
+                    "Understory plants"="herbs","Vines on Trees"="vines"),
+                    #"Coarse Woody Debris"='cwd'),
+    NETN=base::list(Trees="trees",Saplings="saplings","Tree seedlings"="seedlings", 
+                    "Understory plants"="herbs","Vines on Trees"="vines"), 
+                    #"Coarse Woody Debris"='cwd'),
     SHEN=base::list(Trees="trees",Saplings="saplings","Tree seedlings"="seedlings", Shrubs="shrubs", "Shrub seedlings"="shseedlings",
                "Understory plants"="herbs")
 )
 
 PLANTSLOTLOOKUP<-base::switch(NETWORK,
-    NCRN=base::c(
-      trees = "Trees",
-      saplings = "Saplings",
-      seedlings = "Seedlings",
-      shrubs = "Shrubs",
-      shseedlings = "ShSeedlings",
-      herbs = "Herbs",
-      vines = "Vines",
-      cwd = "CWD"
-    )
+                              ERMN=base::c(
+                                trees = "Trees",
+                                saplings = "Saplings",
+                                seedlings = "Seedlings",
+                                herbs = "Herbs",
+                                cwd = "CWD"),
+                              MIDN=base::c(
+                                trees = "Trees",
+                                saplings = "Saplings",
+                                seedlings = "Seedlings",
+                                herbs = "Herbs",
+                                vines = "Vines",
+                                cwd = "CWD"),
+                              NCRN=base::c(
+                                trees = "Trees",
+                                saplings = "Saplings",
+                                seedlings = "Seedlings",
+                                shrubs = "Shrubs",
+                                shseedlings = "ShSeedlings",
+                                herbs = "Herbs",
+                                vines = "Vines",
+                                cwd = "CWD"),
+                              NETN=base::c(
+                                trees = "Trees",
+                                saplings = "Saplings",
+                                seedlings = "Seedlings",
+                                herbs = "Herbs",
+                                vines = "Vines",
+                                cwd = "CWD"),
+                              SHEN=base::c(
+                                trees = "Trees",
+                                saplings = "Saplings",
+                                seedlings = "Seedlings",
+                                shrubs = "Shrubs",
+                                shseedlings = "ShSeedlings",
+                                herbs = "Herbs")
 )
 
 IVPLANTTYPES<-base::switch(NETWORK,  #needed as not all plants have an IV

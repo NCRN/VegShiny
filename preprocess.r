@@ -112,7 +112,7 @@ is_preprocessing_necessary <- function(folderpath, target_columns) {
     
     files <- base::list.files(path = folderpath, pattern = "\\.csv$", full.names = TRUE)
     files_with_column_name_problems <- base::list()
-    for (file in files) { # no need for seq_along() since we can access the elements directly; we don't need the index
+    for (file in files) { # no need for base::seq_along() since we can access the elements directly; we don't need the index
         df <- utils::read.csv(file, stringsAsFactors = FALSE)
         match <- base::intersect(base::names(df), target_columns)
         files_with_column_name_problems[[base::basename(file)]] <- match
