@@ -54,9 +54,9 @@ unassign_subunit_patch <- function() {
 if (base::identical(NETWORK, "NCRN")) unassign_subunit_patch()
 
 # TODO: remove once NPSForVeg is updated - fixes the "Captial" typo
-if (base::identical(NETWORK, "NCRN") && !base::is.null(VEGDATA[["NACE"]])) {
-  VEGDATA[["NACE"]]@LongName <- "National Capital Parks-East"
-}
+# if (base::identical(NETWORK, "NCRN") && !base::is.null(VEGDATA[["NACE"]])) {
+#   VEGDATA[["NACE"]]@LongName <- "National Capital Parks-East"
+# }
 
 # bound parks for zoom
 PARKBOUNDS<-utils::read.csv("boundboxes.csv", as.is=TRUE)

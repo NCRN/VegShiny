@@ -1,5 +1,5 @@
 #### Network specific settings ####
-NETWORK<-"NETN"
+NETWORK<-"NCRN"
 NETWORKURL<-base::switch(NETWORK,
                    ERMN=, MIDN=, NCRN=, NETN = base::paste0('https://www.nps.gov/im/',base::tolower(NETWORK)),
                    SHEN='https://www.nps.gov/shen/index.htm'
