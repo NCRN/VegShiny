@@ -1118,18 +1118,36 @@ Shiny.addCustomMessageHandler('resetMapLayers', function(msg) {
   $('.gmaps-toggle').css('background-image', toggleIconUrl);
 });
 ")),
+
+htmltools::tags$script(htmltools::HTML("
+function closeAllMapPopups() {
+  var map = window.vegMap;
+  if (!map) return;
+  var popups = [];
+  map.eachLayer(function(l) { if (l instanceof L.Popup) popups.push(l); });
+  popups.forEach(function(p) { map.removeLayer(p); });
+}
+
+$(document).on('click', function(e) {
+  var $t = $(e.target);
+  if ($t.closest('.leaflet-popup-close-button').length) {
+    e.preventDefault();
+    closeAllMapPopups();
+    return;
+  }
+  if ($t.closest('.leaflet-popup').length) return;
+  if (!$t.closest('#mapMain').length) return;
+  closeAllMapPopups();
+});
+")),
                        
 htmltools::tags$script(htmltools::HTML("
 function lockToggleTabPosition($sidebarOuter, $toggleTab) {
-  if ($toggleTab.data('lockedTop') === undefined) {
-    if ($sidebarOuter.hasClass('collapsed')) return; // only measure while sidebar is open
-    var outerH = $sidebarOuter.outerHeight();
-    var tabH = $toggleTab.outerHeight();
-    if (!outerH || !tabH) return;
-    var top = (outerH - tabH) / 2;
-    $toggleTab.data('lockedTop', top);
-  }
-  $toggleTab.css({ top: $toggleTab.data('lockedTop') + 'px', transform: 'none' });
+  if ($sidebarOuter.hasClass('collapsed')) return; // only measure while sidebar is open
+  var outerH = $sidebarOuter.outerHeight();
+  var tabH = $toggleTab.outerHeight();
+  if (!outerH || !tabH) return;
+  $toggleTab.css({ top: ((outerH - tabH) / 2) + 'px', transform: 'none' });
 }
 
 $(document).on('shiny:connected', function() {
@@ -1155,6 +1173,7 @@ $(document).on('shiny:connected', function() {
     var $toggleTab = $('#toggle_' + panelId);
     var $chevron = $toggleTab.find('span');
     var isMobile = $(window).width() <= 1024;
+    if (!isMobile && !$wrap.hasClass('collapsed')) lockToggleTabPosition($sidebarOuter, $toggleTab);
 
     if ($wrap.hasClass('collapsed')) {
       $wrap.removeClass('collapsed');
@@ -1182,8 +1201,6 @@ $(document).on('shiny:connected', function() {
         setTimeout(function() { $sidebarOuter.addClass('collapsed'); }, 500);
       }
     }
-
-            if (!isMobile) lockToggleTabPosition($sidebarOuter, $toggleTab);
 
     setTimeout(function() {
       $('.plotly').each(function() {

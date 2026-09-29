@@ -2570,7 +2570,7 @@ shiny::observeEvent(input$MapPark, {
         LabelOpp = if (base::isTRUE(input$densCommon)) Latin else dplyr::coalesce(Common, Latin))}
     
     df <- df %>%
-      dplyr::mutate(.tie = base::base::seq_along(Species)) %>%
+      dplyr::mutate(.tie = base::seq_along(Species)) %>%
       dplyr::arrange(dplyr::desc(Mean), .tie) %>%
       dplyr::mutate(Species = base::factor(Species, levels = Species)) %>%
       dplyr::select(-.tie)
@@ -3329,7 +3329,7 @@ shiny::observeEvent(input$MapPark, {
     ### for scatter plot plotly ###  
     #offset compare data from base data on plot
     #  species_levels <- base::unique(base::c(df$Species, if(!base::is.null(df_cmp)) df_cmp$Species))
-    #  species_idx <- stats::setNames(base::base::seq_along(species_levels), species_levels)
+    #  species_idx <- stats::setNames(base::seq_along(species_levels), species_levels)
     
     #  offset <- 0.25
     
@@ -4341,7 +4341,7 @@ shiny::observeEvent(input$MapPark, {
     p <- plotly::plot_ly()
     
     # assign colors to species
-    for (i in base::base::seq_along(species_list)) {
+    for (i in base::seq_along(species_list)) {
       sp  <- species_list[[i]]
       col <- pal_hex[[(i - 1) %% base::length(pal_hex) + 1]]
       d <- df %>% dplyr::filter(Species == sp) %>% dplyr::arrange(Cycle)
