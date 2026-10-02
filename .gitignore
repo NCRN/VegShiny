@@ -9,3 +9,5 @@ renv/
 sandbox.R
 Data/
 secrets.R
+rsconnect/
+NPSForVeg-master/
