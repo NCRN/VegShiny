@@ -1782,8 +1782,8 @@ shiny::tabPanel(id="SpeciesPanel",
                                                                shiny::h5("Advanced Species List Filters (optional):"),
                                                                htmltools::tags$div(title="Filter by plant family", shiny::uiOutput("SpFamilyControl")),
                                                                htmltools::tags$div(title="Filter by genus", shiny::uiOutput("SpGenusControl")),
-                                                               htmltools::tags$div(title="Native or non-native to the National Capital Region; nativity does not indicate species' invasive status", shiny::radioButtons(inputId="SpNativity", label="Nativity status:", 
-                                                                                                                                        choices=base::c("All"="All","Native"="Native","Non-native"="Non-native"), selected="All")),
+                                                               htmltools::tags$div(title=base::paste0("Native or non-native to the ", NETWORK, " region; nativity does not indicate species' invasive status"), shiny::radioButtons(inputId="SpNativity", label="Nativity status:", 
+                                                                                                      choices=base::c("All"="All","Native"="Native","Non-native"="Non-native"), selected="All")),
                                                                htmltools::tags$div(title="Species may match more than one; 'All' includes species with no growth habit assigned)", 
                                                                                    shiny::uiOutput("SpGrowthHabitControl"))),
                                        shiny::conditionalPanel(
@@ -1824,7 +1824,7 @@ shiny::tabPanel(id="SpeciesPanel",
     tabPanel(
       tags$div(title="About the project", "About"),
       tags$base(target="_blank"),
-      includeHTML("www/AboutTab.html")
-      )# close about 
+      ABOUTTAB
+    )# close about 
 
 )#end shiny::navbarPage()

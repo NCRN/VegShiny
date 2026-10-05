@@ -76,27 +76,23 @@ YEARS<-base::switch(NETWORK,
   )
 
 EXTRALAYERS<-base::switch(NETWORK,
-                    ERMN=base::c(None="None"),
-                    MIDN=base::c(None="None"),
-                    NCRN=base::c(None="None", "EcoRegions"="EcoReg","Forested Areas"="ForArea","Soil Map "="Soil"),
-                    NETN=base::c(None="None"),
-                    SHEN=base::c(None="None")
-  )
-
-PROJECTINFO<-base::switch(NETWORK,
-                    ERMN=htmltools::includeHTML("www/InformationERMN.html"),
-                    MIDN=htmltools::includeHTML("www/InformationMIDN.html"),
-                    NCRN=htmltools::includeHTML("www/Information.html"),
-                    NETN=htmltools::includeHTML("www/InformationNETN.html"),
-                    SHEN=htmltools::HTML("./www/InformationSHEN.html")
+                          ERMN=base::c(None="None", "EcoRegion"="EcoReg","Forested Area"="ForArea","Soil Map"="Soil"),
+                          MIDN=base::c(None="None", "EcoRegion"="EcoReg","Forested Area"="ForArea","Soil Map"="Soil"),
+                          NCRN=base::c(None="None", "EcoRegion"="EcoReg","Forested Area"="ForArea","Soil Map"="Soil"),
+                          NETN=base::c(None="None", "EcoRegion"="EcoReg","Forested Area"="ForArea","Soil Map"="Soil"),
+                          SHEN=base::c(None="None", "EcoRegion"="EcoReg","Forested Area"="ForArea","Soil Map"="Soil")
 )
 
-CITATIONS<-base::switch(NETWORK,
-                    ERMN=htmltools::includeHTML("www/CitationsERMN.html"),
-                    MIDN=htmltools::includeHTML("www/CitationsMIDN.html"),
-                    NCRN=htmltools::includeHTML("www/Citations.html"),
-                    NETN=htmltools::includeHTML("www/CitationsNETN.html"),
-                    SHEN=htmltools::HTML("./www/CitationsSHEN.html")
+# keep only layers whose geojson file exists
+LAYERFILES<-base::c(EcoReg="./Maps/Ecoregion.geojson", ForArea="./Maps/Forests.geojson", Soil="./Maps/Soils.geojson")
+EXTRALAYERS<-EXTRALAYERS[EXTRALAYERS == "None" | EXTRALAYERS %in% base::names(LAYERFILES)[base::file.exists(LAYERFILES)]]
+
+ABOUTTAB<-base::switch(NETWORK,
+                       ERMN=htmltools::includeHTML("www/AboutTabERMN.html"),
+                       MIDN=htmltools::includeHTML("www/AboutTabMIDN.html"),
+                       NCRN=htmltools::includeHTML("www/AboutTabNCRN.html"),
+                       NETN=htmltools::includeHTML("www/AboutTabNETN.html"),
+                       SHEN=htmltools::includeHTML("www/AboutTabSHEN.html")
 )
 
 

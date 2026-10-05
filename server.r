@@ -53,20 +53,13 @@ unassign_subunit_patch <- function() {
 }
 if (base::identical(NETWORK, "NCRN")) unassign_subunit_patch()
 
-# TODO: remove once NPSForVeg is updated - fixes the "Captial" typo
-# if (base::identical(NETWORK, "NCRN") && !base::is.null(VEGDATA[["NACE"]])) {
-#   VEGDATA[["NACE"]]@LongName <- "National Capital Parks-East"
-# }
-
 # bound parks for zoom
 PARKBOUNDS<-utils::read.csv("boundboxes.csv", as.is=TRUE)
 
 # long names for subunit codes from metadata XML
-SUBUNIT_XML <- base::list(
-  NCRN = base::list(path = "./Data/NCRN/ncrn_forest_vegetation_cumulative_through2025_metadata.xml", attr = "Subunit_Code"),
-  NETN = base::list(path = "./Data/NETN/NETN_FHM_2006_2025_metadata.xml", attr = "ParkSubUnit"))
+SUBUNIT_ATTR_NAMES <- base::c("Subunit_Code", "ParkSubUnit")
 
-subunit_labels <- function(xml_path, attr_name) {
+parse_subunit_labels <- function(xml_path, attr_name) {
   subunit_xml <- xml2::read_xml(xml_path)
   code_defs <- xml2::xml_find_all(subunit_xml, base::sprintf(
     ".//*[local-name()='attribute'][.//*[local-name()='attributeName']/text()='%s']//*[local-name()='codeDefinition']", attr_name))
@@ -75,9 +68,13 @@ subunit_labels <- function(xml_path, attr_name) {
     Label = base::trimws(xml2::xml_text(xml2::xml_find_first(code_defs, ".//*[local-name()='definition']")))))
   labels[base::tolower(labels$Code) != "na", ]}
 
-SUBUNITLABELS <- base::tryCatch(
-  subunit_labels(SUBUNIT_XML[[NETWORK]]$path, SUBUNIT_XML[[NETWORK]]$attr),
-  error = function(e) base::data.frame(Code = base::character(0), Label = base::character(0)))
+SUBUNITLABELS<-base::tryCatch({
+  xml_files <- base::sort(base::list.files(base::file.path("Data", NETWORK), pattern = "metadata\\.xml$", full.names = TRUE, ignore.case = TRUE))
+  found <- base::data.frame(Code=base::character(0), Label=base::character(0), stringsAsFactors=FALSE)
+  for (a in SUBUNIT_ATTR_NAMES) {
+    if (base::nrow(found) == 0 && base::length(xml_files) > 0) found <- parse_subunit_labels(xml_files[base::length(xml_files)], a)}
+  found
+}, error = function(e) base::data.frame(Code=base::character(0), Label=base::character(0), stringsAsFactors=FALSE))
 
 # manual override for subunit codes not documented in the network's metadata XML
 # todo: NETN defines subunits in xml, remove after xml is updated
@@ -328,14 +325,14 @@ shiny::shinyServer(function(input,output,session){
   #   Forested<-rgdal::readOGR(dsn="./Maps/Forests.geojson")#,"OGRGeoJSON")
   #   Soil<-rgdal::readOGR(dsn="./Maps/Soils.geojson")#,"OGRGeoJSON")
   # })
-  shiny::withProgress(message="Loading...Please Wait", value=1,{
-    Ecoregion<-sf::st_read(dsn="./Maps/Ecoregion.geojson", quiet= TRUE)
-    Forested<-sf::st_read(dsn="./Maps/Forests.geojson", quiet = TRUE)
-    Soil<-sf::st_read(dsn="./Maps/Soils.geojson", quiet = TRUE)
+  if (base::length(EXTRALAYERS) > 1) shiny::withProgress(message="Loading...Please Wait", value=1,{
+    if ("EcoReg" %in% EXTRALAYERS) Ecoregion<-sf::st_read(dsn=LAYERFILES[["EcoReg"]], quiet= TRUE)
+    if ("ForArea" %in% EXTRALAYERS) Forested<-sf::st_read(dsn=LAYERFILES[["ForArea"]], quiet = TRUE)
+    if ("Soil" %in% EXTRALAYERS) Soil<-sf::st_read(dsn=LAYERFILES[["Soil"]], quiet = TRUE)
   })
   
   # establish ecoregion legend/order west to east
-  ECOREGION_ORDER <- base::unique(Ecoregion$MapClass)
+  if ("EcoReg" %in% EXTRALAYERS) ECOREGION_ORDER <- base::unique(Ecoregion$MapClass)
   
   # Cycles control
   output$MapCycleControl<-shiny::renderUI({
@@ -860,27 +857,27 @@ var filtersControl = L.control({position: 'topleft'}); filtersControl.onAdd = fu
 };
 filtersControl.addTo(map);
       ",
-  "
+  if (base::length(EXTRALAYERS) > 1) base::sprintf("var EXTRA_LAYERS = %s;", 
+                                                   jsonlite::toJSON(base::as.list(stats::setNames(base::trimws(base::names(EXTRALAYERS)), base::unname(EXTRALAYERS))), auto_unbox = TRUE)),
+                                                   if (base::length(EXTRALAYERS) > 1) "
 // Top-right: native Leaflet layers control (same icon/position as original),
 // repurposed to control Ecoregion / Forested Area / Soil via dummy trigger layers
-var noneLayer    = L.layerGroup().addTo(map);  // added first so it shows as the initial checked option
-var ecoRegLayer  = L.layerGroup();
-var forAreaLayer = L.layerGroup();
-var soilLayer    = L.layerGroup();
-
-var ecoBaseLayers = {
-  \"None\": noneLayer,
-  \"Ecoregion\": ecoRegLayer,
-  \"Forested Area\": forAreaLayer,
-  \"Soil\": soilLayer
-};
+var noneLayer = L.layerGroup().addTo(map);  // added first so it shows as the initial checked option
+var ecoBaseLayers = {'None': noneLayer};
+var layerLabelToCode = {'None': 'None'};
+Object.keys(EXTRA_LAYERS).forEach(function(code) {
+  if (code === 'None') return;
+  ecoBaseLayers[EXTRA_LAYERS[code]] = L.layerGroup();
+  layerLabelToCode[EXTRA_LAYERS[code]] = code;
+});
 
 var ecoLayersControl = L.control.layers(ecoBaseLayers, null, {position: 'topright', collapsed: true}).addTo(map);
 
 map.on('baselayerchange', function(e) {
-  var mapping = {\"None\": \"None\", \"Ecoregion\": \"EcoReg\", \"Forested Area\": \"ForArea\", \"Soil\": \"Soil\"};
-  Shiny.setInputValue('MapLayer', mapping[e.name], {priority: 'event'});
+  Shiny.setInputValue('MapLayer', layerLabelToCode[e.name], {priority: 'event'});
 });
+",
+  "
 
 // Bottom-left: Google-Maps-style base tile picker (Map / Imagery / Light / Slate)
 var baseLayerControl = L.control({position: 'bottomleft'});
@@ -1457,14 +1454,14 @@ if (zeroBtn && labelBtn) {
                    ForArea=leaflet::clearGroup(.,group=base::c("Ecoregion","Soil")) %>% 
                      leaflet::addPolygons(.,data=Forested, group="Forested", layerId=Forested$MapClass, stroke=FALSE, options = leaflet::pathOptions(pane = "dataLayerPane"),
                                           fillOpacity=.4, color=FOREST_COLOR,
-                                          label=base::paste0("Forested: ", Forested$MapClass),
-                                          popup=base::paste0("<b>Forested:</b> ", Forested$MapClass)),
+                                          label=base::paste0("Forested Area: ", Forested$MapClass),
+                                          popup=base::paste0("<b>Forested Area:</b> ", Forested$MapClass)),
                    
                    Soil=leaflet::clearGroup(.,group=base::c("Ecoregion","Forested")) %>% 
                      leaflet::addPolygons(.,data=Soil, group="Soil", layerId=Soil$MapClass, stroke=FALSE, options = leaflet::pathOptions(pane = "dataLayerPane"),
                                           fillOpacity=.4, color=leaflet::colorFactor(SOIL_COLORS,levels=Soil$MapClass)(Soil$MapClass),
-                                          label=base::paste0("Soil: ", Soil$MapClass),
-                                          popup=base::paste0("<b>Soil:</b> ", Soil$MapClass))
+                                          label=base::paste0("Soil Map: ", Soil$MapClass),
+                                          popup=base::paste0("<b>Soil Map:</b> ", Soil$MapClass))
       )}
   })
   
@@ -2605,22 +2602,10 @@ shiny::observeEvent(input$MapPark, {
       # skip parks whose cycle definition doesn't match this year range
       park_cycles <- base::tryCatch(NPSForVeg::getCycles(x), error = function(e) NULL)
       
-      #remove - test patch
-      if (pk == "MABI") {
-        message("MABI check | comparing years ", yr_start, "-", yr_end,
-                " | park_cycles null: ", base::is.null(park_cycles),
-                if (!base::is.null(park_cycles)) base::paste0(" | MABI's own cycles: ",
-                                                              base::paste(park_cycles$YearStart, "-", park_cycles$YearEnd, collapse = ", ")) else "")
-      }
-      
       if (!base::is.null(park_cycles) && !base::any(
         park_cycles$YearStart == yr_start & park_cycles$YearEnd == yr_end)) {
         skipped_definition <<- base::c(skipped_definition, pk)
         base::return(NULL)}
-      
-      
-      
-      
       
       # no observations for this group/years
       has_obs <- base::tryCatch({
@@ -4765,7 +4750,7 @@ shiny::observeEvent(input$MapPark, {
     df <- base::tryCatch(tsDf(), error = function(e) NULL)
     if (base::is.null(df) || base::nrow(df) == 0) base::return(NULL)
     
-    park_label <- if (input$tsPark == "All") "All NCRN parks" else NPSForVeg::getNames(VEGDATA[[input$tsPark]], "long")
+    park_label <- if (input$tsPark == "All") base::paste0("All ", NETWORK, " parks") else NPSForVeg::getNames(VEGDATA[[input$tsPark]], "long")
     group_label <- base::switch(input$tsGroup,
                                 trees = "trees", saplings = "saplings", seedlings = "tree seedlings",
                                 shrubs = "shrubs", shseedlings = "shrub seedlings",
@@ -5600,7 +5585,7 @@ shiny::observeEvent(input$MapPark, {
     shiny::validate(shiny::need(base::length(subunits) > 0, message = FALSE))
     subunit_labels <- base::sapply(subunits, function(cd) {
       lbl <- SUBUNITLABELS$Label[SUBUNITLABELS$Code == cd]
-      if (base::length(lbl) == 0) cd else lbl})
+      if (base::length(lbl) == 0 || base::is.na(lbl[1]) || !base::nzchar(lbl[1])) cd else lbl[1]})
     shiny::selectizeInput(inputId = "SpListSubunit", 
                           choices = base::c("All Park Areas" = "All", stats::setNames(subunits, subunit_labels)),
                           label = "Park Areas (optional)", selected = "All")
