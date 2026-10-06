@@ -173,6 +173,13 @@ shiny::navbarPage(
         max-height: 45vh;
         overflow-y: auto;
         -webkit-overflow-scrolling: touch;}
+    
+    /* plotly icon colors */
+      .js-plotly-plot .plotly .modebar-btn .icon path,
+      .js-plotly-plot .plotly .modebar-btn.active .icon path {
+        fill: rgba(68, 68, 68, 0.6) !important;}
+      .js-plotly-plot .plotly .modebar-btn:hover .icon path {
+        fill: rgba(68, 68, 68, 0.85) !important;}
  
 /* shared features across tabs */
 
@@ -280,8 +287,20 @@ shiny::navbarPage(
       .about-tab-panel {display: none;}
       .about-tab-panel.active {display: block;}
       .about-appears-on {color: #999;}
- 
-    /* sidebar (dens, ts, iv, sp list) */
+      
+    /* required field */
+      #MapPark-label::after, #MapGroup-label::after, #MapCycles-label::after,
+      #MapValues-label::after, #MapSpecies-label::after,
+      #TreeStatus-label::after,
+      #densPark-label::after, #densGroup-label::after,
+      #densCycles-label::after, #densvalues-label::after,
+      #densSpecies-label::after,
+      #tsPark-label::after, #tsGroup-label::after,
+      #tsValues-label::after, #tsSpecies-label::after,
+      #IVPark-label::after, #IVGroup-label::after,
+      #IVCycles-label::after, #IVSpecies-label::after,
+      #SpListPark-label::after {
+        content: ' *'; color: red; font-weight: bold;}
  
     /* sidebar (dens, ts, iv, sp list) */
     
@@ -305,7 +324,6 @@ shiny::navbarPage(
       .sidebar-slide-wrap.collapsed {
         margin-left: -2000px;
         max-height: 0;}
-      .sidebar-slide-wrap.opening {opacity: 0;}
       .sidebar-toggle-tab {
         position: absolute;
         top: 50%;
@@ -422,18 +440,32 @@ shiny::navbarPage(
         min-height: 0;
         padding: 16px;
         flex: 1;}
-        .map-sidebar .selectize-dropdown,
-        body > .selectize-dropdown.map-sidebar-dropdown {z-index: 10700 !important;}
-      .map-sidebar-close {
-        position: absolute;
-        top: 8px; right: 12px;
-        font-size: 24px;
+      .map-sidebar .selectize-dropdown {z-index: 10700 !important;}
+      .map-sidebar-toggle-tab {
+        position: fixed;
+        top: calc(50vh + 40px);
+        transform: translateY(-50%);
+        left: 0;
+        width: 20px;
+        height: 72px;
+        background-color: #7c8f4f;
+        color: #ffffff;
+        border-radius: 0 8px 8px 0;
         cursor: pointer;
-        color: #888;
-        border: none;
-        background: none;
-        z-index: 2;}
-      .map-sidebar-close:hover { color: #333; }
+        z-index: 10700;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 16px;
+        box-shadow: 1px 0 4px rgba(0, 0, 0, 0.2);
+        transition: left 0.3s ease, background-color 0.2s ease;}
+      .map-sidebar-toggle-tab:hover {background-color: #6b7d43;}
+      .map-sidebar.active + .map-sidebar-toggle-tab {left: min(340px, 85vw);}
+      #mapContainer,
+      #mapOverlayWrap {transition: left 0.3s ease;}
+      @media (min-width: 1025px) {
+        .map-sidebar.active ~ #mapContainer,
+        .map-sidebar.active ~ #mapOverlayWrap {left: 340px !important;}}
  
     /* round icon buttons */
 
@@ -452,8 +484,7 @@ shiny::navbarPage(
       .map-round-icon-btn:focus,
       .map-round-icon-btn:active { outline: none; box-shadow: 0 1px 5px rgba(0,0,0,0.4); }
 
-      .map-info-leaflet-control,
-      .map-controls-leaflet-control {
+      .map-info-leaflet-control {
         width: 34px;
         height: 34px;
         border-radius: 50% !important;
@@ -700,7 +731,6 @@ shiny::navbarPage(
         color: #777;
         white-space: nowrap;}
         
-      .leaflet-top.leaflet-right .info.legend.legend-collapsed::after {content: '+';}
       .leaflet-top.leaflet-right .info.legend.soil-legend {
         max-width: 300px !important;
         white-space: nowrap;}
@@ -811,7 +841,7 @@ shiny::navbarPage(
     
       #SpListPlotMap {border-radius: 6px; overflow: hidden; border: 1px solid #ddd;}
       
-      #SpListPlotMapWrapper {position: relative;}
+      #SpListPlotMapWrapper {position: relative; z-index: 0;}
       #SpListPlotMapWrapper.expanded {
         position: fixed;
         top: 90px; left: 16px; right: 16px; bottom: 16px;
@@ -895,7 +925,41 @@ shiny::navbarPage(
           float: none !important;
           padding-left: 10px !important;
           padding-top: 5px !important;}
-        #mapMain {padding-left: 0 !important;}
+        #mapMain {
+          display: grid !important;
+          grid-template-columns: 100%;
+          grid-template-rows: auto minmax(0, 1fr);}
+        .map-sidebar {
+          position: relative !important;
+          grid-row: 1; grid-column: 1;
+          top: auto; bottom: auto;
+          left: 0 !important;
+          width: 100%; max-width: 100%;
+          max-height: 0;
+          box-shadow: none;
+          transition: max-height 0.5s ease !important;}
+        .map-sidebar.active {
+          max-height: 2000px;
+          box-shadow: 0 3px 5px rgba(0,0,0,0.2);}
+        #mapContainer,
+        #mapOverlayWrap {
+          position: relative !important;
+          grid-row: 2; grid-column: 1;
+          min-height: 0;}
+        .map-sidebar-toggle-tab {
+          position: relative !important;
+          grid-row: 1; grid-column: 1;
+          align-self: end; justify-self: center;
+          top: auto !important;
+          left: auto !important;
+          transform: none !important;
+          margin-bottom: -22px;
+          width: 72px; height: 22px;
+          border-radius: 0 0 8px 8px;
+          box-shadow: 0 3px 5px rgba(0,0,0,0.2);}
+        .map-sidebar-toggle-tab span {
+          display: inline-block;
+          transform: rotate(-270deg);}
         .sidebar-slide-wrap {
           margin-left: 0 !important;
           max-height: 2000px;
@@ -904,8 +968,6 @@ shiny::navbarPage(
         .sidebar-slide-wrap.collapsed {
           margin-left: 0 !important;
           max-height: 0 !important;}
-        .sidebar-slide-wrap .sidebar-content,
-        .sidebar-slide-wrap.collapsed .sidebar-content {opacity: 1 !important;}
         .sidebar-toggle-tab {
           position: absolute !important;
           top: auto !important;
@@ -929,15 +991,13 @@ shiny::navbarPage(
 
       @media (hover: none) {
         .leaflet-tooltip:not(.plot-name-label) {
-          display: none !important;}}
+          display: none !important;}
+          input, select, textarea, .selectize-input input {
+          font-size: 16px !important;}}
   ")),
                        
 htmltools::tags$script(htmltools::HTML("
 $(document).on('click', '.navbar-collapse.in a:not(.dropdown-toggle)', function () {
-  $(this).closest('.navbar-collapse').collapse('hide');
-});
-
-$(document).on('click', '.navbar-collapse .dropdown-menu a', function () {
   $(this).closest('.navbar-collapse').collapse('hide');
 });
 
@@ -980,13 +1040,16 @@ $(document).on('click', '#navbar-overlay', function() {
     if (!sel) return;
     sel.settings.openOnFocus = false;
     var $control = $el.next('.selectize-control').find('.selectize-input');
+    if (!$el.prop('multiple')) $control.find('input').attr('inputmode', 'none');
 
     $control.on('touchstart.selectizeToggle', function (e) {
+    if ($(e.target).closest('.remove').length) return;
   e.preventDefault();
 });
 
 $control.on('pointerdown.selectizeToggle', function (e) {
   if ($(e.target).is('input, textarea')) return;
+  if ($(e.target).closest('.remove').length) return;
   e.preventDefault();
   e.stopImmediatePropagation();
   if (sel.isOpen) { sel.close(); sel.blur(); }
@@ -1003,8 +1066,6 @@ $control.on('mousedown.selectizeToggle touchend.selectizeToggle', function (e) {
 });
 
 sel.on('item_select', function () { sel.close(); sel.blur(); });
-sel.on('dropdown_close', function () {sel.blur();
-});
     sel.on('dropdown_open', function() {
       $el.closest('.sidebar-col-outer').css('overflow', 'visible');
       $el.closest('.sidebar-slide-wrap').css('overflow', 'visible');
@@ -1012,6 +1073,7 @@ sel.on('dropdown_close', function () {sel.blur();
     });
 
     sel.on('dropdown_close', function() {
+      sel.blur();
       window.lastSelectizeCloseTime = Date.now();
       $el.closest('.sidebar-col-outer').css('overflow', '');
       $el.closest('.sidebar-slide-wrap').css('overflow', '');
@@ -1136,6 +1198,7 @@ $(document).on('click', function(e) {
     return;
   }
   if ($t.closest('.leaflet-popup').length) return;
+  if ($t.closest('[class*=\"dataLayer\"]').length) return;
   if (!$t.closest('#mapMain').length) return;
   closeAllMapPopups();
 });
@@ -1155,9 +1218,8 @@ $(document).on('shiny:connected', function() {
     var sidebarOuterId = (panelId === 'sp') ? 'SpeciesControls' : (panelId + 'Sidebar');
     var $sidebarOuter = $('#' + sidebarOuterId);
     var $toggleTab = $('#toggle_' + panelId);
-    var $main = $('#' + panelId + 'Main');
     if ($sidebarOuter.length && $toggleTab.length) {
-      lockToggleTabPosition($sidebarOuter, $toggleTab, $main);
+      lockToggleTabPosition($sidebarOuter, $toggleTab);
     }
   });
 });
@@ -1183,7 +1245,6 @@ $(document).on('shiny:connected', function() {
       $toggleTab.attr('title', 'Close data control panel');
       if (!isMobile) {
         setTimeout(function() {
-          $wrap.removeClass('opening');
           $sidebarOuter.find('input.js-range-slider').each(function() {
             var inst = $(this).data('ionRangeSlider');
             if (inst) inst.update();
@@ -1238,20 +1299,21 @@ htmltools::tags$script(htmltools::HTML("
 $(document).ready(function() {
   $('body').append('<div id=\"navbar-overlay\" style=\"display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.35); z-index:1998;\"></div>');
 });
-$(document).on('shown.bs.tab', 'a[data-toggle=\"tab\"]', function() {
-  var isMapTab = $(this).attr('data-value') === 'Map';
-  $('body').toggleClass('on-map-tab', isMapTab);
-});
-function checkMapTabActive() {
-  var isMapTab = $('.tab-content > .tab-pane.active[data-value=\"Map\"]').length > 0;
-  $('body').toggleClass('on-map-tab', isMapTab);
+function syncMapTab() {
+  var open = $('#mapFiltersSidebar').hasClass('active');
+  $('#toggle_map').attr('title', open ? 'Close data control panel' : 'Open data control panel')
+                                    .find('span').text(open ? '\\u00ab' : '\\u00bb');
+  clearTimeout(window._mapRsz);
+    window._mapRsz = setTimeout(function() { if (window.vegMap) window.vegMap.invalidateSize(); }, $(window).width() <= 1024 ? 520 : 320);
 }
-$(document).on('shiny:connected', function() {
-  checkMapTabActive();
-  setTimeout(checkMapTabActive, 500);
-});
-$(document).on('click', '.map-sidebar-close, .map-sidebar-overlay', function() {
+$(document).on('click', '.map-sidebar-overlay', function() {
   $('.map-sidebar, .map-sidebar-overlay').removeClass('active');
+  syncMapTab();
+});
+$(document).on('click', '#toggle_map', function() {
+  var open = $('#mapFiltersSidebar').hasClass('active');
+    $('#mapFiltersSidebar').toggleClass('active', !open);
+  syncMapTab();
 });
 $(document).on('click', '.map-sidebar', function(e) { e.stopPropagation(); });
  
@@ -1260,10 +1322,8 @@ $(document).on('click', '.map-sidebar', function(e) { e.stopPropagation(); });
 htmltools::tags$script(htmltools::HTML("
 $(document).on('shiny:connected', function() {
   var isMobile = $(window).width() <= 1024;
-  if (!isMobile) {
-    $('#mapFiltersSidebar').addClass('active');
-    $('#mapFiltersOverlay').addClass('active');
-  }
+  if (!isMobile) {$('#mapFiltersSidebar').addClass('active');}
+  syncMapTab();
 });
 ")),
                        
@@ -1344,6 +1404,7 @@ shiny::tabPanel(htmltools::tags$div(title="Map the data", "Map"), value = "Map",
                                      shiny::h4("Map Controls", class="panel-heading"),
                                      htmltools::tags$div(title = "Showing every monitoring plot in the network. Change the inputs below to view the filtered data", shiny::uiOutput("mapModeIndicator")),
                                      shiny::hr(),
+                                     htmltools::tags$div(class = "req-note", htmltools::tags$span("*", style = "color:red; font-weight:bold;"),"Required field"),
                                      htmltools::tags$div(title="Park determines plots and species shown in Map Controls and on map", shiny::uiOutput("MapParkControl")),
                                      htmltools::tags$div(title="Each plot is visited once in every 4-year cycle", shiny::uiOutput("MapCycleControl")),
                                      htmltools::tags$div(title="Plant type determines species shown in other controls", 
@@ -1352,17 +1413,20 @@ shiny::tabPanel(htmltools::tags$div(title="Map the data", "Map"), value = "Map",
                                      htmltools::tags$div(title="Select a species of plants to map", shiny::uiOutput("MapSpeciesControl")),
                                      htmltools::tags$div(title="Uncheck for Latin (scientific) names", shiny::checkboxInput(inputId="mapCommon", label="Display common names?", value=TRUE )),
                                      htmltools::tags$div(title="Filter by living, dead, or all trees", shiny::selectizeInput(inputId="TreeStatus", label="Alive or Dead",
-                                                                                                            choices=base::c("Alive"='alive',"Dead" = 'snag',"All"='all'), selected = NULL,
-                                                                                                            options = base::list(placeholder = "Select a tree status",
-                                                                                                                                 onInitialize = base::I('function() { this.setValue(""); }')))),
+                                                                                                            choices=base::c("All"='all', "Alive"='alive',"Dead" = 'snag'), selected = "alive",
+                                                                                                            options = base::list(placeholder = "Select a tree status"))),
                                      htmltools::tags$div(title="Select the data measurement to map",shiny::uiOutput("PlantValueControl"))))),
-                  
+                  htmltools::tags$div(
+                    id = "toggle_map",
+                    class = "map-sidebar-toggle-tab",
+                    title = "Open data control panel",
+                    htmltools::tags$span("\u00bb")),                  
               
                   
                   # map
                   #### The Map, full width/height ####
-                  htmltools::div(leaflet::leafletOutput("VegMap", height="100%"), style="position:absolute; top:0; left:0; right:0; bottom:0;"),
-                  htmltools::tags$div(style = "position: absolute; top: 0; left: 0; right: 0; bottom: 0; display: flex; align-items: center; justify-content: center;pointer-events: none; z-index: 9989;",
+                  htmltools::div(id = "mapContainer", leaflet::leafletOutput("VegMap", height="100%"), style="position:absolute; top:0; left:0; right:0; bottom:0;"),
+                  htmltools::tags$div(id = "mapOverlayWrap", style = "position: absolute; top: 0; left: 0; right: 0; bottom: 0; display: flex; align-items: center; justify-content: center;pointer-events: none; z-index: 9989;",
                     shiny::uiOutput("incompleteInputWarning"),
                     htmltools::tags$div(style = "position: absolute; top: 0; left: 0; right: 0; bottom: 0; display: flex; align-items: flex-end; justify-content: center; padding-bottom: clamp(20px, 4vh, 40px);
                                                 padding-left: clamp(100px, 20vw, 360px); padding-right: clamp(90px, 15vw, 150px); box-sizing: border-box; pointer-events: none; z-index: 9989;",
@@ -1393,6 +1457,7 @@ shiny::tabPanel(
           class = "panel panel-default controls",
           shiny::h4("Data:", class = "panel-heading"),
           shiny::actionButton(inputId = "densResetData", label = "\u21ba Reset Data", class = "btn btn-default btn-block", style = "margin-bottom: 10px;"),
+          htmltools::tags$div(class = "req-note", htmltools::tags$span("*", style = "color:red; font-weight:bold;"),"Required field"),
           htmltools::tags$div(title = "Park determines the species shown in figures and other controls", shiny::uiOutput(outputId = "densParkControl")),
           htmltools::tags$div(title = "Each plot is visited once in every 4-year cycle", shiny::uiOutput("densCycleControl")),
           htmltools::tags$div(title = "Plant type determines species shown in other controls", shiny::selectizeInput(inputId = "densGroup", label = "Type of plant:", choices = PLANTTYPES)),
@@ -1402,7 +1467,7 @@ shiny::tabPanel(
                               shiny::radioButtons(
                                 inputId = "densSpeciesType",
                                 label = "Which species?",
-                                choices = base::c("Most common species" = "Common", "Least common species" = "Least", "Pick individual species" = "Pick", "All species combined" = "All"),
+                                choices = base::c("Most common species" = "Common", "Least common species" = "Least", "All species combined" = "All", "Pick individual species" = "Pick"),
                                 inline = FALSE)),
           shiny::uiOutput(outputId = "densSpeciesControl"),
           htmltools::tags$div(title = "Select the measurement to display on the y-axis",shiny::uiOutput(outputId = "densValControl")),
@@ -1523,17 +1588,17 @@ shiny::tabPanel(
         id = "tsSlideWrap",
         class = "sidebar-slide-wrap",
         shiny::wellPanel(class="panel panel-default controls", shiny::h4("Data:", class="panel-heading"),
-                         shiny::actionButton(inputId = "tsResetData", label = "\u21ba Reset Data",
-                                             class = "btn btn-default btn-block", style = "margin-bottom: 10px;"),
+                         shiny::actionButton(inputId = "tsResetData", label = "\u21ba Reset Data", class = "btn btn-default btn-block", style = "margin-bottom: 10px;"),
+                         htmltools::tags$div(class = "req-note", htmltools::tags$span("*", style = "color:red; font-weight:bold;"),"Required field"),
                          htmltools::tags$div(title="Park determines the species shown in figures and other controls", shiny::uiOutput(outputId="tsParkControl")),
                          htmltools::tags$div(title="Plant type determines species shown in other controls", shiny::selectizeInput(inputId="tsGroup", label="Type of plant:", choices=PLANTTYPES)),
                          htmltools::tags$div(title="Uncheck for Latin (scientific) names", shiny::checkboxInput(inputId="tsCommon", label="Display common names?", value=TRUE)),
                          htmltools::tags$div(title="Check to show confidence interval ribbons on figure", shiny::checkboxInput(inputId = "tsShowCI", label = "Show 95% confidence intervals", value = FALSE)),
                          htmltools::tags$div(title="Graph the most common species, least common species, species you select, or all species observed", 
                                              shiny::radioButtons(inputId="tsSpeciesType", label="Which species?", 
-                                                                 choices=base::c("Most common species"="Common", "Least common species"="Least", "Pick individual species"="Pick", "All species combined"="All"), inline=FALSE)),
-                         htmltools::tags$div(title="Select the measurement to display on the y-axis", shiny::uiOutput(outputId="tsValControl")),
+                                                                 choices=base::c("Most common species"="Common", "Least common species"="Least", "All species combined"="All", "Pick individual species"="Pick"), inline=FALSE)),
                          shiny::uiOutput(outputId="tsSpeciesControl"),
+                         htmltools::tags$div(title="Select the measurement to display on the y-axis", shiny::uiOutput(outputId="tsValControl")),
                          htmltools::tags$div(title = "Pull sliders on either end to adjust the time periods", shiny::uiOutput(outputId = "tsCycleControl")),
                          shiny::conditionalPanel(condition="input.tsPanel=='Graph'", shiny::hr(), shiny::actionButton(inputId="tsGraphButton", label="Display Options", class="btn btn-primary btn-block action-button options-toggle-btn", `data-target` = "tsOptions")),
                          shiny::conditionalPanel(condition="input.tsPanel=='Table'", shiny::hr(),
@@ -1635,8 +1700,8 @@ shiny::tabPanel(htmltools::tags$div(title="Graph Importance Values", "Importance
                       class = "sidebar-slide-wrap",
                       shiny::wellPanel(class="panel panel-default controls",
                                        shiny::h4("Data:", class="panel-heading"),
-                                       shiny::actionButton(inputId = "IVResetData", label = "\u21ba Reset Data",
-                                                           class = "btn btn-default btn-block", style = "margin-bottom: 10px;"),
+                                       shiny::actionButton(inputId = "IVResetData", label = "\u21ba Reset Data", class = "btn btn-default btn-block", style = "margin-bottom: 10px;"),
+                                       htmltools::tags$div(class = "req-note", htmltools::tags$span("*", style = "color:red; font-weight:bold;"),"Required field"),
                                        htmltools::tags$div(title="Park determines the species shown in figures and other controls",shiny::uiOutput("IVParkControl")),
                                        htmltools::tags$div(title="Each plot is visited once in every 4-year cycle", shiny::uiOutput("IVCycleControl")),
                                        htmltools::tags$div(title="Plant type determines species shown in other controls", shiny::selectizeInput(inputId="IVGroup", label="Type of plant:",choices=IVPLANTTYPES)),
@@ -1755,6 +1820,7 @@ shiny::tabPanel(id="SpeciesPanel",
                       class = "sidebar-slide-wrap",
                       shiny::wellPanel(id = "specDataPanel", class="panel panel-default controls",
                                        shiny::h4("Species Data:", class="panel-heading"),
+                                       htmltools::tags$div(class = "req-note", htmltools::tags$span("*", style = "color:red; font-weight:bold;"),"Required field"),
                                        htmltools::tags$div(
                                          title="Select the type of species list", 
                                          shiny::radioButtons(inputId="SpListType", label="Select a species list:",
