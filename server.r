@@ -461,19 +461,7 @@ shiny::shinyServer(function(input,output,session){
         input$MapCycles)
       if (base::isTRUE(input$MapGroup == "trees")) shiny::req(input$TreeStatus)
       
-      # Do nothing if all inputs still match defaults
-      default_cycle <- base::as.character(DATACYCLES$Cycle[base::nrow(DATACYCLES)])
-      
-      is_default <- 
-        (base::is.null(input$MapGroup) || base::identical(input$MapGroup, "trees")) &&
-        (base::is.null(input$TreeStatus) || base::identical(input$TreeStatus, "alive")) &&
-        (base::is.null(input$MapValues) || base::identical(input$MapValues, "count")) &&
-        (base::is.null(input$MapCycles) || base::identical(input$MapCycles, default_cycle)) &&
-        (base::length(input$MapSpecies) == 0) &&
-        (base::is.null(input$MapPark) || input$MapPark %in% base::c("", "All"))
-      
-      if (!is_default) {
-        showAllPlots(FALSE)}},
+      showAllPlots(FALSE)},
     ignoreInit = TRUE)
   
   # reflects showallplots()
@@ -2578,7 +2566,7 @@ shiny::observeEvent(input$MapPark, {
   #### create compare plotting df #####
   
   ###bugfix update###########################
-  dens_all_parks <- function(VEGDATA, group, years, values, common = FALSE) {
+  dens_all_parks <- function(VEGDATA, group, years, values, common = FALSE, check_cycles = TRUE) {
     area_val <- if (values == "presab") "plot" else "ha"
     yr_start <- base::min(years)
     yr_end <- base::max(years)
@@ -2588,18 +2576,16 @@ shiny::observeEvent(input$MapPark, {
     skipped_row_mismatch  <- base::character(0)
     skipped_other_error   <- base::character(0)
     
-    per_park <- base::lapply(base::names(VEGDATA), function(pk) {
+    # parks eligible for pooling (same definition / no-data checks as before)
+    eligible <- base::names(VEGDATA)[base::vapply(base::names(VEGDATA), function(pk) {
       x <- VEGDATA[[pk]]
-      
-      # skip parks whose cycle definition doesn't match this year range
       park_cycles <- base::tryCatch(NPSForVeg::getCycles(x), error = function(e) NULL)
       
-      if (!base::is.null(park_cycles) && !base::any(
+      if (check_cycles && !base::is.null(park_cycles) && !base::any(
         park_cycles$YearStart == yr_start & park_cycles$YearEnd == yr_end)) {
         skipped_definition <<- base::c(skipped_definition, pk)
-        base::return(NULL)}
+        base::return(FALSE)}
       
-      # no observations for this group/years
       has_obs <- base::tryCatch({
         obs <- NPSForVeg::getPlants(x, group = group, years = years)
         !base::is.null(obs) && base::nrow(obs) > 0
@@ -2607,35 +2593,9 @@ shiny::observeEvent(input$MapPark, {
       
       if (!has_obs) {
         skipped_no_data <<- base::c(skipped_no_data, pk)
-        base::return(NULL)}
-      
-      out <- base::tryCatch({
-        base::set.seed(42)
-        NPSForVeg::dens(object = x, group = group, years = years,
-                        values = values, common = common,
-                        area = area_val, Total = FALSE)
-      },
-      error = function(e) {
-        msg <- conditionMessage(e)
-        message("dens_all_parks: skipping park '", pk, "': ", msg)
-        if (base::grepl("replacement has", msg, ignore.case = TRUE)) {
-          skipped_row_mismatch <<- base::c(skipped_row_mismatch, pk)
-        } else {
-          skipped_other_error <<- base::c(skipped_other_error, pk)
-        }
-        NULL
-      })
-
-# -------------------------------------------------------------------------
-
-      
-      if (base::is.null(out) || base::nrow(out) == 0) {
-        skipped_no_data <<- base::c(skipped_no_data, pk)
-        base::return(NULL)}
-      out
-    })
-    
-    per_park <- base::Filter(base::Negate(base::is.null), per_park)
+        base::return(FALSE)}
+      TRUE
+    }, base::logical(1))]
     
     empty_result <- base::data.frame(
       Latin_Name = base::character(0), Mean = base::numeric(0),
@@ -2651,35 +2611,31 @@ shiny::observeEvent(input$MapPark, {
       base::attr(res, "skipped_parks_other_error")  <- skipped_other_error
       res}
     
-    if (!base::length(per_park)) base::return(attach_attrs(empty_result))
+    run_pooled <- function(pks) {
+      base::set.seed(42)
+      NPSForVeg::dens(object = VEGDATA[pks], group = group, years = years,
+                      values = values, common = common,
+                      area = area_val, Total = FALSE, output = "dataframe")}
     
-    combined_raw <- dplyr::bind_rows(per_park) %>%
-      dplyr::filter(!base::is.na(Mean), Mean > 0)  # only where species actually occurs
+    pooled <- if (base::length(eligible) > 0) base::tryCatch(run_pooled(eligible), error = function(e) NULL) else NULL
     
-    if (base::nrow(combined_raw) == 0) base::return(attach_attrs(empty_result))
+    # pooled call failed: find parks that fail on their own, drop them, retry once
+    if (base::is.null(pooled) && base::length(eligible) > 0) {
+      bad <- base::character(0)
+      for (pk in eligible) {
+        base::tryCatch(run_pooled(pk), error = function(e) {
+          msg <- conditionMessage(e)
+          message("dens_all_parks: skipping park '", pk, "': ", msg)
+          if (base::grepl("replacement has", msg, ignore.case = TRUE)) {
+            skipped_row_mismatch <<- base::c(skipped_row_mismatch, pk)
+          } else {
+            skipped_other_error <<- base::c(skipped_other_error, pk)}
+          bad <<- base::c(bad, pk)})}
+      eligible <- base::setdiff(eligible, bad)
+      pooled <- if (base::length(eligible) > 0) base::tryCatch(run_pooled(eligible), error = function(e) NULL) else NULL}
     
-    species_list <- base::unique(combined_raw$Latin_Name)
-    
-    result_rows <- base::lapply(species_list, function(sp) {
-      d <- combined_raw[combined_raw$Latin_Name == sp, ]
-      if (base::nrow(d) == 1) {
-        base::return(base::data.frame(
-          Latin_Name = sp, Mean = d$Mean[1],
-          Lower.95 = d$Lower.95[1], Upper.95 = d$Upper.95[1],
-          stringsAsFactors = FALSE))}
-      SE <- (d$Upper.95 - d$Lower.95) / (2 * 1.96)
-      w <- base::ifelse(!base::is.na(SE) & SE > 0, 1 / SE^2, NA_real_)
-      
-      if (base::all(base::is.na(w))) {
-        base::data.frame(Latin_Name = sp, Mean = base::mean(d$Mean, na.rm = TRUE),
-                         Lower.95 = NA_real_, Upper.95 = NA_real_, stringsAsFactors = FALSE)
-      } else {
-        m <- stats::weighted.mean(d$Mean, w, na.rm = TRUE)
-        se_comb <- base::sqrt(1 / base::sum(w, na.rm = TRUE))
-        base::data.frame(Latin_Name = sp, Mean = m, Lower.95 = m - 1.96 * se_comb, Upper.95 = m + 1.96 * se_comb, stringsAsFactors = FALSE)}})
-    
-    combined_result <- dplyr::bind_rows(result_rows)
-    attach_attrs(combined_result)
+    if (base::is.null(pooled) || base::nrow(pooled) == 0) base::return(attach_attrs(empty_result))
+    attach_attrs(pooled)
   }##########################################
   
   compareDf <- shiny::reactive({
@@ -3833,34 +3789,41 @@ shiny::observeEvent(input$MapPark, {
                             placeholder = 'Select a park',
                             onInitialize = base::I('function() { this.setValue(""); }')))})
   
-  ts_all_parks <- function(VEGDATA, group, years, values) {dens_all_parks(VEGDATA = VEGDATA, group = group, years = years, values = values, common = FALSE)}
+  ts_all_parks <- function(VEGDATA, group, years, values) {dens_all_parks(VEGDATA = VEGDATA, group = group, years = years, values = values, common = FALSE, check_cycles = FALSE)}
   
-  # cycle control
-  output$tsCycleControl <- shiny::renderUI({
-    shiny::req(DATACYCLES, input$tsPark, input$tsGroup, input$tsValues)
-    shiny::req(!base::is.null(input$tsPark), input$tsPark == "All" | input$tsPark %in% base::names(VEGDATA))
-    
-    cycle_vals <- base::sort(base::unique(DATACYCLES$Cycle))
-    
-    cycles_with_data <- base::Filter(function(cyc) {
-      yrs <- DATACYCLES$YearStart[DATACYCLES$Cycle == cyc]:DATACYCLES$YearEnd[DATACYCLES$Cycle == cyc]
-      base::tryCatch({
-        if (input$tsPark == "All") {
-          base::any(base::sapply(base::names(VEGDATA), function(pk) {
-            plants <- NPSForVeg::getPlants(VEGDATA[[pk]], group = input$tsGroup, years = yrs, common = FALSE)
-            !base::is.null(plants) && base::nrow(plants) > 0}))
-        } else {plants <- NPSForVeg::getPlants(VEGDATA[[input$tsPark]], group = input$tsGroup, years = yrs, common = FALSE)
-        !base::is.null(plants) && base::nrow(plants) > 0}}, error = function(e) FALSE)}, cycle_vals)
-    
-    shiny::req(base::length(cycles_with_data) >= 1)
-    
-    shiny::sliderInput(
-      inputId = "tsCycles",
-      label = "Display cycles:",
-      min = base::min(cycles_with_data),
-      max = base::max(cycles_with_data),
-      value = base::c(base::min(cycles_with_data), base::max(cycles_with_data)),
-      step = 1, ticks = FALSE)})
+  # # cycle control
+  # output$tsCycleControl <- shiny::renderUI({
+  #   shiny::req(DATACYCLES, input$tsPark, input$tsGroup, input$tsValues)
+  #   shiny::req(!base::is.null(input$tsPark), input$tsPark == "All" | input$tsPark %in% base::names(VEGDATA))
+  #   
+  #   cycle_vals <- base::sort(base::unique(DATACYCLES$Cycle))
+  #   
+  #   cycles_with_data <- base::Filter(function(cyc) {
+  #     yrs <- DATACYCLES$YearStart[DATACYCLES$Cycle == cyc]:DATACYCLES$YearEnd[DATACYCLES$Cycle == cyc]
+  #     base::tryCatch({
+  #       if (input$tsPark == "All") {
+  #         base::any(base::sapply(base::names(VEGDATA), function(pk) {
+  #           plants <- NPSForVeg::getPlants(VEGDATA[[pk]], group = input$tsGroup, years = yrs, common = FALSE)
+  #           !base::is.null(plants) && base::nrow(plants) > 0}))
+  #       } else {plants <- NPSForVeg::getPlants(VEGDATA[[input$tsPark]], group = input$tsGroup, years = yrs, common = FALSE)
+  #       !base::is.null(plants) && base::nrow(plants) > 0}}, error = function(e) FALSE)}, cycle_vals)
+  #   
+  #   shiny::req(base::length(cycles_with_data) >= 1)
+  #   
+  #   shiny::sliderInput(
+  #     inputId = "tsCycles",
+  #     label = "Display cycles:",
+  #     min = base::min(cycles_with_data),
+  #     max = base::max(cycles_with_data),
+  #     value = base::c(base::min(cycles_with_data), base::max(cycles_with_data)),
+  #     step = 1, ticks = FALSE)})
+  
+  # years control
+  output$tsYearControl <- shiny::renderUI({
+    shiny::sliderInput(inputId = "tsYears", label = "Display years:",
+                       min = base::min(DATACYCLES$YearStart), max = base::max(DATACYCLES$YearEnd),
+                       value = base::c(base::min(DATACYCLES$YearStart), base::max(DATACYCLES$YearEnd)),
+                       step = 1, sep = "", ticks = FALSE)})
 
   # value control
   tsValuesUse <- shiny::reactive({
@@ -3893,10 +3856,11 @@ shiny::observeEvent(input$MapPark, {
   # species list
   tsSpecList <- shiny::reactive({
     shiny::req(input$tsPark, input$tsGroup, base::nzchar(input$tsPark))
-    shiny::req(input$tsCycles, base::length(input$tsCycles) == 2)
+    #shiny::req(input$tsCycles, base::length(input$tsCycles) == 2)
     
     all_cycles <- base::sort(base::unique(DATACYCLES$Cycle))
-    cycles_use <- all_cycles[all_cycles >= input$tsCycles[1] & all_cycles <= input$tsCycles[2]]
+    #cycles_use <- all_cycles[all_cycles >= input$tsCycles[1] & all_cycles <= input$tsCycles[2]]
+    cycles_use <- all_cycles
     shiny::req(base::length(cycles_use) > 0)
     
     name_obj <- if (input$tsPark == "All") VEGDATA[[PARKLIST[1]]] else VEGDATA[[input$tsPark]]
@@ -4018,7 +3982,8 @@ shiny::observeEvent(input$MapPark, {
 
   # keep species selection when toggling common/latin
   shiny::observeEvent(input$tsCommon, {
-    shiny::req(input$tsPark, input$tsGroup, input$tsCycles)
+    shiny::req(input$tsPark, input$tsGroup)
+    #, input$tsCycles)
     current <- shiny::isolate(input$tsSpecies)
     new_choices <- tsSpecList()
     shiny::req(!base::is.null(new_choices), base::length(new_choices) > 0)
@@ -4026,21 +3991,27 @@ shiny::observeEvent(input$MapPark, {
     shiny::updateSelectizeInput(session, "tsSpecies", choices = new_choices, selected = new_selected)})
 
   tsData <- shiny::reactive({
-    shiny::req(input$tsPark, input$tsGroup, input$tsValues, input$tsCycles)
+    shiny::req(input$tsPark, input$tsGroup, input$tsValues)
+    #, input$tsCycles)
     shiny::req(base::nzchar(input$tsPark))
     
-    all_cycles <- base::sort(base::unique(DATACYCLES$Cycle))
-    cycles_use <- all_cycles[all_cycles >= input$tsCycles[1] & all_cycles <= input$tsCycles[2]]
+    # all_cycles <- base::sort(base::unique(DATACYCLES$Cycle))
+    # cycles_use <- all_cycles[all_cycles >= input$tsCycles[1] & all_cycles <= input$tsCycles[2]]
+    cycles_use <- base::sort(base::unique(NPSForVeg::getEvents(
+      object = if (input$tsPark == "All") VEGDATA else VEGDATA[[input$tsPark]], plot.type = "all")$Event_Year))
     
-    park_cycles <- if (input$tsPark != "All") {
-      base::tryCatch(NPSForVeg::getCycles(VEGDATA[[input$tsPark]]), error = function(e) NULL)
-    } else { NULL }
+    # park_cycles <- if (input$tsPark != "All") {
+    #   base::tryCatch(NPSForVeg::getCycles(VEGDATA[[input$tsPark]]), error = function(e) NULL)
+    # } else { NULL }
+    park_cycles <- NULL
     
     results <- base::lapply(cycles_use, function(cyc) {
-      yr_start <- DATACYCLES$YearStart[DATACYCLES$Cycle == cyc]
-      yr_end <- DATACYCLES$YearEnd[DATACYCLES$Cycle == cyc]
-      yrs <- yr_start:yr_end
-      cycle_label <- base::paste0(DATACYCLES$Name[DATACYCLES$Cycle == cyc], " (", yr_start, "-", yr_end, ")")
+      # yr_start <- DATACYCLES$YearStart[DATACYCLES$Cycle == cyc]
+      # yr_end <- DATACYCLES$YearEnd[DATACYCLES$Cycle == cyc]
+      # yrs <- yr_start:yr_end
+      # cycle_label <- base::paste0(DATACYCLES$Name[DATACYCLES$Cycle == cyc], " (", yr_start, "-", yr_end, ")")
+      yrs <- cyc
+      cycle_label <- base::as.character(cyc)
       
       if (input$tsPark != "All") {
         # skip the query entirely when this cycle's year range doesn't match the park's own cycle definition
@@ -4128,7 +4099,7 @@ shiny::observeEvent(input$MapPark, {
                                        herbs = "understory plant", vines = "vine", input$tsGroup),
                    " observations were recorded at ",
                    if (input$tsPark == "All") "any monitored park" else NPSForVeg::getNames(VEGDATA[[input$tsPark]], "long"),
-                   " during the selected cycles.")))
+                   " during the sampled years.")))
     
     valid_names <- results$Latin_Name[!base::is.na(results$Latin_Name)]
     
@@ -4151,7 +4122,8 @@ shiny::observeEvent(input$MapPark, {
     results$Common_Name <- common_lookup
     
     results
-  }) %>% shiny::bindCache(input$tsPark, input$tsGroup, input$tsValues, input$tsCycles[1], input$tsCycles[2])
+  }) %>% shiny::bindCache(input$tsPark, input$tsGroup, input$tsValues)
+  #, input$tsCycles[1], input$tsCycles[2])
     
   # filtered plot df
   tsDf <- shiny::reactive({
@@ -4355,7 +4327,7 @@ shiny::observeEvent(input$MapPark, {
         p <- plotly::add_trace(
           p,
           data = d,
-          x = ~CycleLabel,
+          x = ~Cycle,
           y = ~Upper.95,
           type = "scatter",
           mode = "lines",
@@ -4368,7 +4340,7 @@ shiny::observeEvent(input$MapPark, {
         p <- plotly::add_trace(
           p,
           data = d,
-          x = ~CycleLabel,
+          x = ~Cycle,
           y = ~Lower.95,
           type = "scatter",
           mode = "lines",
@@ -4380,10 +4352,18 @@ shiny::observeEvent(input$MapPark, {
           name = base::paste0(sp, "_lower"),
           legendgroup = sp)}
 
+      # # loess smoother
+      # if (base::sum(!base::is.na(d$Mean_plot)) >= 4) {
+      #   fit <- stats::loess(Mean_plot ~ Cycle, data = d, span = 0.75, degree = 1)
+      #   grid <- base::data.frame(Cycle = base::seq(base::min(d$Cycle), base::max(d$Cycle), length.out = 100))
+      #   p <- plotly::add_trace(p, x = grid$Cycle, y = stats::predict(fit, grid), type = "scatter", mode = "lines",
+      #                          line = base::list(color = col, width = lw), showlegend = FALSE,
+      #                          name = sp, legendgroup = sp, hoverinfo = "skip")}
+      
       # mean
       p <- plotly::add_trace(p,
                              data = d,
-                             x = ~CycleLabel,
+                             x = ~Cycle,
                              y = ~Mean_plot,
                              type = "scatter",
                              mode = "lines+markers",
@@ -4432,14 +4412,12 @@ shiny::observeEvent(input$MapPark, {
 
     p <- plotly::layout(p,
                         xaxis = base::list(
-                          title = base::list(text = "Monitoring Cycle", font = base::list(size = font_s)),
-                          type = "category",
-                          categoryorder = "array",
-                          categoryarray = cycle_labels$CycleLabel,
+                          title = base::list(text = "Year", font = base::list(size = font_s)),
+                          type = "linear",
+                          range = shiny::isolate(input$tsYears %||% base::range(df$Cycle, na.rm = TRUE)),
+                          tickformat = "d",
+                          dtick = 1,
                           tickfont = base::list(size = font_s - 2),
-                          tickmode = "array",
-                          tickvals = cycle_labels$CycleLabel,
-                          ticktext = cycle_labels$CycleLabel,
                           showgrid = TRUE),
                         yaxis = base::list(
                           title = base::list(text = tsYlabel(), font = base::list(size = font_s)),
@@ -4472,7 +4450,7 @@ shiny::observeEvent(input$MapPark, {
   
   # table title
   tsTitleText <- shiny::reactive({
-    shiny::req(input$tsPark, input$tsGroup, input$tsValues, input$tsCycles)
+    shiny::req(input$tsPark, input$tsGroup, input$tsValues, input$tsYears)
     shiny::req(base::nzchar(input$tsPark))
     
     park_label <- if (input$tsPark == "All") "All Parks" else NPSForVeg::getNames(VEGDATA[[input$tsPark]], "long")
@@ -4490,28 +4468,30 @@ shiny::observeEvent(input$MapPark, {
                               size = base::switch(input$tsGroup, trees =, saplings = "Basal Area", herbs = "Percent Cover", cwd = "Volume"),
                               presab = "Proportion of Plots Occupied")
     
-    all_cycles <- base::sort(base::unique(DATACYCLES$Cycle))
-    cycles_use <- all_cycles[all_cycles >= input$tsCycles[1] & all_cycles <= input$tsCycles[2]]
-    
-    yr_start <- base::min(DATACYCLES$YearStart[DATACYCLES$Cycle %in% cycles_use])
-    yr_end <- base::max(DATACYCLES$YearEnd[DATACYCLES$Cycle %in% cycles_use])
-    period <- base::paste0(yr_start, "-", yr_end)
+    # all_cycles <- base::sort(base::unique(DATACYCLES$Cycle))
+    # cycles_use <- all_cycles[all_cycles >= input$tsCycles[1] & all_cycles <= input$tsCycles[2]]
+    # 
+    # yr_start <- base::min(DATACYCLES$YearStart[DATACYCLES$Cycle %in% cycles_use])
+    # yr_end <- base::max(DATACYCLES$YearEnd[DATACYCLES$Cycle %in% cycles_use])
+    # period <- base::paste0(yr_start, "-", yr_end)
+    period <- base::paste0(input$tsYears[1], "-", input$tsYears[2])
     
     unit_suffix <- base::paste0(" (", tsYlabel(), ")")
     
-    base::paste0(park_label, ": ", group_label, " ", val_label, " by Cycle ", period, unit_suffix)})
+    base::paste0(park_label, ": ", group_label, " ", val_label, " by Year ", period, unit_suffix)})
 
   output$tsTableTitle <- shiny::renderText({ tsTitleText() })
 
   # table
   tempTsTable <- shiny::reactive({
-    shiny::req(tsDf())
+    shiny::req(tsDf(), input$tsYears)
     full_df <- tsDf()
     shiny::validate(shiny::need(!base::is.null(input$tsPark) && input$tsPark != "", 
                                 "There are no results for this combination of choices. Please select a park, species, or plant type."))
     
     
     df <- full_df %>%
+      dplyr::filter(Cycle >= input$tsYears[1], Cycle <= input$tsYears[2]) %>%
       dplyr::select(Species, CycleLabel, Mean, Lower.95, Upper.95) %>%
       dplyr::filter(!base::is.na(Species), !base::is.na(Mean)) %>%
       dplyr::mutate(`Lower 95% CI` = dplyr::if_else(base::is.na(Lower.95) | Lower.95 == Mean | (Lower.95 == Mean & Upper.95 == Mean), NA_real_, Lower.95),
@@ -4575,7 +4555,7 @@ shiny::observeEvent(input$MapPark, {
   # missing data warning
   tsMissingWarningDismissed <- shiny::reactiveVal(FALSE)
 
-  shiny::observeEvent(base::list(input$tsPark, input$tsGroup, input$tsCycles, input$tsValues),
+  shiny::observeEvent(base::list(input$tsPark, input$tsGroup, input$tsValues),
     { tsMissingWarningDismissed(FALSE) })
 
   shiny::observeEvent(input$dismiss_ts_warning, { tsMissingWarningDismissed(TRUE) })
@@ -4659,8 +4639,15 @@ shiny::observeEvent(input$MapPark, {
     partial_no_data <- tsPartialNoData()
     partial_row_mismatch <- tsPartialRowMismatchData()
     partial_other <- tsPartialOtherErrorData()
+    
+    # years inside the sampled range with no monitoring events at all
+    sampled_yrs <- base::unique(tsData()$Cycle)
+    unsampled <- base::setdiff(base::min(sampled_yrs):base::max(sampled_yrs), sampled_yrs)
+    if (base::length(unsampled) == 0) unsampled <- NULL
+    
     if (base::is.null(missing) && base::is.null(mismatched) && base::is.null(partial_definition) &&
-        base::is.null(partial_no_data) && base::is.null(partial_row_mismatch) && base::is.null(partial_other)) base::return(NULL)
+        base::is.null(partial_no_data) && base::is.null(partial_row_mismatch) && base::is.null(partial_other) &&
+        base::is.null(unsampled)) base::return(NULL)
     
     park_label <- if (input$tsPark == "All") "All Parks" else NPSForVeg::getNames(VEGDATA[[input$tsPark]], "long")
     group_label <- base::switch(input$tsGroup,
@@ -4682,32 +4669,30 @@ shiny::observeEvent(input$MapPark, {
     
     parts <- base::c()
     
+    if (!base::is.null(unsampled)) {
+      parts <- base::c(parts, base::paste0("No monitoring was conducted at ", park_label, " during: ", base::paste(unsampled, collapse = "; "), "."))}
+    
     if (!base::is.null(missing)) {
-      n <- base::length(missing)
-      parts <- base::c(parts, base::paste0("No ", group_label, " observations were recorded at ", park_label, " during: ", base::paste(missing, collapse = "; "),
-                                           ". ", if (n == 1) "This cycle has" else "These cycles have", " been removed from the figure and table."))}
+      parts <- base::c(parts, base::paste0("No ", group_label, " observations were recorded at ", park_label, " during: ", base::paste(missing, collapse = "; "), "."))}
     
     if (!base::is.null(mismatched)) {
-      n2 <- base::length(mismatched)
-      parts <- base::c(parts, base::paste0(base::paste(mismatched, collapse = "; "), " ", if (n2 == 1) "is" else "are",
-                                           " incompatible with the current network's data structure (see Cycles.csv) and ",
-                                           if (n2 == 1) "has" else "have", " been removed from the figure and table."))}
+      parts <- base::c(parts, base::paste0("The data structure is incompatible with the current network for: ", base::paste(mismatched, collapse = "; "), "."))}
     
     if (!base::is.null(partial_definition)) {
       parts <- base::c(parts, build_partial_line(partial_definition,
-                                                 "Some parks are incompatible with the current network's data structure (see Cycles.csv) and were excluded from the following cycles"))}
+                                                 "Some parks have an incompatible data structure and were excluded from the following years"))}
     
     if (!base::is.null(partial_no_data)) {
       parts <- base::c(parts, build_partial_line(partial_no_data,
-                                                 base::paste0("Some parks had no ", group_label, " observations and were excluded from the following cycles")))}
+                                                 base::paste0("Some parks had no ", group_label, " observations and were excluded from the following years")))}
     
     if (!base::is.null(partial_row_mismatch)) {
       parts <- base::c(parts, build_partial_line(
-        partial_row_mismatch, 
-        "Some parks could not be processed due to a known data-structure issue (a park monitored more than once within a cycle) and were excluded from the following cycles"))}
+        partial_row_mismatch,
+        "Some parks could not be processed because they were monitored more than once in the same year and were excluded from the following years"))}
     
     if (!base::is.null(partial_other)) {
-      parts <- base::c(parts, build_partial_line(partial_other, "Some parks could not be processed due to an unexpected data error and were excluded from the following cycles"))}
+      parts <- base::c(parts, build_partial_line(partial_other, "Some parks could not be processed due to an unexpected data error and were excluded from the following years"))}
     
     base::paste0("Warning: ", base::paste(parts, collapse = " "))})
   
@@ -4729,19 +4714,20 @@ shiny::observeEvent(input$MapPark, {
     
     if (base::length(single_plot_cycles) == 0) base::return(NULL)
     
-    base::paste0("Warning: Only one monitoring plot exists for ", base::paste(single_plot_cycles, collapse = "; "),". Confidence intervals cannot be estimated.")})
+    base::paste0("Warning: Only one monitoring plot was sampled at ", NPSForVeg::getNames(VEGDATA[[input$tsPark]], "long"), " during: ",
+                 base::paste(single_plot_cycles, collapse = "; "), ". Confidence intervals cannot be estimated for these years.")})
   
   tsSinglePlotWarningDismissed <- shiny::reactiveVal(FALSE)
   shiny::observeEvent(
     base::list(input$tsPark,
          input$tsGroup,
-         input$tsCycles,
          input$tsValues),
     {tsSinglePlotWarningDismissed(FALSE)})
   
    # summary report
    tsReportText <- shiny::reactive({
-    shiny::req(input$tsPark, input$tsGroup, input$tsValues, input$tsCycles)
+    shiny::req(input$tsPark, input$tsGroup, input$tsValues)
+     #, input$tsCycles)
     shiny::req(base::nzchar(input$tsPark))
     df <- base::tryCatch(tsDf(), error = function(e) NULL)
     if (base::is.null(df) || base::nrow(df) == 0) base::return(NULL)
@@ -4762,13 +4748,17 @@ shiny::observeEvent(input$MapPark, {
                                                    herbs = "percent cover","size units per hectare"),
                               presab = "proportion of plots occupied")
     
-    all_c <- base::sort(base::unique(DATACYCLES$Cycle))
-    cycles_use <- all_c[all_c >= input$tsCycles[1] & all_c <= input$tsCycles[2]]
-    yr_start <- base::min(DATACYCLES$YearStart[DATACYCLES$Cycle %in% cycles_use])
-    yr_end <- base::max(DATACYCLES$YearEnd[DATACYCLES$Cycle   %in% cycles_use])
-    period <- base::paste0(yr_start, "\u2013", yr_end)
-    n_cycles <- base::length(cycles_use)
-    cycle_word <- if (n_cycles == 1) "cycle" else "cycles"
+    # all_c <- base::sort(base::unique(DATACYCLES$Cycle))
+    # cycles_use <- all_c[all_c >= input$tsCycles[1] & all_c <= input$tsCycles[2]]
+    # yr_start <- base::min(DATACYCLES$YearStart[DATACYCLES$Cycle %in% cycles_use])
+    # yr_end <- base::max(DATACYCLES$YearEnd[DATACYCLES$Cycle   %in% cycles_use])
+    # period <- base::paste0(yr_start, "\u2013", yr_end)
+    # n_cycles <- base::length(cycles_use)
+    # cycle_word <- if (n_cycles == 1) "cycle" else "cycles"
+    yrs_obs <- base::sort(base::unique(df$Cycle[!base::is.na(df$Mean)]))
+    period <- base::paste0(base::min(yrs_obs), "\u2013", base::max(yrs_obs))
+    n_cycles <- base::length(yrs_obs)
+    cycle_word <- if (n_cycles == 1) "year" else "years"
     
     # per-species summary across cycles
     df_valid <- df %>% dplyr::filter(!base::is.na(Mean), !base::is.na(Species))

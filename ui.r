@@ -1364,6 +1364,15 @@ $(document).on('shiny:connected', function() {
 ")),
 
 htmltools::tags$script(htmltools::HTML("
+$(document).on('change', '#tsYears', function() {
+  var v = String($(this).val()).split(';').map(Number);
+  var el = document.getElementById('tsPlot');
+  if (!el || !el.data || v.length !== 2 || v[1] <= v[0]) return;
+  Plotly.relayout(el, {'xaxis.range': v});
+});
+")),
+
+htmltools::tags$script(htmltools::HTML("
 window.toggleSpMapExpand = function() {
   var $wrap = $('#SpListPlotMapWrapper');
   var $overlay = $('#SpListPlotMapOverlay');
@@ -1576,7 +1585,7 @@ shiny::tabPanel(
 
 ###############Time Series Plot
 shiny::tabPanel(
-  htmltools::tags$div(title="Graph data across monitoring cycles", "Data Trends Over Time"),
+  htmltools::tags$div(title="Graph data across years", "Data Trends Over Time"),
   shiny::fluidRow(
     
     # side Panel
@@ -1599,11 +1608,12 @@ shiny::tabPanel(
                                                                  choices=base::c("Most common species"="Common", "Least common species"="Least", "All species combined"="All", "Pick individual species"="Pick"), inline=FALSE)),
                          shiny::uiOutput(outputId="tsSpeciesControl"),
                          htmltools::tags$div(title="Select the measurement to display on the y-axis", shiny::uiOutput(outputId="tsValControl")),
-                         htmltools::tags$div(title = "Pull sliders on either end to adjust the time periods", shiny::uiOutput(outputId = "tsCycleControl")),
+                         #htmltools::tags$div(title = "Pull sliders on either end to adjust the time periods", shiny::uiOutput(outputId = "tsCycleControl")),
+                         htmltools::tags$div(title = "Pull sliders on either end to adjust the year range shown", shiny::uiOutput(outputId = "tsYearControl")),
                          shiny::conditionalPanel(condition="input.tsPanel=='Graph'", shiny::hr(), shiny::actionButton(inputId="tsGraphButton", label="Display Options", class="btn btn-primary btn-block action-button options-toggle-btn", `data-target` = "tsOptions")),
                          shiny::conditionalPanel(condition="input.tsPanel=='Table'", shiny::hr(),
-                                                 title="Sort data table by species or by cycle", shiny::radioButtons(inputId = "tsTableOrder", label = "Order table by:", 
-                                                                     choices = base::c("Species" = "species", "Cycle" = "cycle"),
+                                                 title="Sort data table by species or by year", shiny::radioButtons(inputId = "tsTableOrder", label = "Order table by:", 
+                                                                     choices = base::c("Species" = "species", "Year" = "cycle"),
                                                                      selected = "species", inline = TRUE),
                                                  shiny::downloadButton(outputId="tsTableDownload", label="Save Table (.csv)", class="btn btn-primary btn-block")))),
       htmltools::tags$div(
@@ -1625,7 +1635,7 @@ shiny::tabPanel(
                                      
                                      # graph tab
                                      shiny::tabPanel(title=htmltools::tags$div(title="Graph the data", "Graph"), value="Graph",
-                                                     htmltools::tags$div(id="tsPlotContainer", title="Time series of mean and 95% confidence interval by monitoring cycle",
+                                                     htmltools::tags$div(id="tsPlotContainer", title="Time series of mean and 95% confidence interval by year",
                                                                          shiny::br(),
                                                                          shiny::uiOutput("tsReport"),
                                                                          shiny::uiOutput("tsMissingWarning"),
