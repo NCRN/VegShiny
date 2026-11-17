@@ -89,6 +89,17 @@ if (!base::is.null(overrides)) SUBUNITLABELS <- base::rbind(SUBUNITLABELS[!SUBUN
 # year range into cycles
 DATACYCLES<-NPSForVeg::getCycles(VEGDATA[[1]])
 
+# TRUE when cycles.csv defines cycles per park (not all cycles/parks match)
+CYCLES_BY_PARK <- "Unit_Code" %in% base::names(utils::read.csv(base::file.path("Data", NETWORK, "Cycles.csv"), nrows = 1))
+
+# choices for every cycle picklist
+cycle_choices <- function() {
+  if (CYCLES_BY_PARK) {
+    latest <- DATACYCLES[DATACYCLES$Name == "Latest Data", ][1, ]
+    stats::setNames(base::as.character(latest$Cycle), base::paste0(latest$Name, ":", latest$YearStart, "-", latest$YearEnd))
+  } else {
+    base::rev(stats::setNames(base::as.character(DATACYCLES$Cycle), base::paste0(DATACYCLES$Name, ":", DATACYCLES$YearStart, "-", DATACYCLES$YearEnd)))}}
+
 # map plant group names to "readable" labels
 DENSLABELDATA<-base::data.frame(Name=base::c("trees","saplings","seedlings","shrubs","shseedlings","herbs","vines"), Label=base::c("Trees","Saplings","Tree Seedlings", "Shrubs","Shrub Seedlings","Understory Plants","Vines in Trees"), stringsAsFactors=FALSE)
 
@@ -337,8 +348,7 @@ shiny::shinyServer(function(input,output,session){
   # Cycles control
   output$MapCycleControl<-shiny::renderUI({
     shiny::req(DATACYCLES)
-    shiny::selectizeInput(inputId="MapCycles", label="Years:", 
-                          choices=base::rev(stats::setNames(base::as.character(DATACYCLES$Cycle), base::paste0(DATACYCLES$Name,":", DATACYCLES$YearStart,"-",DATACYCLES$YearEnd))),
+    shiny::selectizeInput(inputId="MapCycles", label="Years:", choices = cycle_choices(),
                           selected = NULL, options = base::list(placeholder = "Select a cycle",
                                                                 onInitialize = base::I('function() { this.setValue(""); }')))})
   # cycle ID to years
@@ -2015,9 +2025,7 @@ shiny::observeEvent(input$MapPark, {
   output$densCycleControl<-shiny::renderUI({
     shiny::req(DATACYCLES)
     shiny::selectInput(inputId="densCycles", label="Years:", 
-                       choices=base::rev(stats::setNames(base::as.character(DATACYCLES$Cycle), base::paste0(DATACYCLES$Name,":",
-                                                                                                            DATACYCLES$YearStart,"-",DATACYCLES$YearEnd)))
-    )
+                       choices=cycle_choices())
   })
   
   #### Dens Years ####
@@ -2393,14 +2401,6 @@ shiny::observeEvent(input$MapPark, {
     veg <- VEGDATA[[input$densPark]]
     shiny::req(veg)
     
-    incompatible_msg <- "The current network's data structure is incompatible with the forest vegetation visualizer. Please review Cycles.csv"
-    
-    # flag when the selected cycle's year range doesn't match this park's own cycle definition
-    park_cycles <- base::tryCatch(NPSForVeg::getCycles(veg), error = function(e) NULL)
-    if (!base::is.null(park_cycles) && !base::any(
-      park_cycles$YearStart == base::min(densYears()) & park_cycles$YearEnd == base::max(densYears()))) {
-      shiny::validate(shiny::need(FALSE, incompatible_msg))}
-    
     # check if any observations exist
     no_obs <- base::tryCatch(
       NPSForVeg::getPlants(veg, group = input$densGroup, years = densYears()),
@@ -2639,7 +2639,6 @@ shiny::observeEvent(input$MapPark, {
   }##########################################
   
   compareDf <- shiny::reactive({
-    compareAllParksExcluded(NULL)
     shiny::req(input$densPark, input$densGroup, input$densvalues, densYears())
     cmp <- DensCompare()
     if (base::is.null(cmp) || (base::is.atomic(cmp) && base::is.na(cmp))) base::return(NULL)
@@ -2651,12 +2650,6 @@ shiny::observeEvent(input$MapPark, {
         group = cmp$group,
         years = cmp$years,
         values = cmp$values)
-      
-      compareAllParksExcluded(base::list(
-        definition = base::attr(raw, "skipped_parks_definition"),
-        no_data = base::attr(raw, "skipped_parks_no_data"),
-        row_mismatch = base::attr(raw, "skipped_parks_row_mismatch"),
-        other_error = base::attr(raw, "skipped_parks_other_error")))
       
       if (base::is.null(raw) || base::nrow(raw) == 0) base::return(NULL)
       
@@ -2900,8 +2893,6 @@ shiny::observeEvent(input$MapPark, {
       } else if (input$CompareType == "Growth Stage") {"comparison growth stage"
       } else {"comparison dataset"})})
   
-  compareAllParksExcluded <- shiny::reactiveVal(NULL)
-  
   densWarningDismissed <- shiny::reactiveVal(FALSE)
   
   shiny::observeEvent(
@@ -2945,60 +2936,6 @@ shiny::observeEvent(input$MapPark, {
       msg, 
       htmltools::tags$button("×", style = "position: absolute; right: 10px; top: 5px; border: none; background: none; font-size: 18px; cursor: pointer;",
                              onclick = "Shiny.setInputValue('dismiss_dens_warning', Math.random())"))})
-  
-  compareAllParksExclusionMsg <- shiny::reactive({
-    skipped <- compareAllParksExcluded()
-    if (base::is.null(skipped)) base::return(NULL)
-    
-    build_line <- function(codes, verb_phrase) {
-      if (base::is.null(codes) || base::length(codes) == 0) base::return(NULL)
-      names_str <- base::paste(base::sapply(codes, park_long_name), collapse = ", ")
-      n <- base::length(codes)
-      base::paste0(names_str, " ", if (n == 1) "is" else "are", " ", verb_phrase)}
-    
-    group_label <- base::switch(input$densGroup,
-                                trees = "tree", saplings = "sapling", seedlings = "tree seedling",
-                                shrubs = "shrub", shseedlings = "shrub seedling",
-                                herbs = "understory plant", vines = "vine", input$densGroup)
-    
-    lines <- base::list(
-      build_line(skipped$definition, "incompatible with the current network's data structure for the selected cycle (see Cycles.csv)"),
-      build_line(skipped$no_data, base::paste0("had no ", group_label, " observations for this cycle")),
-      build_line(skipped$row_mismatch, "affected by a known data-structure issue (monitored more than once within this cycle)"),
-      build_line(skipped$other_error, "affected by an unexpected data error"))
-    
-    lines <- base::Filter(base::Negate(base::is.null), lines)
-    if (base::length(lines) == 0) base::return(NULL)
-    
-    base::paste0("Warning: ", base::paste(base::unlist(lines), collapse = "; "), ". These parks have been excluded from the \"All Parks\" comparison.")})
-  
-  compareAllParksWarningDismissed <- shiny::reactiveVal(FALSE)
-  
-  shiny::observeEvent(
-    base::list(input$densPark, input$densGroup, input$densCycles, input$densvalues, input$CompareType, input$ComparePark),
-    {compareAllParksWarningDismissed(FALSE)})
-  
-  shiny::observeEvent(input$dismiss_compareallparks_warning, {compareAllParksWarningDismissed(TRUE)})
-  
-  output$compareAllParksExclusionGraph <- shiny::renderUI({
-    if (compareAllParksWarningDismissed()) base::return(NULL)
-    msg <- compareAllParksExclusionMsg()
-    if (base::is.null(msg)) base::return(NULL)
-    htmltools::tags$div(
-      style = "padding: 10px 14px; margin-bottom: 10px; border: 1px solid #f5c2c7; background-color: #f8d7da; color: #842029; border-radius: 6px; position: relative;",
-      msg,
-      htmltools::tags$button("\u00d7", style = "position: absolute; right: 10px; top: 5px; border: none; background: none; font-size: 18px; cursor: pointer;",
-                             onclick = "Shiny.setInputValue('dismiss_compareallparks_warning', Math.random())"))})
-  
-  output$compareAllParksExclusionTable <- shiny::renderUI({
-    if (compareAllParksWarningDismissed()) base::return(NULL)
-    msg <- compareAllParksExclusionMsg()
-    if (base::is.null(msg)) base::return(NULL)
-    htmltools::tags$div(
-      style = "padding: 10px 14px; margin-bottom: 10px; border: 1px solid #f5c2c7; background-color: #f8d7da; color: #842029; border-radius: 6px; position: relative;",
-      msg,
-      htmltools::tags$button("\u00d7", style = "position: absolute; right: 10px; top: 5px; border: none; background: none; font-size: 18px; cursor: pointer;",
-                             onclick = "Shiny.setInputValue('dismiss_compareallparks_warning', Math.random())"))})
   
   # summary report
   densReportText <- shiny::reactive({
@@ -3818,11 +3755,13 @@ shiny::observeEvent(input$MapPark, {
   #     value = base::c(base::min(cycles_with_data), base::max(cycles_with_data)),
   #     step = 1, ticks = FALSE)})
   
+  # years shown - first year with a full 4-year window through the last sampled year
+  TS_YEARS <- base::range(NPSForVeg::getEvents(object = VEGDATA, plot.type = "all")$Event_Year) + base::c(3, 0)
+  
   # years control
   output$tsYearControl <- shiny::renderUI({
     shiny::sliderInput(inputId = "tsYears", label = "Display years:",
-                       min = base::min(DATACYCLES$YearStart), max = base::max(DATACYCLES$YearEnd),
-                       value = base::c(base::min(DATACYCLES$YearStart), base::max(DATACYCLES$YearEnd)),
+                       min = TS_YEARS[1], max = TS_YEARS[2], value = TS_YEARS,
                        step = 1, sep = "", ticks = FALSE)})
 
   # value control
@@ -3940,7 +3879,7 @@ shiny::observeEvent(input$MapPark, {
     shiny::updateSelectizeInput(session, "tsPark", selected = "")
     shiny::updateSelectizeInput(session, "tsGroup", selected = PLANTTYPES[[1]])
     shiny::updateCheckboxInput(session, "tsCommon", value = TRUE)
-    shiny::updateCheckboxInput(session, "tsShowCI", value = FALSE)
+    shiny::updateCheckboxInput(session, "tsShowCI", value = TRUE)
     shiny::updateRadioButtons(session, "tsSpeciesType", selected = "Common")
     shiny::updateSelectizeInput(session, "tsSpecies", selected = base::character(0))
     shiny::updateRadioButtons(session, "tsTableOrder", selected = "species")
@@ -3957,7 +3896,7 @@ shiny::observeEvent(input$MapPark, {
     (base::is.null(input$tsPark)        || base::identical(input$tsPark, "")) &&
       (base::is.null(input$tsGroup)       || base::identical(input$tsGroup, PLANTTYPES[[1]])) &&
       (base::is.null(input$tsCommon)      || base::isTRUE(input$tsCommon)) &&
-      (base::is.null(input$tsShowCI)      || !base::isTRUE(input$tsShowCI)) &&
+      (base::is.null(input$tsShowCI)      || base::isTRUE(input$tsShowCI)) &&
       (base::is.null(input$tsSpeciesType) || base::identical(input$tsSpeciesType, "Common")) &&
       (base::is.null(input$tsSpecies)     || base::length(input$tsSpecies) == 0) &&
       (base::is.null(input$tsTableOrder)  || base::identical(input$tsTableOrder, "species"))
@@ -3997,8 +3936,10 @@ shiny::observeEvent(input$MapPark, {
     
     # all_cycles <- base::sort(base::unique(DATACYCLES$Cycle))
     # cycles_use <- all_cycles[all_cycles >= input$tsCycles[1] & all_cycles <= input$tsCycles[2]]
-    cycles_use <- base::sort(base::unique(NPSForVeg::getEvents(
-      object = if (input$tsPark == "All") VEGDATA else VEGDATA[[input$tsPark]], plot.type = "all")$Event_Year))
+    # cycles_use <- base::sort(base::unique(NPSForVeg::getEvents(
+    #   object = if (input$tsPark == "All") VEGDATA else VEGDATA[[input$tsPark]], plot.type = "all")$Event_Year))
+    cycles_use <- TS_YEARS[1]:base::max(NPSForVeg::getEvents(
+      object = if (input$tsPark == "All") VEGDATA else VEGDATA[[input$tsPark]], plot.type = "all")$Event_Year)
     
     # park_cycles <- if (input$tsPark != "All") {
     #   base::tryCatch(NPSForVeg::getCycles(VEGDATA[[input$tsPark]]), error = function(e) NULL)
@@ -4010,7 +3951,8 @@ shiny::observeEvent(input$MapPark, {
       # yr_end <- DATACYCLES$YearEnd[DATACYCLES$Cycle == cyc]
       # yrs <- yr_start:yr_end
       # cycle_label <- base::paste0(DATACYCLES$Name[DATACYCLES$Cycle == cyc], " (", yr_start, "-", yr_end, ")")
-      yrs <- cyc
+      # yrs <- cyc
+      yrs <- (cyc - 3):cyc
       cycle_label <- base::as.character(cyc)
       
       if (input$tsPark != "All") {
@@ -4259,6 +4201,7 @@ shiny::observeEvent(input$MapPark, {
     shiny::req(tsDf())
 
     df <- tsDf()
+    # plot_df <- tsPlotDf()
     font_s <- base::ifelse(base::is.null(input$tsFontSize), 12,  input$tsFontSize)
     lw <- base::ifelse(base::is.null(input$tsLineThickness), 1.5, input$tsLineThickness)
     ribbon_op <- base::ifelse(base::is.null(input$tsRibbonOpacity), 0.2, input$tsRibbonOpacity)
@@ -4352,15 +4295,7 @@ shiny::observeEvent(input$MapPark, {
           name = base::paste0(sp, "_lower"),
           legendgroup = sp)}
 
-      # # loess smoother
-      # if (base::sum(!base::is.na(d$Mean_plot)) >= 4) {
-      #   fit <- stats::loess(Mean_plot ~ Cycle, data = d, span = 0.75, degree = 1)
-      #   grid <- base::data.frame(Cycle = base::seq(base::min(d$Cycle), base::max(d$Cycle), length.out = 100))
-      #   p <- plotly::add_trace(p, x = grid$Cycle, y = stats::predict(fit, grid), type = "scatter", mode = "lines",
-      #                          line = base::list(color = col, width = lw), showlegend = FALSE,
-      #                          name = sp, legendgroup = sp, hoverinfo = "skip")}
-      
-      # mean
+      # mean (4-year moving average from dens())
       p <- plotly::add_trace(p,
                              data = d,
                              x = ~Cycle,
@@ -4394,14 +4329,14 @@ shiny::observeEvent(input$MapPark, {
                               count = "Abundance",
                               size = base::switch(input$tsGroup, trees =, saplings = "Basal Area",herbs = "Percent Cover", cwd = "Volume"),
                               presab = "Proportion of Plots Occupied")
-    ts_title <- base::paste0(park_label, ": ", group_label, " ", val_label, " by Cycle")
+    ts_title <- base::paste0(park_label, ": ", group_label, " ", val_label, " 4-Year Moving Average by Year")
     ts_container_w <- if (!base::is.null(input$tsPlotContainer_width)) input$tsPlotContainer_width else input$screenW
     plotCfg <- buildPlotlyTitleLegend(ts_title, font_s, ts_container_w, legend_species, smooth_breakpoint = TRUE)
     
     #### dummy trace to show legend when there is only one trace (one species selected or all species) --- warning will show Ignoring 1 observations - nothing from data is actually dropped
     p <- plotly::add_trace(
       p,
-      x = NA_character_,
+      x = NA_real_,
       y = NA_real_,
       type = "scatter",
       mode = "markers",
@@ -4533,7 +4468,7 @@ shiny::observeEvent(input$MapPark, {
         dplyr::mutate(Species = dplyr::if_else(dplyr::row_number() == 1, Species, "")) %>%
         dplyr::ungroup()}
     
-    df})
+    dplyr::rename(df, Year = Cycle, `4-Year Moving Average` = Mean)})
 
   output$tsTable <- DT::renderDataTable({
     
@@ -4559,67 +4494,6 @@ shiny::observeEvent(input$MapPark, {
     { tsMissingWarningDismissed(FALSE) })
 
   shiny::observeEvent(input$dismiss_ts_warning, { tsMissingWarningDismissed(TRUE) })
-
-  tsMissingWarningData <- shiny::reactive({
-    shiny::req(tsData())
-    raw <- tsData()
-    
-    # cycles dropped because no species were observed (excludes cycle-definition mismatches, handled separately)
-    dropped <- raw %>%
-      dplyr::group_by(Cycle, CycleLabel) %>%
-      dplyr::summarise(
-        all_na = base::all(base::is.na(Latin_Name)),
-        reason = dplyr::first(DropReason),
-        .groups = "drop") %>%
-      dplyr::filter(all_na, base::is.na(reason) | reason != "cycle_mismatch")
-    
-    if (base::nrow(dropped) == 0) base::return(NULL)
-    dropped$CycleLabel})
-  
-  tsCycleMismatchData <- shiny::reactive({
-    shiny::req(tsData())
-    raw <- tsData()
-    
-    dropped <- raw %>%
-      dplyr::group_by(Cycle, CycleLabel) %>%
-      dplyr::summarise(reason = dplyr::first(DropReason), .groups = "drop") %>%
-      dplyr::filter(!base::is.na(reason), reason == "cycle_mismatch")
-    
-    if (base::nrow(dropped) == 0) base::return(NULL)
-    dropped$CycleLabel})
-  
-  tsPartialRowMismatchData <- shiny::reactive({
-    shiny::req(tsData())
-    raw <- tsData()
-    partial <- raw %>%
-      dplyr::group_by(Cycle, CycleLabel) %>%
-      dplyr::summarise(reason = dplyr::first(DropReason), excluded = dplyr::first(ExcludedRowMismatch), .groups = "drop") %>%
-      dplyr::filter(base::is.na(reason) | reason != "cycle_mismatch") %>%
-      dplyr::filter(base::nzchar(excluded))
-    if (base::nrow(partial) == 0) base::return(NULL)
-    partial})
-  
-  tsPartialNoData <- shiny::reactive({
-    shiny::req(tsData())
-    raw <- tsData()
-    partial <- raw %>%
-      dplyr::group_by(Cycle, CycleLabel) %>%
-      dplyr::summarise(reason = dplyr::first(DropReason), excluded = dplyr::first(ExcludedNoData), .groups = "drop") %>%
-      dplyr::filter(base::is.na(reason) | reason != "cycle_mismatch") %>%
-      dplyr::filter(base::nzchar(excluded))
-    if (base::nrow(partial) == 0) base::return(NULL)
-    partial})
-  
-  tsPartialDefinitionData <- shiny::reactive({
-    shiny::req(tsData())
-    raw <- tsData()
-    partial <- raw %>%
-      dplyr::group_by(Cycle, CycleLabel) %>%
-      dplyr::summarise(reason = dplyr::first(DropReason), excluded = dplyr::first(ExcludedDefinition), .groups = "drop") %>%
-      dplyr::filter(base::is.na(reason) | reason != "cycle_mismatch") %>%
-      dplyr::filter(base::nzchar(excluded))
-    if (base::nrow(partial) == 0) base::return(NULL)
-    partial})
   
   tsPartialOtherErrorData <- shiny::reactive({
     shiny::req(tsData())
@@ -4633,32 +4507,17 @@ shiny::observeEvent(input$MapPark, {
     partial})
 
   tsMissingWarningMsg <- shiny::reactive({
-    missing <- tsMissingWarningData()
-    mismatched <- tsCycleMismatchData()
-    partial_definition <- tsPartialDefinitionData()
-    partial_no_data <- tsPartialNoData()
-    partial_row_mismatch <- tsPartialRowMismatchData()
     partial_other <- tsPartialOtherErrorData()
     
-    # years inside the sampled range with no monitoring events at all
-    sampled_yrs <- base::unique(tsData()$Cycle)
-    unsampled <- base::setdiff(base::min(sampled_yrs):base::max(sampled_yrs), sampled_yrs)
+    sampled_yrs <- NPSForVeg::getEvents(
+      object = if (input$tsPark == "All") VEGDATA else VEGDATA[[input$tsPark]], plot.type = "all")$Event_Year
+    unsampled <- base::setdiff(TS_YEARS[1]:base::max(sampled_yrs), sampled_yrs)
+    
     if (base::length(unsampled) == 0) unsampled <- NULL
     
-    if (base::is.null(missing) && base::is.null(mismatched) && base::is.null(partial_definition) &&
-        base::is.null(partial_no_data) && base::is.null(partial_row_mismatch) && base::is.null(partial_other) &&
-        base::is.null(unsampled)) base::return(NULL)
+    if (base::is.null(partial_other) && base::is.null(unsampled)) base::return(NULL)
     
     park_label <- if (input$tsPark == "All") "All Parks" else NPSForVeg::getNames(VEGDATA[[input$tsPark]], "long")
-    group_label <- base::switch(input$tsGroup,
-                                trees = "tree",
-                                saplings = "sapling",
-                                seedlings = "tree seedling",
-                                shrubs = "shrub",
-                                shseedlings = "shrub seedling",
-                                herbs = "understory plant",
-                                vines = "vine",
-                                input$tsGroup)
     
     build_partial_line <- function(partial, verb_phrase) {
       lines <- base::apply(partial, 1, function(row) {
@@ -4671,25 +4530,6 @@ shiny::observeEvent(input$MapPark, {
     
     if (!base::is.null(unsampled)) {
       parts <- base::c(parts, base::paste0("No monitoring was conducted at ", park_label, " during: ", base::paste(unsampled, collapse = "; "), "."))}
-    
-    if (!base::is.null(missing)) {
-      parts <- base::c(parts, base::paste0("No ", group_label, " observations were recorded at ", park_label, " during: ", base::paste(missing, collapse = "; "), "."))}
-    
-    if (!base::is.null(mismatched)) {
-      parts <- base::c(parts, base::paste0("The data structure is incompatible with the current network for: ", base::paste(mismatched, collapse = "; "), "."))}
-    
-    if (!base::is.null(partial_definition)) {
-      parts <- base::c(parts, build_partial_line(partial_definition,
-                                                 "Some parks have an incompatible data structure and were excluded from the following years"))}
-    
-    if (!base::is.null(partial_no_data)) {
-      parts <- base::c(parts, build_partial_line(partial_no_data,
-                                                 base::paste0("Some parks had no ", group_label, " observations and were excluded from the following years")))}
-    
-    if (!base::is.null(partial_row_mismatch)) {
-      parts <- base::c(parts, build_partial_line(
-        partial_row_mismatch,
-        "Some parks could not be processed because they were monitored more than once in the same year and were excluded from the following years"))}
     
     if (!base::is.null(partial_other)) {
       parts <- base::c(parts, build_partial_line(partial_other, "Some parks could not be processed due to an unexpected data error and were excluded from the following years"))}
@@ -4939,9 +4779,7 @@ shiny::observeEvent(input$MapPark, {
     shiny::selectInput(
       inputId = "IVCycles",
       label = "Years:",
-      choices = base::rev(stats::setNames(
-        base::as.character(DATACYCLES$Cycle),
-        base::paste0(DATACYCLES$Name, ":", DATACYCLES$YearStart, "-", DATACYCLES$YearEnd))))})
+      choices = cycle_choices())})
   
   #IV Species Control
   IVSpecList <- shiny::reactive({
@@ -5205,13 +5043,13 @@ shiny::observeEvent(input$MapPark, {
     shiny::req(IVData())
     
     if (base::is.null(input$IVPark) || base::nchar(input$IVPark) == 0) {
-      shiny::validate(shiny::need(input$IVPark, "There is no data for this combination of choices. Please select a park, species, or plant type."))}
+      shiny::validate(shiny::need(input$IVPark, "There are no results for this combination of choices. Please select a park, species, or plant type."))}
     
     IVdf <- IVSelectedDf()
     
     shiny::validate(shiny::need(
       !base::is.null(IVdf) && base::is.data.frame(IVdf) && base::nrow(IVdf) > 0,
-      "There is no data for this combination of choices. Please select a park, species, or plant type."))
+      "There are no results for this combination of choices. Please select a park, species, or plant type."))
     
     ### plot in plotly ###
     if (!input$IVPart) {
@@ -5521,13 +5359,13 @@ shiny::observeEvent(input$MapPark, {
   tempIVTable <- shiny::reactive({
     shiny::validate(shiny::need(
       !base::is.null(input$IVPark) && base::nzchar(input$IVPark),
-      "There is no data for this combination of choices. Please select a park, species, or plant type."))
+      "There are no results for this combination of choices. Please select a park, species, or plant type."))
     
     df_full <- IVData()
     
     shiny::validate(shiny::need(
       !base::is.null(df_full) && base::nrow(df_full) > 0,
-      "There is no data for this combination of choices. Please select a park, species, or plant type."))
+      "There are no results for this combination of choices. Please select a park, species, or plant type."))
     
     df <- IVSelectedDf() %>% dplyr::arrange(dplyr::desc(Total))
     

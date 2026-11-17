@@ -6,6 +6,9 @@ library(DT)
 library(bslib)
 library(htmltools)
 
+# TRUE when cycles.csv defines cycles per park (not all cycles/parks match)
+CYCLES_BY_PARK <- "Unit_Code" %in% base::names(utils::read.csv(base::file.path("Data", NETWORK, "Cycles.csv"), nrows = 1))
+
 shiny::navbarPage(
   title=htmltools::HTML(base::paste0(
     base::switch(NETWORK,
@@ -352,7 +355,12 @@ shiny::navbarPage(
         transition: none;
         padding-left: 10px !important;}
       .collapsible-main-panel.main-full-width {width: calc(100% - 24px) !important;}
-        
+      @media (min-width: 1025px) {
+        .sidebar-col-outer {min-height: calc(100vh - 80px);}
+        .sidebar-col-outer .sidebar-toggle-tab {
+          top: calc((100vh - 80px - 72px) / 2) !important;
+          transform: none !important;}}
+          
     /* summary report (dens, ts, iv) */
     
       .report-body {
@@ -1498,7 +1506,7 @@ shiny::tabPanel(
               shiny::radioButtons(
                 inputId = "CompareType",
                 label = "Compare to another:",
-                choices = base::c("None", "Park", "Growth Stage", "Time"),
+                choices = if (CYCLES_BY_PARK) base::c("None", "Park", "Growth Stage") else base::c("None", "Park", "Growth Stage", "Time"),
                 selected = "None",
                 inline = TRUE)),
             shiny::uiOutput(outputId = "CompareSelect")))),
@@ -1530,7 +1538,6 @@ shiny::tabPanel(
             shiny::br(),
             shiny::uiOutput("densReportGraph"),
             shiny::uiOutput("densMissingWarningGraph"),
-            shiny::uiOutput("compareAllParksExclusionGraph"),
             shiny::uiOutput("densOnePlotWarningGraph"),
             shiny::conditionalPanel(
               condition = "input.densPark == null || input.densPark == '' || (input.densSpeciesType == 'Pick' && (input.densSpecies == null || input.densSpecies.length == 0))",
@@ -1570,7 +1577,6 @@ shiny::tabPanel(
             shiny::h3(shiny::textOutput("densTableTitle")),
             shiny::hr(),
             shiny::uiOutput("densMissingWarningTable"),
-            shiny::uiOutput("compareAllParksExclusionTable"),
             shiny::uiOutput("densOnePlotWarningTable"),
             shiny::conditionalPanel(
               condition = "input.densPark == null || input.densPark == '' || (input.densSpeciesType == 'Pick' && (input.densSpecies == null || input.densSpecies.length == 0))",
@@ -1602,7 +1608,7 @@ shiny::tabPanel(
                          htmltools::tags$div(title="Park determines the species shown in figures and other controls", shiny::uiOutput(outputId="tsParkControl")),
                          htmltools::tags$div(title="Plant type determines species shown in other controls", shiny::selectizeInput(inputId="tsGroup", label="Type of plant:", choices=PLANTTYPES)),
                          htmltools::tags$div(title="Uncheck for Latin (scientific) names", shiny::checkboxInput(inputId="tsCommon", label="Display common names?", value=TRUE)),
-                         htmltools::tags$div(title="Check to show confidence interval ribbons on figure", shiny::checkboxInput(inputId = "tsShowCI", label = "Show 95% confidence intervals", value = FALSE)),
+                         htmltools::tags$div(title="Check to show confidence interval ribbons on figure", shiny::checkboxInput(inputId = "tsShowCI", label = "Show 95% confidence intervals", value = TRUE)),
                          htmltools::tags$div(title="Graph the most common species, least common species, species you select, or all species observed", 
                                              shiny::radioButtons(inputId="tsSpeciesType", label="Which species?", 
                                                                  choices=base::c("Most common species"="Common", "Least common species"="Least", "All species combined"="All", "Pick individual species"="Pick"), inline=FALSE)),
